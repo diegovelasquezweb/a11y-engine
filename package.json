@@ -1,0 +1,37 @@
+{
+  "name": "@diegovelasquezweb/a11y-engine",
+  "version": "0.1.0",
+  "description": "WCAG 2.2 AA accessibility audit engine — scanner, analyzer, and report builders",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/diegovelasquezweb/a11y-engine.git"
+  },
+  "homepage": "https://github.com/diegovelasquezweb/a11y-engine#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "a11y-audit": "./scripts/audit.mjs"
+  },
+  "files": [
+    "scripts/**",
+    "assets/**",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "prepublishOnly": "node -e \"console.log('Publishing @diegovelasquezweb/a11y-engine...')\""
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.11.1",
+    "axe-core": "^4.11.1",
+    "pa11y": "^9.1.1",
+    "playwright": "^1.58.2"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
+  }
+}
