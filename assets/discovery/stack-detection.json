@@ -1,0 +1,33 @@
+{
+  "platformStructureDetectors": [
+    ["wordpress", ["wp-content/themes"]],
+    ["drupal", ["web/themes", "themes"]],
+    ["shopify", ["sections", "snippets", "layout", "templates"]]
+  ],
+  "uiLibraryPackageDetectors": [
+    ["@radix-ui", "radix"],
+    ["@headlessui", "headless-ui"],
+    ["@chakra-ui", "chakra"],
+    ["@mantine", "mantine"],
+    ["@mui", "material-ui"],
+    ["antd", "ant-design"],
+    ["@shopify/polaris", "polaris"],
+    ["@react-aria", "react-aria"],
+    ["ariakit", "ariakit"],
+    ["primevue", "primevue"],
+    ["vuetify", "vuetify"],
+    ["swiper", "swiper"]
+  ],
+  "frameworkPackageDetectors": [
+    ["next", "nextjs"],
+    ["gatsby", "gatsby"],
+    ["nuxt", "nuxt"],
+    ["@nuxt/core", "nuxt"],
+    ["@angular/core", "angular"],
+    ["astro", "astro"],
+    ["@sveltejs/kit", "svelte"],
+    ["svelte", "svelte"],
+    ["vue", "vue"],
+    ["react", "react"]
+  ]
+}

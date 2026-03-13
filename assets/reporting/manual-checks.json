@@ -1,0 +1,944 @@
+[
+  {
+    "criterion": "2.4.11",
+    "title": "Focus Appearance",
+    "level": "AA",
+    "description": "Operational elements must have a visible focus indicator with sufficient contrast and size when focused via keyboard.",
+    "steps": [
+      "Navigate through the page using the `TAB` key.",
+      "Ensure every clickable element (links, buttons, inputs) shows a clear border or background change when focused.",
+      "Verify the contrast of the focus indicator is at least 3:1 against the surrounding background."
+    ],
+    "remediation": [
+      "If no focus style is defined globally, add: `*:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }` to the global stylesheet."
+    ],
+    "code_example": {
+      "lang": "css",
+      "before": "/* BEFORE — browser default outline suppressed */\n*:focus {\n  outline: none;\n}",
+      "after": "/* AFTER — accessible focus indicator */\n*:focus-visible {\n  outline: 3px solid #005FCC;\n  outline-offset: 2px;\n  border-radius: 2px;\n}\n/* Only suppress for mouse/pointer interactions */\n*:focus:not(:focus-visible) {\n  outline: none;\n}"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html"
+  },
+  {
+    "criterion": "2.5.7",
+    "title": "Dragging Movements",
+    "level": "AA",
+    "description": "All drag-and-drop functionality must have a single-pointer alternative (click-to-select + click-to-drop, arrow buttons, etc.).",
+    "steps": [
+      "Identify components that use drag gestures (e.g., sortable lists, sliders).",
+      "Try to perform the same action using only a keyboard or single mouse clicks.",
+      "Ensure there is a button or menu-based alternative to complete the task."
+    ],
+    "remediation": [
+      "If no keyboard alternative exists, add arrow-key support or button controls to the component."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — drag-only, no keyboard or single-pointer alternative -->\n<ul id=\"sortable\">\n  <li draggable=\"true\" ondragstart=\"drag(event)\">Item 1</li>\n  <li draggable=\"true\" ondragstart=\"drag(event)\">Item 2</li>\n</ul>",
+      "after": "<!-- AFTER — drag + button alternative for keyboard/single-pointer access -->\n<ul id=\"sortable\">\n  <li draggable=\"true\" ondragstart=\"drag(event)\">\n    <span>Item 1</span>\n    <button type=\"button\" aria-label=\"Move Item 1 up\" onclick=\"moveUp(this)\">↑</button>\n    <button type=\"button\" aria-label=\"Move Item 1 down\" onclick=\"moveDown(this)\">↓</button>\n  </li>\n</ul>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html"
+  },
+  {
+    "criterion": "2.5.8",
+    "title": "Target Size (Minimum)",
+    "level": "AA",
+    "description": "Interactive targets must be at least 24×24 CSS pixels, or have sufficient spacing to offset a smaller size.",
+    "steps": [
+      "Inspect small buttons, checkboxes, and inline links.",
+      "Measure the clickable area (including padding).",
+      "Ensure no interactive element is smaller than 24x24px unless it is an inline link within a paragraph."
+    ],
+    "remediation": [
+      "For icon-only buttons (no text), ensure `padding` is set so the total rendered size is at least 24×24px."
+    ],
+    "code_example": {
+      "lang": "css",
+      "before": "/* BEFORE — icon button renders below 24×24 CSS px */\n.icon-btn {\n  width: 16px;\n  height: 16px;\n  padding: 0;\n}",
+      "after": "/* AFTER — minimum 24×24 CSS px via padding */\n.icon-btn {\n  min-width: 24px;\n  min-height: 24px;\n  padding: 4px;\n  box-sizing: content-box;\n}"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html"
+  },
+  {
+    "criterion": "3.2.6",
+    "title": "Consistent Help",
+    "level": "A",
+    "description": "Help mechanisms (support link, chat widget, contact info) must appear in the same relative order on every page where they appear.",
+    "steps": [
+      "Find the 'Support' or 'Help' links in the header/footer.",
+      "Navigate between at least 3 pages.",
+      "Confirm these elements reside in the same layout position and visual sequence."
+    ],
+    "remediation": [
+      "If found on individual pages rather than in a shared layout, move the component to the shared layout to guarantee consistent placement."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — help link embedded per-page, missing on some pages -->\n<!-- about.html -->\n<footer><a href=\"/contact\">Contact Support</a></footer>\n<!-- pricing.html: no footer, help link absent -->",
+      "after": "<!-- AFTER — help link in shared layout, consistent on all pages -->\n<!-- layout.html (shared template) -->\n<footer>\n  <a href=\"/contact\">Contact Support</a>\n</footer>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/consistent-help.html"
+  },
+  {
+    "criterion": "3.3.7",
+    "title": "Redundant Entry",
+    "level": "A",
+    "description": "Information already provided by the user in the same session must not be required again unless essential or for security.",
+    "steps": [
+      "Fill out a multi-step form (e.g., Checkout).",
+      "In later steps, check if you are asked for information you already entered (e.g., 'Confirm Email').",
+      "Ensure this information is either auto-filled or available for selection."
+    ],
+    "remediation": [
+      "If later steps re-render fields already collected (name, address, email), pre-populate them from stored state/context instead of showing empty inputs."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — step 2 re-asks for email already submitted in step 1 -->\n<label for=\"email2\">Re-enter your email</label>\n<input type=\"email\" id=\"email2\" name=\"email_confirm\">",
+      "after": "<!-- AFTER — email pre-populated from stored session state -->\n<label for=\"email2\">Email (entered in step 1)</label>\n<input\n  type=\"email\"\n  id=\"email2\"\n  name=\"email_confirm\"\n  value=\"user@example.com\"\n  readonly\n  aria-describedby=\"email2-hint\"\n>\n<p id=\"email2-hint\">Wrong address? <a href=\"/step-1\">Go back to edit it.</a></p>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/redundant-entry.html"
+  },
+  {
+    "criterion": "3.3.8",
+    "title": "Accessible Authentication (Minimum)",
+    "level": "AA",
+    "description": "Authentication processes (login) must not rely on cognitive function tests (memorizing complex passwords, solving puzzles) unless an alternative exists.",
+    "steps": [
+      "Visit the Login page.",
+      "Check if you can use a password manager (Auto-fill).",
+      "Check if you can paste into the password field.",
+      "Verify no 'solve this math problem' type CAPTCHAs are mandatory."
+    ],
+    "remediation": [
+      "Verify password fields do not have `onPaste` handlers that prevent pasting — remove any such restriction."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — blocks paste and autocomplete -->\n<input\n  type=\"password\"\n  name=\"password\"\n  autocomplete=\"off\"\n  onpaste=\"return false;\"\n>",
+      "after": "<!-- AFTER — allows password manager and paste -->\n<input\n  type=\"password\"\n  name=\"password\"\n  autocomplete=\"current-password\"\n>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/accessible-authentication-minimum.html"
+  },
+  {
+    "criterion": "2.1.1",
+    "title": "Keyboard Access",
+    "level": "A",
+    "description": "All functionality must be operable through a keyboard interface without requiring specific timings for individual keystrokes.",
+    "steps": [
+      "Unplug or disable your mouse and navigate the entire page using only Tab, Shift+Tab, Enter, Space, and arrow keys.",
+      "Confirm every interactive feature (menus, modals, carousels, date pickers) can be opened, used, and closed by keyboard.",
+      "Flag any action that requires hover or mouse click with no keyboard equivalent."
+    ],
+    "remediation": [
+      "Add keyboard event handlers (keydown/keyup) alongside mouse event handlers for all custom interactive components.",
+      "Ensure custom components follow the APG keyboard interaction patterns: https://www.w3.org/WAI/ARIA/apg/patterns/"
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — click only, no keyboard support -->\n<div class=\"dropdown\" onclick=\"toggleMenu()\">\n  Options\n</div>",
+      "after": "<!-- AFTER — keyboard accessible with role + tabindex -->\n<button\n  class=\"dropdown\"\n  aria-expanded=\"false\"\n  aria-haspopup=\"menu\"\n  onclick=\"toggleMenu(this)\"\n  onkeydown=\"handleMenuKey(event, this)\"\n>\n  Options\n</button>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html"
+  },
+  {
+    "criterion": "2.1.2",
+    "title": "No Keyboard Trap",
+    "level": "A",
+    "description": "Keyboard focus must never become locked inside a component unless it is a modal dialog, and even then Escape must close it.",
+    "steps": [
+      "Tab into every interactive component (menus, widgets, embedded media).",
+      "Attempt to Tab or Shift+Tab out of each component — confirm focus moves to the next element.",
+      "For modal dialogs, press Escape and confirm the dialog closes and focus returns to the trigger."
+    ],
+    "remediation": [
+      "For modals, implement a focus trap that keeps focus inside while open, and releases it when closed with Escape or the close button.",
+      "Remove any tabindex or focus logic that prevents Tab from exiting a non-modal component."
+    ],
+    "code_example": {
+      "lang": "js",
+      "before": "// BEFORE — widget traps all Tab keypresses, focus cannot exit\nwidget.addEventListener('keydown', (e) => {\n  if (e.key === 'Tab') {\n    e.preventDefault(); // blocks exit\n    cycleFocusInternally(e.shiftKey);\n  }\n});",
+      "after": "// AFTER — focus trap only inside open modal dialogs\nwidget.addEventListener('keydown', (e) => {\n  const isModal = widget.getAttribute('role') === 'dialog';\n  if (e.key === 'Tab' && isModal && isOpen) {\n    trapFocusWithin(widget, e);\n  }\n  // Non-modal: let Tab exit naturally\n});"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/no-keyboard-trap.html"
+  },
+  {
+    "criterion": "2.4.3",
+    "title": "Focus Order",
+    "level": "A",
+    "description": "The keyboard focus sequence must follow a logical order that preserves meaning and operability.",
+    "steps": [
+      "Press Tab repeatedly from the top of the page and observe the focus sequence.",
+      "Confirm focus moves left-to-right and top-to-bottom (or in the logical reading order of the content).",
+      "Check that modals and dynamic content (drawers, toasts) receive focus in the correct sequence when they appear."
+    ],
+    "remediation": [
+      "Remove positive tabindex values — they override the natural DOM order and create unpredictable sequences.",
+      "Reorder DOM elements to match the intended visual and logical reading order."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — positive tabindex creates unnatural focus order -->\n<button tabindex=\"3\">Submit</button>\n<input tabindex=\"1\" type=\"text\" placeholder=\"First name\">\n<input tabindex=\"2\" type=\"text\" placeholder=\"Last name\">",
+      "after": "<!-- AFTER — natural DOM order, no positive tabindex -->\n<input type=\"text\" placeholder=\"First name\">\n<input type=\"text\" placeholder=\"Last name\">\n<button type=\"submit\">Submit</button>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html"
+  },
+  {
+    "criterion": "1.4.1",
+    "title": "Use of Color",
+    "level": "A",
+    "description": "Color must not be the only visual means of conveying information, indicating an action, prompting a response, or distinguishing a visual element.",
+    "steps": [
+      "Enable grayscale mode (DevTools → Rendering → Emulate vision deficiencies: Achromatopsia).",
+      "Check that all meaningful information is still understandable without color (e.g. error states, required fields, status indicators).",
+      "Confirm links within body text are distinguishable from surrounding text by more than color alone (e.g. underline)."
+    ],
+    "remediation": [
+      "Add a secondary indicator alongside color: icon, pattern, label, underline, or border.",
+      "Never rely solely on red/green color coding for status — add text labels or icons."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — error indicated by color only -->\n<input type=\"email\" class=\"input-error\">\n<!-- .input-error { border: 2px solid red; } -->",
+      "after": "<!-- AFTER — error indicated by color + icon + text -->\n<div class=\"field\">\n  <input type=\"email\" class=\"input-error\" aria-describedby=\"email-error\">\n  <p id=\"email-error\" class=\"error-message\" role=\"alert\">\n    <svg aria-hidden=\"true\"><!-- error icon --></svg>\n    Please enter a valid email address.\n  </p>\n</div>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html"
+  },
+  {
+    "criterion": "1.4.10",
+    "title": "Reflow",
+    "level": "AA",
+    "description": "Content must reflow into a single column at 320 CSS pixels wide without requiring horizontal scrolling.",
+    "steps": [
+      "In DevTools, set the viewport to 320px wide (iPhone SE size or use the responsive mode).",
+      "Scroll vertically through the entire page — confirm no content requires horizontal scrolling to read.",
+      "Check that no text is clipped, truncated, or overlapping at this width."
+    ],
+    "remediation": [
+      "Use relative units (rem, %, vw) instead of fixed pixel widths for layout containers.",
+      "Add a CSS media query at max-width: 320px to collapse multi-column layouts into a single column."
+    ],
+    "code_example": {
+      "lang": "css",
+      "before": "/* BEFORE — fixed-width layout, causes horizontal scroll at 320px */\n.container {\n  width: 960px;\n}\n.sidebar {\n  width: 300px;\n  float: left;\n}",
+      "after": "/* AFTER — responsive layout, single column at 320px */\n.container {\n  width: 100%;\n  max-width: 960px;\n  padding: 0 1rem;\n  box-sizing: border-box;\n}\n.sidebar { width: 100%; }\n@media (min-width: 640px) {\n  .sidebar {\n    width: 30%;\n    float: left;\n  }\n}"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/reflow.html"
+  },
+  {
+    "criterion": "1.4.11",
+    "title": "Non-text Contrast",
+    "level": "AA",
+    "description": "UI components (buttons, inputs, icons) and informational graphics must have a contrast ratio of at least 3:1 against adjacent colors.",
+    "steps": [
+      "Use the DevTools color picker to sample the border color of form inputs and compare it against the background.",
+      "Check icon-only buttons — the icon itself must contrast at least 3:1 against its background.",
+      "Inspect focus indicators — the outline color must contrast at least 3:1 against the surrounding area."
+    ],
+    "remediation": [
+      "Darken input borders, icon strokes, and UI component outlines to meet the 3:1 ratio.",
+      "Use the WebAIM Contrast Checker or Colour Contrast Analyser to validate values."
+    ],
+    "code_example": {
+      "lang": "css",
+      "before": "/* BEFORE — input border fails 3:1 against white background */\ninput[type=\"text\"] {\n  border: 1px solid #ccc; /* ~1.6:1 contrast */\n}\n.icon { fill: #bbb; } /* ~1.4:1 contrast */",
+      "after": "/* AFTER — border and icon meet 3:1 minimum */\ninput[type=\"text\"] {\n  border: 1px solid #767676; /* ~4.5:1 against white */\n}\n.icon { fill: #595959; } /* ~7:1 against white */"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html"
+  },
+  {
+    "criterion": "1.4.12",
+    "title": "Text Spacing",
+    "level": "AA",
+    "description": "No content or functionality must be lost when users apply custom text spacing: line-height 1.5, letter-spacing 0.12em, word-spacing 0.16em, paragraph spacing 2em.",
+    "steps": [
+      "Install the Text Spacing bookmarklet (Steve Faulkner / TPGi) or paste the following CSS into DevTools: `* { line-height: 1.5 !important; letter-spacing: 0.12em !important; word-spacing: 0.16em !important; } p { margin-bottom: 2em !important; }`",
+      "Scroll through the page and confirm no text is clipped, overlapping, or hidden.",
+      "Check form labels, buttons, and navigation items specifically — these commonly overflow."
+    ],
+    "remediation": [
+      "Use min-height instead of fixed height on containers with text.",
+      "Avoid overflow:hidden on elements that contain user-readable text."
+    ],
+    "code_example": {
+      "lang": "css",
+      "before": "/* BEFORE — fixed height clips text with custom user spacing */\n.card-header {\n  height: 48px;\n  overflow: hidden;\n}\n.btn {\n  height: 40px;\n  line-height: 40px;\n}",
+      "after": "/* AFTER — min-height allows text to grow with user spacing overrides */\n.card-header {\n  min-height: 48px;\n  overflow: visible;\n}\n.btn {\n  min-height: 40px;\n  padding: 0.5em 1em;\n  line-height: 1.5;\n}"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/text-spacing.html"
+  },
+  {
+    "criterion": "1.4.13",
+    "title": "Content on Hover or Focus",
+    "level": "AA",
+    "description": "Additional content that appears on hover or focus (tooltips, sub-menus) must be dismissable, hoverable, and persistent.",
+    "steps": [
+      "Hover over elements that trigger tooltips or popovers — confirm the content stays visible while you move the cursor onto it.",
+      "Press Escape while a tooltip is visible — confirm it dismisses without moving focus.",
+      "Trigger the same content via keyboard focus (Tab) — confirm it appears and remains visible until focus moves away."
+    ],
+    "remediation": [
+      "Ensure tooltip/popover elements are adjacent in DOM so the cursor can move from trigger to content without dismissal.",
+      "Add an Escape key handler to close hover content without requiring focus change."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — tooltip closes when cursor moves onto it (pointer-events: none) -->\n<span class=\"tip-trigger\">Help <span class=\"tooltip\">More info.</span></span>\n<!-- CSS: .tooltip { pointer-events: none; } -->",
+      "after": "<!-- AFTER — tooltip is hoverable, keyboard-focusable, Escape dismisses -->\n<span class=\"tip-trigger\">\n  <button type=\"button\" aria-describedby=\"tip1\">Help</button>\n  <span id=\"tip1\" role=\"tooltip\" class=\"tooltip\">More info.</span>\n</span>\n<!-- CSS: .tooltip { pointer-events: auto; } -->\n<!-- JS: document.addEventListener('keydown', e => { if (e.key === 'Escape') hideTooltip(); }); -->"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus.html"
+  },
+  {
+    "criterion": "3.3.1",
+    "title": "Error Identification",
+    "level": "A",
+    "description": "When a form input error is detected, the item in error must be identified and the error described to the user in text.",
+    "steps": [
+      "Submit a form with intentionally invalid or empty required fields.",
+      "Confirm each error is identified by text — not only by a red border or icon.",
+      "Verify the error message describes what is wrong (e.g. 'Email is required' not just 'Invalid input').",
+      "Check that focus moves to the first error field or an error summary at the top of the form."
+    ],
+    "remediation": [
+      "Add aria-describedby on the input pointing to the error message element.",
+      "Use aria-invalid=\"true\" on inputs in an error state.",
+      "Move focus to the error summary or first error field on form submission failure."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — error indicated only by red border, no text description -->\n<input type=\"email\" name=\"email\" class=\"input-error\">",
+      "after": "<!-- AFTER — error described in text, linked via aria-describedby -->\n<label for=\"email\">Email address</label>\n<input\n  type=\"email\"\n  id=\"email\"\n  name=\"email\"\n  aria-invalid=\"true\"\n  aria-describedby=\"email-err\"\n  class=\"input-error\"\n>\n<p id=\"email-err\" class=\"error-msg\">Please enter a valid email address.</p>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/error-identification.html"
+  },
+  {
+    "criterion": "AT-1",
+    "title": "Screen Reader: Heading Navigation",
+    "level": "AT",
+    "description": "A screen reader user must be able to navigate the page efficiently using heading shortcuts.",
+    "steps": [
+      "Open VoiceOver (macOS: Cmd+F5) or NVDA (Windows: Ctrl+Alt+N).",
+      "Use the heading navigation shortcut (VoiceOver: VO+Cmd+H — NVDA: H) to jump between headings.",
+      "Confirm all major sections are reachable by heading and announced with the correct level (e.g. 'Heading level 2').",
+      "Confirm no decorative or off-screen elements are announced as headings."
+    ],
+    "remediation": [
+      "Ensure visual headings use semantic <h1>–<h6> elements, not styled <div> or <span> elements.",
+      "Remove role=\"heading\" from decorative elements."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — visual heading styled as div, not announced by screen reader -->\n<div class=\"section-title\">Product Features</div>",
+      "after": "<!-- AFTER — semantic heading, announced as 'Heading level 2, Product Features' -->\n<h2>Product Features</h2>"
+    },
+    "ref": "https://www.w3.org/WAI/test-evaluate/preliminary/#headings"
+  },
+  {
+    "criterion": "AT-2",
+    "title": "Screen Reader: Landmark Navigation",
+    "level": "AT",
+    "description": "A screen reader user must be able to navigate between page regions using landmark shortcuts.",
+    "steps": [
+      "Open VoiceOver or NVDA.",
+      "Use the landmark navigation shortcut (VoiceOver: VO+Cmd+W — NVDA: D) to cycle through landmarks.",
+      "Confirm main, nav, header, footer, and any aside regions are announced with descriptive labels.",
+      "Confirm no orphan content (text outside any landmark) is present."
+    ],
+    "remediation": [
+      "Add aria-label to disambiguate multiple nav or section elements (e.g. aria-label=\"Main navigation\").",
+      "Wrap all visible page content in semantic landmark elements."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — layout divs only, no landmark regions for screen reader navigation -->\n<div class=\"nav-bar\">...</div>\n<div class=\"content\">...</div>\n<div class=\"side\">...</div>",
+      "after": "<!-- AFTER — semantic landmarks, duplicate navs labeled for disambiguation -->\n<nav aria-label=\"Main navigation\">...</nav>\n<main>...</main>\n<aside aria-label=\"Related articles\">...</aside>"
+    },
+    "ref": "https://www.w3.org/WAI/test-evaluate/preliminary/#landmarks"
+  },
+  {
+    "criterion": "AT-3",
+    "title": "Screen Reader: Form Labels",
+    "level": "AT",
+    "description": "Every form field must be announced with its label and type when focused by a screen reader.",
+    "steps": [
+      "Open VoiceOver or NVDA and Tab into each form field.",
+      "Confirm the screen reader announces the field label, input type, and any required state (e.g. 'Email, required, edit text').",
+      "Confirm placeholder text alone is NOT the only label — placeholders disappear on input and are not reliably announced."
+    ],
+    "remediation": [
+      "Associate every input with a <label> element using for/id, or use aria-label / aria-labelledby.",
+      "Never rely on placeholder as a substitute for a visible label."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — placeholder is the only label (unreliable, disappears on input) -->\n<input type=\"email\" placeholder=\"Email address\">",
+      "after": "<!-- AFTER — explicit visible label associated via for/id -->\n<label for=\"email\">Email address</label>\n<input type=\"email\" id=\"email\" placeholder=\"e.g. name@example.com\">"
+    },
+    "ref": "https://www.w3.org/WAI/tutorials/forms/labels/"
+  },
+  {
+    "criterion": "AT-4",
+    "title": "Screen Reader: Interactive Element Activation",
+    "level": "AT",
+    "description": "All interactive elements must be operable and correctly announced when activated via keyboard with a screen reader running.",
+    "steps": [
+      "With VoiceOver or NVDA active, Tab to buttons, links, and custom widgets.",
+      "Activate each element using Enter (links, buttons) or Space (buttons, checkboxes).",
+      "Confirm the resulting action is announced (e.g. dialog opens, content expands, page navigates).",
+      "Confirm custom components (role=\"button\", role=\"checkbox\") respond to the same keys as native equivalents."
+    ],
+    "remediation": [
+      "Add keydown handlers for Enter and Space on all elements with role=\"button\".",
+      "Ensure state changes trigger an accessible announcement via aria-live or focus management."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — div with onclick, not keyboard-operable, announced as generic element -->\n<div class=\"btn\" onclick=\"submitForm()\">Submit</div>",
+      "after": "<!-- AFTER — native button, keyboard-operable, announced as 'Submit, button' -->\n<button type=\"button\" onclick=\"submitForm()\">Submit</button>"
+    },
+    "ref": "https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/"
+  },
+  {
+    "criterion": "AT-5",
+    "title": "Screen Reader: Live Region Announcements",
+    "level": "AT",
+    "description": "Dynamic content updates (alerts, status messages, loading states) must be announced by the screen reader without requiring focus.",
+    "steps": [
+      "With VoiceOver or NVDA active, trigger dynamic content: submit a form, load more results, trigger a toast/notification.",
+      "Confirm the screen reader announces the update automatically without the user moving focus.",
+      "Confirm loading spinners are announced as 'Loading' and completion is announced when done."
+    ],
+    "remediation": [
+      "Add aria-live=\"polite\" for non-urgent updates (search results, status messages).",
+      "Add aria-live=\"assertive\" only for urgent alerts that must interrupt the user.",
+      "Use role=\"status\" for polite messages and role=\"alert\" for urgent ones."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — status updated silently, screen reader not notified -->\n<div id=\"status\"></div>\n<script>\n  document.getElementById('status').textContent = '12 results found';\n</script>",
+      "after": "<!-- AFTER — aria-live announces update without requiring focus change -->\n<div id=\"status\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\"></div>\n<script>\n  // Screen reader announces '12 results found' automatically\n  document.getElementById('status').textContent = '12 results found';\n</script>"
+    },
+    "ref": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Guides/Live_regions"
+  },
+  {
+    "criterion": "AT-6",
+    "title": "Screen Reader: Modal Dialog Behavior",
+    "level": "AT",
+    "description": "Modal dialogs must trap focus, announce their role and label, and return focus to the trigger on close.",
+    "steps": [
+      "Open VoiceOver or NVDA and trigger a modal dialog.",
+      "Confirm the screen reader announces 'dialog' and the dialog's title when it opens.",
+      "Press Tab repeatedly — confirm focus cycles only within the modal and does not escape to the background.",
+      "Close the dialog with Escape or the close button — confirm focus returns to the element that triggered it."
+    ],
+    "remediation": [
+      "Add role=\"dialog\" and aria-modal=\"true\" to the dialog container.",
+      "Add aria-labelledby pointing to the dialog title.",
+      "Implement a JavaScript focus trap and restore focus on close."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — visual modal, no ARIA, focus not managed on open -->\n<div class=\"modal\">\n  <h2>Confirm</h2>\n  <button onclick=\"close()\">Cancel</button>\n  <button onclick=\"confirm()\">OK</button>\n</div>",
+      "after": "<!-- AFTER — accessible dialog with focus management and Escape support -->\n<div\n  class=\"modal\"\n  role=\"dialog\"\n  aria-modal=\"true\"\n  aria-labelledby=\"modal-title\"\n  tabindex=\"-1\"\n>\n  <h2 id=\"modal-title\">Confirm</h2>\n  <button onclick=\"close()\">Cancel</button>\n  <button onclick=\"confirm()\">OK</button>\n</div>\n<!-- JS: focus dialog on open, trap Tab within, restore focus to trigger on close -->"
+    },
+    "ref": "https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/"
+  },
+  {
+    "criterion": "AT-7",
+    "title": "Screen Reader: Table Reading",
+    "level": "AT",
+    "description": "Data tables must be navigable by a screen reader with row and column headers announced for each cell.",
+    "steps": [
+      "With VoiceOver or NVDA, navigate into a data table using the table navigation shortcut (NVDA: T).",
+      "Move between cells using arrow keys — confirm the screen reader announces the column and row header for each cell.",
+      "Confirm the table has an accessible caption or aria-label describing its purpose."
+    ],
+    "remediation": [
+      "Use <th> with scope=\"col\" or scope=\"row\" for all header cells.",
+      "Add a <caption> or aria-label to the <table> element.",
+      "Never use tables for layout — only for tabular data."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — table without headers or caption, cells read in isolation -->\n<table>\n  <tr><td>Name</td><td>Role</td></tr>\n  <tr><td>Alice</td><td>Engineer</td></tr>\n</table>",
+      "after": "<!-- AFTER — scoped headers and caption for full screen reader context -->\n<table>\n  <caption>Team Members</caption>\n  <thead>\n    <tr>\n      <th scope=\"col\">Name</th>\n      <th scope=\"col\">Role</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>Alice</td>\n      <td>Engineer</td>\n    </tr>\n  </tbody>\n</table>"
+    },
+    "ref": "https://www.w3.org/WAI/tutorials/tables/"
+  },
+  {
+    "criterion": "AT-8",
+    "title": "Screen Reader: Form Error Announcement",
+    "level": "AT",
+    "description": "Form validation errors must be announced by the screen reader so users know what failed and why.",
+    "steps": [
+      "With VoiceOver or NVDA active, submit a form with intentionally invalid data.",
+      "Confirm the screen reader announces the error(s) — either via focus moving to an error summary or via an aria-live region.",
+      "Tab to each invalid field and confirm the error message is announced alongside the field label.",
+      "Confirm aria-invalid=\"true\" is set on fields in error state."
+    ],
+    "remediation": [
+      "On validation failure, move focus to an error summary at the top of the form with role=\"alert\".",
+      "Set aria-invalid=\"true\" and aria-describedby on each invalid input pointing to its error message.",
+      "Ensure error messages are visible text nodes — not only communicated via color or icon."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — error displayed visually, screen reader not notified -->\n<input type=\"email\" class=\"invalid\">\n<div class=\"error\">Email is required</div>",
+      "after": "<!-- AFTER — error summary announced via role=alert, field marked invalid -->\n<div role=\"alert\" id=\"error-summary\">\n  <p>1 error: <a href=\"#email\">Email is required</a></p>\n</div>\n<label for=\"email\">Email</label>\n<input\n  type=\"email\"\n  id=\"email\"\n  aria-invalid=\"true\"\n  aria-describedby=\"email-err\"\n  class=\"invalid\"\n>\n<p id=\"email-err\">Email is required.</p>"
+    },
+    "ref": "https://www.w3.org/WAI/tutorials/forms/validation/"
+  },
+  {
+    "criterion": "1.2.1",
+    "title": "Audio-only and Video-only (Prerecorded)",
+    "level": "A",
+    "description": "Audio-only content needs a text transcript. Video-only content needs a text or audio description of the visual information.",
+    "steps": [
+      "Find all <audio> and <video> elements on the page.",
+      "For audio-only content: check for a link to a text transcript near the player.",
+      "For video-only content (no audio track): check for a text description or an audio description track."
+    ],
+    "remediation": [
+      "Add a linked transcript below or near audio-only players.",
+      "For video-only content, add a <track kind=\"descriptions\"> element or provide a written description adjacent to the player."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<audio src=\"podcast.mp3\" controls></audio>",
+      "after": "<audio src=\"podcast.mp3\" controls></audio>\n<p><a href=\"podcast-transcript.html\">Read the transcript</a></p>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/audio-only-and-video-only-prerecorded.html"
+  },
+  {
+    "criterion": "1.2.2",
+    "title": "Captions (Prerecorded)",
+    "level": "A",
+    "description": "All prerecorded video content with audio must have synchronized captions. Note: axe-core only checks that a <track kind=\"captions\"> element exists — it cannot verify caption accuracy, completeness, or synchronization.",
+    "steps": [
+      "Find all <video> elements on the page.",
+      "Verify a <track kind=\"captions\"> element is present inside each <video>.",
+      "Play the video and confirm captions appear, are synchronized with speech, and include non-speech audio cues (e.g., [music], [applause])."
+    ],
+    "remediation": [
+      "Add <track kind=\"captions\" src=\"captions.vtt\" srclang=\"en\" label=\"English\" default> inside each <video> element.",
+      "Generate accurate captions — auto-generated captions alone do not satisfy this criterion."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<video src=\"talk.mp4\" controls></video>",
+      "after": "<video src=\"talk.mp4\" controls>\n  <track kind=\"captions\" src=\"talk-captions.vtt\" srclang=\"en\" label=\"English\" default>\n</video>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/captions-prerecorded.html"
+  },
+  {
+    "criterion": "1.2.5",
+    "title": "Audio Description (Prerecorded)",
+    "level": "AA",
+    "description": "Prerecorded video content must have an audio description track so that blind users can access information conveyed visually (actions, scene changes, on-screen text).",
+    "steps": [
+      "Watch the video with eyes closed.",
+      "Determine whether all meaningful visual information (actions, scene changes, on-screen text) can be understood from the audio alone.",
+      "If not, an audio description track is required."
+    ],
+    "remediation": [
+      "Add <track kind=\"descriptions\" src=\"descriptions.vtt\" srclang=\"en\" label=\"Audio Description\"> inside the <video> element.",
+      "Alternatively, provide a separate version of the video with audio descriptions mixed into the main audio track."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<video src=\"tutorial.mp4\" controls></video>",
+      "after": "<video src=\"tutorial.mp4\" controls>\n  <track kind=\"descriptions\" src=\"tutorial-descriptions.vtt\" srclang=\"en\" label=\"Audio Description\">\n</video>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/audio-description-prerecorded.html"
+  },
+  {
+    "criterion": "1.3.3",
+    "title": "Sensory Characteristics",
+    "level": "A",
+    "description": "Instructions must not rely solely on sensory characteristics like shape, color, size, visual location, or sound. Users who are blind or color-blind cannot perceive these cues.",
+    "steps": [
+      "Find all instructional text: tooltips, help text, error messages, onboarding copy.",
+      "Check for phrases like \"click the round button\", \"see the red warning\", \"the menu on the left\", or \"press the large button\".",
+      "Verify each sensory reference has a non-sensory alternative such as a text label, role, or accessible name."
+    ],
+    "remediation": [
+      "Replace sensory-only references with text labels: use \"Click the Save button\" instead of \"Click the blue button on the right\".",
+      "Add aria-label or visible text to differentiate elements that look the same."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<p>Click the blue button to continue.</p>",
+      "after": "<p>Click the <strong>Continue</strong> button to proceed.</p>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/sensory-characteristics.html"
+  },
+  {
+    "criterion": "1.4.4",
+    "title": "Resize Text",
+    "level": "AA",
+    "description": "Text must be resizable up to 200% using browser zoom without loss of content or functionality. Fixed pixel font sizes and viewport-locked layouts break this.",
+    "steps": [
+      "Set browser zoom to 200% (Cmd+Plus on macOS / Ctrl+Plus on Windows).",
+      "Verify all text is readable and no content is clipped or hidden.",
+      "Confirm no horizontal scrolling is required (except for data tables or maps).",
+      "Verify all functionality remains operable at 200% zoom."
+    ],
+    "remediation": [
+      "Replace px font sizes with rem or em units.",
+      "Remove max-height constraints on elements that contain text.",
+      "Avoid overflow: hidden on text containers."
+    ],
+    "code_example": {
+      "lang": "css",
+      "before": "body { font-size: 14px; }\n.card { max-height: 100px; overflow: hidden; }",
+      "after": "body { font-size: 0.875rem; }\n.card { overflow: visible; }"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html"
+  },
+  {
+    "criterion": "1.4.5",
+    "title": "Images of Text",
+    "level": "AA",
+    "description": "Text must not be rendered as images unless essential (e.g., logos, brand wordmarks). Images of text cannot be resized, recolored, or adapted by user stylesheets.",
+    "steps": [
+      "Inspect images on the page.",
+      "If an image contains readable text (not a logo), verify whether the same visual result can be achieved with real HTML text styled with CSS.",
+      "Right-click and Inspect — if it is an <img> or a background-image containing text, it may violate this criterion."
+    ],
+    "remediation": [
+      "Replace image-based text with real HTML text styled with CSS.",
+      "For decorative text effects, use CSS text-shadow, background-clip: text, or filter.",
+      "Logos and brand wordmarks are exempt from this criterion."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<img src=\"welcome-banner.png\" alt=\"Welcome to our site\" />",
+      "after": "<h1 class=\"banner-heading\">Welcome to our site</h1>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/images-of-text.html"
+  },
+  {
+    "criterion": "2.2.1",
+    "title": "Timing Adjustable",
+    "level": "A",
+    "description": "If a time limit is set for any content or interaction (session timeout, timed quiz, auto-logout), users must be able to turn it off, adjust it to at least 10 times the default, or extend it with at least 20 seconds warning before expiry.",
+    "steps": [
+      "Identify session timeouts, timed forms, auto-expiring modals, or sliding banners with time limits.",
+      "Trigger or simulate the timeout.",
+      "Check for a warning with enough time to extend the session.",
+      "Verify the extension mechanism is keyboard accessible."
+    ],
+    "remediation": [
+      "Add a warning dialog at least 20 seconds before session expiry with a keyboard-accessible \"Extend session\" button.",
+      "For non-essential time limits, provide a settings option to disable them entirely."
+    ],
+    "code_example": {
+      "lang": "js",
+      "before": "// No warning — user is logged out after 5 minutes with no notice\nsetTimeout(() => logout(), 5 * 60 * 1000);",
+      "after": "const WARNING_MS = 20 * 1000;\nconst TIMEOUT_MS = 5 * 60 * 1000;\n\nsetTimeout(() => showExtendSessionDialog(), TIMEOUT_MS - WARNING_MS);\n\nfunction showExtendSessionDialog() {\n  // Render a keyboard-accessible dialog with \"Extend Session\" and \"Log out\" buttons\n}"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/timing-adjustable.html"
+  },
+  {
+    "criterion": "2.2.2",
+    "title": "Pause, Stop, Hide",
+    "level": "A",
+    "description": "Moving, blinking, scrolling, or auto-updating content that starts automatically and lasts more than 5 seconds must have a mechanism to pause, stop, or hide it.",
+    "steps": [
+      "Find carousels, hero sliders, scrolling tickers, auto-advancing slideshows, and auto-refreshing live data.",
+      "Verify a pause, stop, or hide button is visible and keyboard accessible for each."
+    ],
+    "remediation": [
+      "Add a visible \"Pause\" button to carousels and auto-advancing content.",
+      "For CSS animations running indefinitely, respect the prefers-reduced-motion media query.",
+      "For live data feeds, add a pause toggle so users can read content without it updating."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<div class=\"carousel\" data-autoplay=\"true\">\n  <!-- slides -->\n</div>",
+      "after": "<div class=\"carousel\" data-autoplay=\"true\">\n  <button type=\"button\" aria-label=\"Pause carousel\" class=\"carousel__pause\">&#9646;&#9646;</button>\n  <!-- slides -->\n</div>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide.html"
+  },
+  {
+    "criterion": "2.3.1",
+    "title": "Three Flashes or Below Threshold",
+    "level": "A",
+    "description": "Content must not flash more than 3 times per second, as rapid flashing can trigger seizures in users with photosensitive epilepsy.",
+    "steps": [
+      "Review all animated content: GIFs, CSS animations, videos, and canvas animations.",
+      "Look for rapid alternating high-contrast flashing.",
+      "Use the PEAT tool (Photosensitivity Epilepsy Analysis Tool) for thorough analysis if in doubt."
+    ],
+    "remediation": [
+      "Limit animation flash rate to below 3 Hz.",
+      "Replace rapid alternating animations with smooth transitions.",
+      "Add prefers-reduced-motion guards for all animations."
+    ],
+    "code_example": {
+      "lang": "css",
+      "before": "@keyframes flash {\n  0%, 50% { background: white; }\n  51%, 100% { background: black; }\n}\n.alert { animation: flash 0.2s infinite; }",
+      "after": "@media (prefers-reduced-motion: no-preference) {\n  @keyframes fade {\n    0%, 100% { opacity: 1; }\n    50% { opacity: 0.5; }\n  }\n  .alert { animation: fade 0.8s ease-in-out infinite; }\n}"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/three-flashes-or-below-threshold.html"
+  },
+  {
+    "criterion": "2.4.5",
+    "title": "Multiple Ways",
+    "level": "AA",
+    "description": "At least two ways must exist to locate a page within a set of pages (e.g., navigation + search, navigation + sitemap, navigation + related links).",
+    "steps": [
+      "Check if the site has at least two of: global navigation, search functionality, site map page, breadcrumb trail, or related pages links.",
+      "Verify the search field is keyboard accessible and has a visible label."
+    ],
+    "remediation": [
+      "Add a site-wide search field if one is not present.",
+      "Alternatively, add a sitemap page linked from the footer.",
+      "Breadcrumbs on deep pages also satisfy this criterion alongside main navigation."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<nav aria-label=\"Main\">\n  <!-- nav links only -->\n</nav>",
+      "after": "<nav aria-label=\"Main\">\n  <!-- nav links -->\n</nav>\n<form role=\"search\">\n  <label for=\"site-search\">Search</label>\n  <input id=\"site-search\" type=\"search\" />\n  <button type=\"submit\">Search</button>\n</form>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/multiple-ways.html"
+  },
+  {
+    "criterion": "2.5.1",
+    "title": "Pointer Gestures",
+    "level": "A",
+    "description": "All functionality using multi-point gestures (pinch-to-zoom, two-finger swipe) or path-based gestures (swipe left/right) must have a single-pointer alternative (a button or click).",
+    "steps": [
+      "Identify map controls, carousels, sliders, and galleries.",
+      "Test whether all actions (zoom in/out, next/previous, drag to reposition) can be completed with a single tap or click using visible buttons."
+    ],
+    "remediation": [
+      "Add +/- buttons alongside pinch-to-zoom maps.",
+      "Add Previous/Next buttons for swipe-navigated carousels.",
+      "Add drag-handle buttons or keyboard alternatives for path-based interactions."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<div class=\"carousel\">\n  <!-- swipe gesture only, no buttons -->\n</div>",
+      "after": "<div class=\"carousel\">\n  <button type=\"button\" aria-label=\"Previous slide\">&#8249;</button>\n  <!-- slides -->\n  <button type=\"button\" aria-label=\"Next slide\">&#8250;</button>\n</div>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/pointer-gestures.html"
+  },
+  {
+    "criterion": "2.5.2",
+    "title": "Pointer Cancellation",
+    "level": "A",
+    "description": "Single-pointer actions must not be triggered on the down-event unless essential. Users need to be able to cancel accidental activations by moving the pointer away or releasing on a different element.",
+    "steps": [
+      "Test interactive elements (buttons, links, custom controls) — click and hold, then drag the pointer off the element before releasing.",
+      "Verify the action does not fire when the pointer is released outside the element.",
+      "Confirm buttons activate on mouseup/touchend (release), not mousedown/touchstart (press)."
+    ],
+    "remediation": [
+      "Use click events (which fire on release) instead of mousedown or pointerdown for triggering actions.",
+      "If pointerdown is essential, provide an abort or undo mechanism."
+    ],
+    "code_example": {
+      "lang": "js",
+      "before": "button.addEventListener('mousedown', () => deleteItem());",
+      "after": "// 'click' fires on mouseup — allows the user to move away to cancel\nbutton.addEventListener('click', () => deleteItem());"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/pointer-cancellation.html"
+  },
+  {
+    "criterion": "3.2.1",
+    "title": "On Focus (No Context Change)",
+    "level": "A",
+    "description": "Receiving keyboard focus must not automatically trigger a context change (e.g., submitting a form, opening a new window, navigating to another page).",
+    "steps": [
+      "Tab through all interactive elements on the page.",
+      "Verify that receiving focus alone does not trigger navigation, form submission, alerts, or page reloads.",
+      "Select menus and dropdowns may open on focus but must not navigate until a selection is confirmed with Enter or a click."
+    ],
+    "remediation": [
+      "Move context-changing logic from focus events to change or click events.",
+      "If a dropdown opens on focus, ensure navigation requires an explicit Enter keypress or pointer click."
+    ],
+    "code_example": {
+      "lang": "js",
+      "before": "select.addEventListener('focus', () => navigate(select.value));",
+      "after": "select.addEventListener('change', () => navigate(select.value));"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/on-focus.html"
+  },
+  {
+    "criterion": "3.2.2",
+    "title": "On Input (No Context Change)",
+    "level": "A",
+    "description": "Changing the value of a UI component must not automatically cause a context change without prior notification. Auto-submitting forms or navigating on dropdown change violates this.",
+    "steps": [
+      "Change select dropdowns, radio buttons, and checkboxes.",
+      "Verify no automatic navigation or form submission occurs on input change.",
+      "If auto-navigation does occur, check that the user was warned in advance."
+    ],
+    "remediation": [
+      "Move form submission or navigation logic to an explicit submit button.",
+      "If auto-submit is essential (e.g., a language selector), add visible notice: \"Selecting a language will reload the page.\""
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<select onchange=\"location.href=this.value\">\n  <option value=\"/en\">English</option>\n  <option value=\"/es\">Español</option>\n</select>",
+      "after": "<select id=\"nav-select\">\n  <option value=\"/en\">English</option>\n  <option value=\"/es\">Español</option>\n</select>\n<button type=\"button\" onclick=\"navigate()\">Go</button>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/on-input.html"
+  },
+  {
+    "criterion": "3.2.3",
+    "title": "Consistent Navigation",
+    "level": "AA",
+    "description": "Navigation that repeats across pages must appear in the same relative order. Users with cognitive disabilities rely on consistent placement to predict where controls are.",
+    "steps": [
+      "Visit at least 3 different pages on the site.",
+      "Verify the main navigation, search bar, and any site-wide controls appear in the same relative order on each page.",
+      "Minor differences in active states are acceptable; reordering of items is not."
+    ],
+    "remediation": [
+      "Extract repeated navigation into a shared layout component.",
+      "Avoid reordering nav items based on page context or user actions.",
+      "If an item must be added for a specific page, append it at the end — do not rearrange existing items."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- Page A -->\n<nav><a href=\"/\">Home</a><a href=\"/about\">About</a><a href=\"/contact\">Contact</a></nav>\n<!-- Page B (items reordered) -->\n<nav><a href=\"/contact\">Contact</a><a href=\"/\">Home</a><a href=\"/about\">About</a></nav>",
+      "after": "<!-- Both pages use the same nav component with consistent order -->\n<nav><a href=\"/\">Home</a><a href=\"/about\">About</a><a href=\"/contact\">Contact</a></nav>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/consistent-navigation.html"
+  },
+  {
+    "criterion": "3.2.4",
+    "title": "Consistent Identification",
+    "level": "AA",
+    "description": "Components with the same function must be identified consistently across pages (same label, same icon, same accessible name).",
+    "steps": [
+      "Find repeated interactive elements: search buttons, cart icons, login links, close buttons.",
+      "Verify their visible label and aria-label are identical across all pages.",
+      "A search icon labeled \"Search\" on one page and \"Find\" on another violates this criterion."
+    ],
+    "remediation": [
+      "Centralize labels for repeated components using constants or i18n keys.",
+      "Audit all aria-label values on shared components to ensure consistency."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- Page A -->\n<button aria-label=\"Search\"><svg>...</svg></button>\n<!-- Page B -->\n<button aria-label=\"Find content\"><svg>...</svg></button>",
+      "after": "<!-- Both pages -->\n<button aria-label=\"Search\"><svg>...</svg></button>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/consistent-identification.html"
+  },
+  {
+    "criterion": "3.3.3",
+    "title": "Error Suggestion",
+    "level": "AA",
+    "description": "When an input error is identified, a suggestion for correction must be provided if possible (unless it would compromise security). Vague errors like \"Invalid input\" do not satisfy this.",
+    "steps": [
+      "Submit forms with intentional errors: wrong email format, empty required fields, invalid date.",
+      "Verify error messages explain what went wrong.",
+      "Confirm messages provide specific corrective guidance (e.g., \"Enter a valid email address, like name@example.com\")."
+    ],
+    "remediation": [
+      "Replace generic error messages with specific, actionable suggestions.",
+      "Include format hints in the error text.",
+      "Associate error messages with the relevant field using aria-describedby."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<input type=\"email\" id=\"email\" />\n<span class=\"error\">Invalid input</span>",
+      "after": "<input type=\"email\" id=\"email\" aria-describedby=\"email-error\" />\n<span id=\"email-error\" class=\"error\">Enter a valid email address — for example, name@example.com</span>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/error-suggestion.html"
+  },
+  {
+    "criterion": "3.3.4",
+    "title": "Error Prevention (Legal, Financial, Data)",
+    "level": "AA",
+    "description": "Pages that result in legal commitments, financial transactions, account deletion, or data submission must be reversible, verifiable, or confirmed before submission.",
+    "steps": [
+      "Identify checkout flows, form submissions with permanent effects, and account deletion flows.",
+      "Verify at least one of: a review/confirmation step before final submit, a way to correct data before finalizing, or a reversal mechanism (cancel order, undo delete)."
+    ],
+    "remediation": [
+      "Add a review step before checkout completion.",
+      "Add a confirmation dialog before irreversible actions such as account deletion or data purge.",
+      "Provide an order cancellation window (even 5 minutes) for financial transactions."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<button type=\"button\" onclick=\"deleteAccount()\">Delete Account</button>",
+      "after": "<!-- Step 1: trigger -->\n<button type=\"button\" onclick=\"showConfirmDialog()\">Delete Account</button>\n\n<!-- Step 2: confirmation dialog -->\n<dialog id=\"confirm-delete\">\n  <p>Are you sure? This action cannot be undone.</p>\n  <button type=\"button\" onclick=\"closeDialog()\">Cancel</button>\n  <button type=\"button\" onclick=\"deleteAccount()\">Confirm Delete</button>\n</dialog>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/error-prevention-legal-financial-data.html"
+  },
+  {
+    "criterion": "1.2.4",
+    "title": "Captions (Live)",
+    "level": "AA",
+    "conditional": "Only applies if the site streams live audio or video content (e.g., webinars, live events, broadcasts). Mark as N/A if no live media is present.",
+    "description": "Live audio in synchronized media must have real-time captions that are accurate and synchronized with the audio.",
+    "steps": [
+      "Identify any live video or audio streams on the site.",
+      "Play the live stream and verify that real-time captions are visible or easily activatable.",
+      "Verify captions are reasonably accurate and stay synchronized with the speaker."
+    ],
+    "remediation": [
+      "Use a live captioning service (e.g., Google Live Captions, StreamText, or a professional CART provider) integrated with the streaming platform.",
+      "If using an embedded player (YouTube Live, Vimeo, etc.), enable the platform's built-in live caption feature."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — live stream with no caption track -->\n<video autoplay controls src=\"https://stream.example.com/live.m3u8\"></video>",
+      "after": "<!-- AFTER — live stream with real-time caption track -->\n<video autoplay controls src=\"https://stream.example.com/live.m3u8\">\n  <track kind=\"captions\" src=\"https://captions.example.com/live.vtt\" srclang=\"en\" label=\"English\" default>\n</video>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/captions-live.html"
+  },
+  {
+    "criterion": "1.4.2",
+    "title": "Audio Control",
+    "level": "A",
+    "conditional": "Only applies if the site plays audio automatically for more than 3 seconds. Mark as N/A if no auto-playing audio is present.",
+    "description": "If audio plays automatically for more than 3 seconds, the user must be able to pause or stop it, or control its volume independently from the system volume.",
+    "steps": [
+      "Load each page and note any audio that plays automatically.",
+      "If audio auto-plays for more than 3 seconds, verify a pause/stop control is visible at the top of the page or immediately reachable via keyboard.",
+      "Verify a volume control (if present) operates independently from the system volume."
+    ],
+    "remediation": [
+      "Set `autoplay` to false by default on all `<audio>` and `<video>` elements.",
+      "If auto-play is required, add `muted` and provide a visible unmute control.",
+      "Add a prominent pause/stop button visible in the page header or near the audio source."
+    ],
+    "code_example": {
+      "lang": "html",
+      "before": "<!-- BEFORE — audio auto-plays with no user control -->\n<audio autoplay src=\"background.mp3\"></audio>",
+      "after": "<!-- AFTER — muted by default with native controls -->\n<audio autoplay muted controls src=\"background.mp3\">\n  Your browser does not support the audio element.\n</audio>"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/audio-control.html"
+  },
+  {
+    "criterion": "2.5.4",
+    "title": "Motion Actuation",
+    "level": "A",
+    "conditional": "Only applies if the site uses device motion (shake, tilt, gyroscope) to trigger actions. Mark as N/A if no motion-based interactions are present.",
+    "description": "Functionality triggered by device motion must have a UI control alternative, and motion actuation must be disableable to prevent accidental triggering.",
+    "steps": [
+      "Identify any features that respond to device motion (shake, tilt, gyroscope gestures).",
+      "Test on a physical device: verify the same action can be performed via a visible UI control.",
+      "Verify there is a setting or toggle to disable motion-activated functions."
+    ],
+    "remediation": [
+      "Add a UI button or toggle that replicates any motion-triggered action.",
+      "Provide a setting to disable motion actuation entirely.",
+      "Check the `prefers-reduced-motion` media query and disable motion features when it is set."
+    ],
+    "code_example": {
+      "lang": "js",
+      "before": "// BEFORE — action only triggered by device motion\nwindow.addEventListener('devicemotion', (e) => {\n  if (e.acceleration.x > 15) undoLastAction()\n})",
+      "after": "// AFTER — button alternative + motion can be disabled\nlet motionEnabled = true\ndocument.getElementById('undo-btn').addEventListener('click', undoLastAction)\nwindow.addEventListener('devicemotion', (e) => {\n  if (motionEnabled && e.acceleration.x > 15) undoLastAction()\n})"
+    },
+    "ref": "https://www.w3.org/WAI/WCAG22/Understanding/motion-actuation.html"
+  }
+]

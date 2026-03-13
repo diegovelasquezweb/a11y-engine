@@ -1,0 +1,46 @@
+{
+  "nextjs": {
+    "components": "app/**/*.tsx, components/**/*.tsx",
+    "styles": "app/**/*.module.css, components/**/*.module.css, app/globals.css"
+  },
+  "gatsby": {
+    "components": "src/**/*.tsx, src/**/*.jsx",
+    "styles": "src/**/*.css, src/**/*.module.css"
+  },
+  "react": {
+    "components": "src/**/*.tsx, src/**/*.jsx",
+    "styles": "src/**/*.css, src/**/*.module.css"
+  },
+  "nuxt": {
+    "components": "pages/**/*.vue, components/**/*.vue",
+    "styles": "assets/**/*.css, assets/**/*.scss"
+  },
+  "vue": {
+    "components": "src/**/*.vue",
+    "styles": "src/**/*.css"
+  },
+  "angular": {
+    "components": "src/**/*.component.html, src/**/*.component.ts",
+    "styles": "src/**/*.component.css, src/styles.css, src/styles.scss"
+  },
+  "astro": {
+    "components": "src/**/*.astro, src/components/**/*.tsx",
+    "styles": "src/**/*.css, src/**/*.scss"
+  },
+  "svelte": {
+    "components": "src/**/*.svelte",
+    "styles": "src/**/*.css"
+  },
+  "shopify": {
+    "components": "sections/**/*.liquid, snippets/**/*.liquid, layout/**/*.liquid, templates/**/*.liquid",
+    "styles": "assets/**/*.css"
+  },
+  "wordpress": {
+    "components": "wp-content/themes/**/*.php",
+    "styles": "wp-content/themes/**/*.css"
+  },
+  "drupal": {
+    "components": "web/themes/**/*.html.twig, themes/**/*.html.twig",
+    "styles": "web/themes/**/*.css, themes/**/*.css"
+  }
+}

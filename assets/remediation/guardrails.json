@@ -1,0 +1,24 @@
+{
+  "shared": [
+    "**Element Verification**: Use the **Evidence from DOM** HTML to verify you are editing the correct element before applying any fix. Accessibility fixes are context-sensitive.",
+    "**Global Component Check**: If an issue repeats across multiple pages, it is likely inside a Global Component (e.g., `Header.tsx`, `Button.vue`). Fix it once at the source.",
+    "**Verification**: After applying a fix, explain *why* it resolves the WCAG criterion mentioned.",
+    "**No Placeholders**: Do not add \"todo\" comments. Provide the complete code fix.",
+    "**Backend Root Cause**: Some axe findings originate from server-side output (PHP warnings, WP_DEBUG stack traces rendering into the DOM) rather than frontend components. Identify by evidence containing server-generated debug output: PHP warnings, file paths like `wp-config.php` or `.env`, line numbers, or raw error messages in the DOM. For these findings: (1) explain the server-side root cause to the user in plain language, (2) do not attempt any frontend fix, (3) mark as 'Out of scope — backend root cause', (4) exclude from the fix queue and count as unresolved/unactionable in the Step 6 summary.",
+    "**Design Tokens (Tailwind)**: When fixing color contrast or visual issues, check `package.json` for the Tailwind version. v3: tokens in `tailwind.config.ts` or `tailwind.config.js`. v4: tokens in `@theme { … }` blocks inside CSS files (e.g. `app/globals.css`); a `tailwind.config.js` with `@config` may also exist — check both. Never report a missing config as an error in v4 projects."
+  ],
+  "stack": {
+    "react": "**React Project**: Edit `.tsx`/`.jsx` files in `src/`. **NEVER** edit `dist/`, `build/`, or `.cache/`. Source of Truth: fix at the component, not the compiled output.",
+    "nextjs": "**Next.js Project**: Edit `.tsx`/`.jsx` files in `app/`, `pages/`, or `components/`. **NEVER** edit `.next/` or `out/`. Source of Truth: fix at the component or page.",
+    "gatsby": "**Gatsby Project**: Edit `.tsx`/`.jsx` in `src/pages/` or `src/components/`. **NEVER** edit `public/` or `.cache/`. Source of Truth: fix at the component.",
+    "vue": "**Vue Project**: Edit `.vue` files in `src/`. **NEVER** edit `dist/` or `node_modules/`. Source of Truth: fix at the component.",
+    "nuxt": "**Nuxt Project**: Edit `.vue` files in `pages/`, `components/`, or `layouts/`. **NEVER** edit `.nuxt/` or `dist/`. Source of Truth: fix at the component.",
+    "angular": "**Angular Project**: Edit `.component.html` and `.component.ts` in `src/`. **NEVER** edit `dist/`. Source of Truth: fix at the component.",
+    "astro": "**Astro Project**: Edit `.astro` files in `src/`. **NEVER** edit `dist/` or `.astro/`. Source of Truth: fix at the component or page.",
+    "shopify": "**Shopify Project**: Edit `.liquid` files in `sections/`, `snippets/`, or `layout/`. **NEVER** edit compiled assets in `assets/*.min.js` or modify `config/settings_schema.json`. Source of Truth: fix at the template, not the rendered DOM.",
+    "wordpress": "**WordPress Project**: Work only in `wp-content/themes/`. **NEVER** edit `wp-content/plugins/`, `wp-admin/`, `wp-includes/`, `wp-config.php`, or any cached file. Source of Truth: fix at the theme template.",
+    "svelte": "**Svelte/SvelteKit Project**: Edit `.svelte` files in `src/`. **NEVER** edit `.svelte-kit/`, `build/`, or `dist/`. Source of Truth: fix at the component, not the compiled output.",
+    "drupal": "**Drupal Project**: Search for `.html.twig` in `web/themes/` or `themes/`. Clear cache with `drush cr` after changes. **NEVER** edit compiled or cached files.",
+    "generic": "**Framework & CMS Awareness**: This project may use React, Vue, Next.js, Astro, **Shopify** (.liquid), **WordPress** (.php), or **Drupal** (.twig).\n    - **NEVER** edit compiled, minified, or cached files (e.g., `dist/`, `.next/`, `build/`, `wp-content/cache/`, `assets/*.min.js`).\n    - **Source of Truth**: Traced DOM violations must be fixed at the **Source Component** or **Server-side Template**. Edit the origin, not the output."
+  }
+}

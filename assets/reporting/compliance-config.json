@@ -1,0 +1,173 @@
+{
+  "severityOrder": {
+    "Critical": 0,
+    "Serious": 1,
+    "Moderate": 2,
+    "Minor": 3
+  },
+  "priorityScoring": {
+    "severityPoints": {
+      "0": 50,
+      "1": 30,
+      "2": 10,
+      "3": 0
+    },
+    "instancePointsMax": 30,
+    "instanceScale": 10,
+    "fixBonus": 20
+  },
+  "complianceScore": {
+    "baseScore": 100,
+    "penalties": {
+      "Critical": 15,
+      "Serious": 5,
+      "Moderate": 2,
+      "Minor": 0.5
+    }
+  },
+  "gradeThresholds": [
+    {
+      "min": 90,
+      "label": "Excellent"
+    },
+    {
+      "min": 75,
+      "label": "Good"
+    },
+    {
+      "min": 55,
+      "label": "Fair"
+    },
+    {
+      "min": 35,
+      "label": "Poor"
+    },
+    {
+      "min": 0,
+      "label": "Critical"
+    }
+  ],
+  "riskLabels": {
+    "Excellent": "Minimal Risk",
+    "Good": "Low Risk",
+    "Fair": "Moderate Risk",
+    "Poor": "High Risk",
+    "Critical": "Severe Risk"
+  },
+  "riskLevels": [
+    {
+      "minScore": 75,
+      "label": "Low",
+      "color": "#16a34a"
+    },
+    {
+      "minScore": 55,
+      "label": "Moderate",
+      "color": "#d97706"
+    },
+    {
+      "minScore": 35,
+      "label": "High",
+      "color": "#dc2626"
+    },
+    {
+      "minScore": 0,
+      "label": "Severe",
+      "color": "#dc2626"
+    }
+  ],
+  "effortMultipliers": {
+    "Critical": 4,
+    "Serious": 2,
+    "Moderate": 1,
+    "Minor": 0.5
+  },
+  "severityDefinitions": [
+    {
+      "level": "Critical",
+      "definition": "Complete barrier — users with disabilities cannot access or complete the affected feature",
+      "impact": "Complete barrier — users cannot proceed",
+      "action": "Fix immediately"
+    },
+    {
+      "level": "Serious",
+      "definition": "Significant impediment — core tasks are seriously impaired but may still be possible",
+      "impact": "Serious friction — core tasks impaired",
+      "action": "Fix within current sprint"
+    },
+    {
+      "level": "Moderate",
+      "definition": "Partial violation — functionality works but creates friction or excludes some users",
+      "impact": "Partial violation — usability degraded",
+      "action": "Fix next sprint"
+    },
+    {
+      "level": "Minor",
+      "definition": "Best practice gap — minor deviation with limited real-world impact",
+      "impact": "Best practice gap — minor impact",
+      "action": "Fix when convenient"
+    }
+  ],
+  "impactMap": {
+    "critical": "Critical",
+    "serious": "Serious",
+    "moderate": "Moderate",
+    "minor": "Minor"
+  },
+  "regulations": [
+    {
+      "name": "European Accessibility Act (EAA)",
+      "jurisdiction": "European Union",
+      "standard": "EN 301 549 / WCAG 2.2 AA",
+      "deadline": "June 28, 2025 (in force)"
+    },
+    {
+      "name": "ADA Title II — DOJ Final Rule",
+      "jurisdiction": "United States",
+      "standard": "WCAG 2.1 AA",
+      "deadline": "April 24, 2026"
+    },
+    {
+      "name": "EU Web Accessibility Directive",
+      "jurisdiction": "European Union (Public Sector)",
+      "standard": "EN 301 549 / WCAG 2.1 AA",
+      "deadline": "In force since 2018"
+    },
+    {
+      "name": "Section 508",
+      "jurisdiction": "United States (Federal)",
+      "standard": "WCAG 2.0 AA",
+      "deadline": "In force since 2018"
+    },
+    {
+      "name": "Equality Act 2010",
+      "jurisdiction": "United Kingdom",
+      "standard": "WCAG 2.1 AA (de facto)",
+      "deadline": "In force since 2010"
+    },
+    {
+      "name": "Public Sector Bodies Accessibility Regulations",
+      "jurisdiction": "United Kingdom (Public Sector)",
+      "standard": "WCAG 2.1 AA",
+      "deadline": "In force since 2020"
+    },
+    {
+      "name": "Accessible Canada Act (ACA)",
+      "jurisdiction": "Canada (Federal)",
+      "standard": "WCAG 2.1 AA",
+      "deadline": "In force since 2019"
+    },
+    {
+      "name": "AODA — Information & Communications Standard",
+      "jurisdiction": "Ontario, Canada",
+      "standard": "WCAG 2.0 AA",
+      "deadline": "In force since 2021"
+    },
+    {
+      "name": "Disability Discrimination Act 1992 (DDA)",
+      "jurisdiction": "Australia",
+      "standard": "WCAG 2.1 AA (de facto)",
+      "deadline": "In force since 1992"
+    }
+  ]
+}

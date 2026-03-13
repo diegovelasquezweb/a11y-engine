@@ -1,0 +1,31 @@
+{
+  "failureModes": {
+    "button-has-visible-text": "missing_visible_text",
+    "has-visible-text": "missing_visible_text",
+    "aria-label": "missing_aria_label",
+    "aria-labelledby": "missing_or_invalid_aria_labelledby",
+    "explicit-label": "missing_accessible_label",
+    "implicit-label": "missing_accessible_label",
+    "color-contrast-enhanced": "insufficient_color_contrast",
+    "color-contrast": "insufficient_color_contrast",
+    "form-field-multiple-labels": "conflicting_label_association",
+    "label": "missing_accessible_label",
+    "select-name": "missing_select_name",
+    "presentational-role": "missing_accessible_name",
+    "only-listitems": "invalid_list_structure",
+    "listitem": "orphaned_list_item",
+    "heading-order": "invalid_heading_order",
+    "meta-viewport": "zoom_disabled",
+    "region": "content_outside_landmarks"
+  },
+  "relationshipHints": {
+    "aria-labelledby": "aria_labelledby_references_missing_or_invalid_target",
+    "explicit-label": "label_not_associated_with_control",
+    "implicit-label": "control_has_no_wrapped_label",
+    "form-field-multiple-labels": "multiple_labels_reference_same_control",
+    "label": "control_has_no_accessible_label_source",
+    "select-name": "select_has_no_accessible_label_source",
+    "aria-label": "control_has_no_accessible_name_source",
+    "presentational-role": "presentational_role_removed_name_source"
+  }
+}
