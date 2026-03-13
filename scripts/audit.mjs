@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * @file audit.mjs
  * @description Orchestrator for the accessibility audit pipeline.
