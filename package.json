@@ -6,14 +6,14 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/diegovelasquezweb/a11y-engine.git"
+    "url": "git+https://github.com/diegovelasquezweb/a11y-engine.git"
   },
   "homepage": "https://github.com/diegovelasquezweb/a11y-engine#readme",
   "engines": {
     "node": ">=18"
   },
   "bin": {
-    "a11y-audit": "./scripts/audit.mjs"
+    "a11y-audit": "scripts/audit.mjs"
   },
   "files": [
     "scripts/**",
