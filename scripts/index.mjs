@@ -49,7 +49,7 @@ function getWcagReference() {
  * Returns all engine asset data. Lazy-loaded and cached.
  * @returns {{ intelligence: object, pa11yConfig: object, complianceConfig: object, wcagReference: object }}
  */
-export function getAssets() {
+function getAssets() {
   return {
     intelligence: getIntelligence(),
     pa11yConfig: getPa11yConfig(),
@@ -82,7 +82,7 @@ function normalizePa11yToken(value) {
  * @param {object|null} checkData - The check_data object which may contain a `code` field.
  * @returns {string} The canonical rule ID (e.g., "color-contrast").
  */
-export function mapPa11yRuleToCanonical(ruleId, sourceRuleId = null, checkData = null) {
+function mapPa11yRuleToCanonical(ruleId, sourceRuleId = null, checkData = null) {
   const equivalenceMap = getPa11yConfig().equivalenceMap || {};
 
   const checkCode = checkData && typeof checkData === "object" && typeof checkData.code === "string"

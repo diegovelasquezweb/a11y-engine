@@ -17,21 +17,6 @@ export interface PersonaGroup {
   icon: string;
 }
 
-export interface EngineAssets {
-  intelligence: Record<string, unknown>;
-  pa11yConfig: Record<string, unknown>;
-  complianceConfig: Record<string, unknown>;
-  wcagReference: Record<string, unknown>;
-}
-
-export function getAssets(): EngineAssets;
-
-export function mapPa11yRuleToCanonical(
-  ruleId: string,
-  sourceRuleId?: string | null,
-  checkData?: Record<string, unknown> | null
-): string;
-
 export function enrichFindings<T extends Record<string, unknown>>(
   findings: T[]
 ): T[];
