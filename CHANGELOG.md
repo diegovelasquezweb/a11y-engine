@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.3] — 2026-03-14
+
+### Added
+
+- **Multi-engine scanning**: three independent engines now run against each page:
+  - **axe-core** (via `@axe-core/playwright`) — primary WCAG rule engine injected into the live page
+  - **CDP** (Chrome DevTools Protocol) — queries the browser's accessibility tree for missing accessible names and aria-hidden on focusable elements
+  - **pa11y** (HTML CodeSniffer via Puppeteer) — catches heading hierarchy, link purpose, and form association issues
+- Cross-engine merge and deduplication in `mergeViolations()` — removes duplicate findings across axe, CDP, and pa11y based on rule equivalence and selector matching
+- Real-time `progress.json` with per-engine step tracking and finding counts (`found` for each engine, `merged` total after dedup)
+- `--axe-tags` CLI flag for filtering axe-core WCAG tag sets (also determines pa11y standard)
+- Non-visible element skip list for screenshots (`<meta>`, `<link>`, `<style>`, `<script>`, `<title>`, `<base>`) — prevents timeout warnings on elements that cannot be scrolled into view
+
+### Changed
+
+- `a11y-scan-results.json` now contains merged violations from all three engines (previously axe-core only)
+- Each violation includes a `source` field (`"cdp"` or `"pa11y"`) to identify which engine produced it (axe-core violations have no `source` field for backwards compatibility)
+- README rewritten to reflect multi-engine architecture
+- All documentation (`architecture.md`, `cli-handbook.md`, `outputs.md`) updated to describe the three-engine pipeline, merge/dedup logic, progress tracking, and dual browser requirements
+
+### Fixed
+
+- Screenshot capture no longer attempts to scroll non-visible `<head>` elements into view
+
+---
+
 ## [0.1.2] — 2026-03-13
 
 ### Fixed
