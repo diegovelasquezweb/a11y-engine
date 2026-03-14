@@ -58,8 +58,12 @@ export interface EnrichedFinding extends Finding {
   sourceRuleId: string | null;
   fixDescription: string | null;
   fixCode: string | null;
+  fixCodeLang: string | null;
   falsePositiveRisk: string | null;
   fixDifficultyNotes: string | string[] | null;
+  screenshotPath: string | null;
+  wcagCriterionId: string | null;
+  impactedUsers: string | null;
 }
 
 export interface SeverityTotals {
@@ -69,16 +73,18 @@ export interface SeverityTotals {
   Minor: number;
 }
 
-export interface ComplianceScore {
-  score: number;
-  label: string;
-  wcagStatus: "Pass" | "Conditional Pass" | "Fail";
-}
-
 export interface PersonaGroup {
   label: string;
   count: number;
   icon: string;
+}
+
+export interface AuditSummary {
+  totals: SeverityTotals;
+  score: number;
+  label: string;
+  wcagStatus: "Pass" | "Conditional Pass" | "Fail";
+  personaGroups: Record<string, PersonaGroup>;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,11 +118,7 @@ export interface ChecklistReport {
 export function getEnrichedFindings(findings: Finding[]): EnrichedFinding[];
 export function getEnrichedFindings(findings: Record<string, unknown>[]): EnrichedFinding[];
 
-export function getComplianceScore(totals: SeverityTotals): ComplianceScore;
-
-export function getPersonaGroups(
-  findings: EnrichedFinding[] | Record<string, unknown>[]
-): Record<string, PersonaGroup>;
+export function getAuditSummary(findings: EnrichedFinding[] | Record<string, unknown>[]): AuditSummary;
 
 export function getPDFReport(
   payload: ScanPayload,

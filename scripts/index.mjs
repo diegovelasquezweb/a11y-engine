@@ -129,15 +129,24 @@ export function getEnrichedFindings(findings) {
       finding.checkData || finding.check_data || null,
     );
 
+    // Always create camelCase aliases from snake_case fields
     const normalized = {
       ...finding,
       ruleId: canonical,
       rule_id: canonical,
       sourceRuleId: finding.sourceRuleId || finding.source_rule_id || finding.ruleId || finding.rule_id || null,
+      fixDescription: finding.fixDescription ?? finding.fix_description ?? null,
+      fixCode: finding.fixCode ?? finding.fix_code ?? null,
+      fixCodeLang: finding.fixCodeLang ?? finding.fix_code_lang ?? null,
+      falsePositiveRisk: finding.falsePositiveRisk ?? finding.false_positive_risk ?? null,
+      fixDifficultyNotes: finding.fixDifficultyNotes ?? finding.fix_difficulty_notes ?? null,
+      screenshotPath: finding.screenshotPath ?? finding.screenshot_path ?? null,
+      wcagCriterionId: finding.wcagCriterionId ?? finding.wcag_criterion_id ?? null,
+      impactedUsers: finding.impactedUsers ?? finding.impacted_users ?? null,
     };
 
-    if (normalized.fixDescription || normalized.fix_description ||
-        normalized.fixCode || normalized.fix_code) {
+    // If fix data already exists, no need to look up intelligence
+    if (normalized.fixDescription || normalized.fixCode) {
       return normalized;
     }
 
@@ -148,27 +157,22 @@ export function getEnrichedFindings(findings) {
       ...normalized,
       category: normalized.category ?? info.category ?? null,
       fixDescription: info.fix?.description ?? null,
-      fix_description: info.fix?.description ?? null,
+      fix_description: info.fix?.description ?? normalized.fix_description ?? null,
       fixCode: info.fix?.code ?? null,
-      fix_code: info.fix?.code ?? null,
-      falsePositiveRisk: normalized.falsePositiveRisk ?? normalized.false_positive_risk ?? info.false_positive_risk ?? null,
+      fix_code: info.fix?.code ?? normalized.fix_code ?? null,
+      falsePositiveRisk: normalized.falsePositiveRisk ?? info.false_positive_risk ?? null,
       false_positive_risk: normalized.false_positive_risk ?? info.false_positive_risk ?? null,
-      fixDifficultyNotes: normalized.fixDifficultyNotes ?? normalized.fix_difficulty_notes ?? info.fix_difficulty_notes ?? null,
+      fixDifficultyNotes: normalized.fixDifficultyNotes ?? info.fix_difficulty_notes ?? null,
       fix_difficulty_notes: normalized.fix_difficulty_notes ?? info.fix_difficulty_notes ?? null,
     };
   });
 }
 
 // ---------------------------------------------------------------------------
-// Score computation
+// Score computation (internal)
 // ---------------------------------------------------------------------------
 
-/**
- * Computes compliance score, grade label, and WCAG pass/fail status.
- * @param {{ Critical: number, Serious: number, Moderate: number, Minor: number }} totals
- * @returns {{ score: number, label: string, wcagStatus: "Pass" | "Conditional Pass" | "Fail" }}
- */
-export function getComplianceScore(totals) {
+function getComplianceScore(totals) {
   const config = getComplianceConfig();
   const penalties = config.complianceScore.penalties;
   const thresholds = config.gradeThresholds;
@@ -198,15 +202,10 @@ export function getComplianceScore(totals) {
 }
 
 // ---------------------------------------------------------------------------
-// Persona grouping
+// Persona grouping (internal)
 // ---------------------------------------------------------------------------
 
-/**
- * Groups findings by accessibility persona (screen reader, keyboard, cognitive, etc.).
- * @param {object[]} findings - Array of findings with ruleId, wcagCriterionId, impactedUsers.
- * @returns {Record<string, { label: string, count: number, icon: string }>}
- */
-export function getPersonaGroups(findings) {
+function getPersonaGroups(findings) {
   const ref = getWcagReference();
   const personaConfig = ref.personaConfig || {};
   const personaMapping = ref.personaMapping || {};
@@ -259,6 +258,29 @@ export function getPersonaGroups(findings) {
   }
 
   return groups;
+}
+
+// ---------------------------------------------------------------------------
+// Audit summary
+// ---------------------------------------------------------------------------
+
+/**
+ * Computes a complete audit summary from enriched findings: severity totals,
+ * compliance score, grade label, WCAG status, and persona impact groups.
+ * @param {object[]} findings - Array of enriched findings.
+ * @returns {{ totals, score, label, wcagStatus, personaGroups }}
+ */
+export function getAuditSummary(findings) {
+  const totals = { Critical: 0, Serious: 0, Moderate: 0, Minor: 0 };
+  for (const f of findings) {
+    const severity = f.severity || f.Severity || "";
+    if (severity in totals) totals[severity] += 1;
+  }
+
+  const { score, label, wcagStatus } = getComplianceScore(totals);
+  const personaGroups = getPersonaGroups(findings);
+
+  return { totals, score, label, wcagStatus, personaGroups };
 }
 
 // ---------------------------------------------------------------------------
