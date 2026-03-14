@@ -119,7 +119,7 @@ function mapPa11yRuleToCanonical(ruleId, sourceRuleId = null, checkData = null) 
  * @param {object[]} findings - Array of findings with camelCase keys.
  * @returns {object[]} Enriched findings.
  */
-export function enrichFindings(findings) {
+export function getEnrichedFindings(findings) {
   const rules = getIntelligence().rules || {};
 
   return findings.map((finding) => {
@@ -168,7 +168,7 @@ export function enrichFindings(findings) {
  * @param {{ Critical: number, Serious: number, Moderate: number, Minor: number }} totals
  * @returns {{ score: number, label: string, wcagStatus: "Pass" | "Conditional Pass" | "Fail" }}
  */
-export function computeScore(totals) {
+export function getComplianceScore(totals) {
   const config = getComplianceConfig();
   const penalties = config.complianceScore.penalties;
   const thresholds = config.gradeThresholds;
@@ -206,7 +206,7 @@ export function computeScore(totals) {
  * @param {object[]} findings - Array of findings with ruleId, wcagCriterionId, impactedUsers.
  * @returns {Record<string, { label: string, count: number, icon: string }>}
  */
-export function computePersonaGroups(findings) {
+export function getPersonaGroups(findings) {
   const ref = getWcagReference();
   const personaConfig = ref.personaConfig || {};
   const personaMapping = ref.personaMapping || {};
@@ -281,7 +281,7 @@ import {
  * @param {{ baseUrl?: string, target?: string }} [options={}]
  * @returns {Promise<Buffer>} The PDF as a Node.js Buffer.
  */
-export async function generatePDF(payload, options = {}) {
+export async function getPDFReport(payload, options = {}) {
   const { chromium } = await import("playwright");
   const {
     buildPdfCoverPage,
@@ -334,7 +334,10 @@ ${buildPdfAuditLimitations()}
       margin: { top: "1cm", right: "1cm", bottom: "1cm", left: "1cm" },
       displayHeaderFooter: false,
     });
-    return Buffer.from(pdfBuffer);
+    return {
+      buffer: Buffer.from(pdfBuffer),
+      contentType: "application/pdf",
+    };
   } finally {
     await browser.close();
   }
@@ -346,7 +349,7 @@ ${buildPdfAuditLimitations()}
  * @param {{ baseUrl?: string }} [options={}]
  * @returns {Promise<string>} The complete checklist HTML document.
  */
-export async function generateChecklist(options = {}) {
+export async function getChecklist(options = {}) {
   const { buildManualCheckCard } = await import("./reports/renderers/html.mjs");
   const { escapeHtml } = await import("./reports/renderers/utils.mjs");
 
@@ -365,7 +368,7 @@ export async function generateChecklist(options = {}) {
   // Import the full checklist builder to reuse its buildHtml
   // The checklist builder module has a main() that auto-runs, so we dynamically
   // construct the same output using the renderer functions directly.
-  return `<!doctype html>
+  const html = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -441,4 +444,9 @@ export async function generateChecklist(options = {}) {
   <\/script>
 </body>
 </html>`;
+
+  return {
+    html,
+    contentType: "text/html",
+  };
 }
