@@ -7,6 +7,7 @@
 ## Table of Contents
 
 - [Default output directory](#default-output-directory)
+- [progress.json](#progressjson)
 - [a11y-scan-results.json](#a11y-scan-resultsjson)
 - [a11y-findings.json](#a11y-findingsjson)
 - [remediation.md](#remediationmd)
@@ -23,7 +24,8 @@ All artifacts are written to `.audit/` relative to the package root (`SKILL_ROOT
 
 ```
 .audit/
-├── a11y-scan-results.json   # raw axe-core scan data
+├── progress.json            # real-time scan progress (per-engine steps + counts)
+├── a11y-scan-results.json   # merged raw results from axe + CDP + pa11y
 ├── a11y-findings.json       # enriched findings (primary data artifact)
 ├── remediation.md           # AI agent remediation guide
 ├── report.html              # interactive dashboard (--with-reports)
@@ -36,24 +38,61 @@ All artifacts are written to `.audit/` relative to the package root (`SKILL_ROOT
 
 ---
 
-## a11y-scan-results.json
+## progress.json
 
-Raw axe-core output per route. Written by `scripts/engine/dom-scanner.mjs`.
+Real-time scan progress written by `scripts/engine/dom-scanner.mjs` as each engine runs. Used by integrations for live progress UI.
 
 ```json
 {
+  "steps": {
+    "page":  { "status": "done", "updatedAt": "2026-03-14T14:02:50.609Z" },
+    "axe":   { "status": "done", "updatedAt": "2026-03-14T14:02:51.389Z", "found": 8 },
+    "cdp":   { "status": "done", "updatedAt": "2026-03-14T14:02:51.401Z", "found": 3 },
+    "pa11y": { "status": "done", "updatedAt": "2026-03-14T14:02:55.667Z", "found": 2 },
+    "merge": { "status": "done", "updatedAt": "2026-03-14T14:02:55.668Z", "axe": 8, "cdp": 3, "pa11y": 2, "merged": 11 }
+  },
+  "currentStep": "merge"
+}
+```
+
+### Step keys
+
+| Key | Engine | Description |
+| :--- | :--- | :--- |
+| `page` | — | Page navigation and load |
+| `axe` | axe-core | axe-core WCAG rule scan. `found` = violation count. |
+| `cdp` | CDP | Chrome DevTools Protocol accessibility tree check. `found` = issue count. |
+| `pa11y` | pa11y | HTML CodeSniffer scan. `found` = issue count. |
+| `merge` | — | Cross-engine merge and deduplication. `merged` = final unique count. |
+
+### Step statuses
+
+`pending` → `running` → `done` (or `error`)
+
+---
+
+## a11y-scan-results.json
+
+Merged results from all three engines (axe-core + CDP + pa11y) per route. Written by `scripts/engine/dom-scanner.mjs`.
+
+```json
+{
+  "generated_at": "2026-03-14T14:02:55.668Z",
+  "base_url": "https://example.com",
+  "projectContext": { "framework": "nextjs", "uiLibraries": ["radix-ui"] },
   "routes": [
     {
       "path": "/",
       "url": "https://example.com/",
       "violations": [...],
       "incomplete": [...],
-      "passes": [...],
-      "inapplicable": [...]
+      "passes": [...]
     }
   ]
 }
 ```
+
+Each violation in the `violations` array includes a `source` field indicating which engine produced it (`undefined` for axe-core, `"cdp"` for CDP checks, `"pa11y"` for pa11y).
 
 This file is consumed by `analyzer.mjs` and also used by `--affected-only` to determine which routes to re-scan on subsequent runs.
 
@@ -68,7 +107,8 @@ The primary enriched data artifact. Written by `scripts/engine/analyzer.mjs`. Th
 ```json
 {
   "metadata": { ... },
-  "findings": [ ... ]
+  "findings": [ ... ],
+  "incomplete_findings": [ ... ]
 }
 ```
 
@@ -92,7 +132,8 @@ The primary enriched data artifact. Written by `scripts/engine/analyzer.mjs`. Th
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `id` | `string` | Deterministic finding ID (e.g. `A11Y-001`) |
-| `rule_id` | `string` | axe-core rule ID (e.g. `color-contrast`) |
+| `rule_id` | `string` | Rule ID from the source engine (e.g. `color-contrast`, `cdp-missing-accessible-name`, `pa11y-wcag2aa-...`) |
+| `source_rule_id` | `string\|null` | Original rule ID when mapped from CDP/pa11y to axe equivalent |
 | `title` | `string` | Human-readable finding title |
 | `severity` | `string` | `Critical`, `Serious`, `Moderate`, or `Minor` |
 | `wcag` | `string` | WCAG success criterion (e.g. `1.4.3`) |
@@ -108,7 +149,7 @@ The primary enriched data artifact. Written by `scripts/engine/analyzer.mjs`. Th
 | `category` | `string` | Violation category (e.g. `Color & Contrast`) |
 | `primary_failure_mode` | `string\|null` | Root cause classification |
 | `relationship_hint` | `string\|null` | Label/input relationship context |
-| `failure_checks` | `object[]` | axe check-level failure details |
+| `failure_checks` | `object[]` | Engine check-level failure details |
 | `related_context` | `object[]` | Surrounding DOM context |
 | `fix_description` | `string\|null` | Plain-language fix explanation |
 | `fix_code` | `string\|null` | Ready-to-apply code snippet |
@@ -116,13 +157,13 @@ The primary enriched data artifact. Written by `scripts/engine/analyzer.mjs`. Th
 | `recommended_fix` | `string` | Link to canonical fix reference (APG, MDN) |
 | `mdn` | `string\|null` | MDN documentation URL |
 | `effort` | `string\|null` | Fix effort estimate (`low`, `medium`, `high`) |
-| `related_rules` | `string[]` | Related axe rule IDs |
+| `related_rules` | `string[]` | Related rule IDs |
 | `guardrails` | `object\|null` | Agent scope guardrails for this finding |
 | `false_positive_risk` | `string\|null` | Known false positive patterns |
 | `fix_difficulty_notes` | `string\|null` | Edge cases and pitfalls for this fix |
 | `framework_notes` | `string\|null` | Framework-specific fix guidance |
 | `cms_notes` | `string\|null` | CMS-specific fix guidance |
-| `check_data` | `object\|null` | Raw axe check data |
+| `check_data` | `object\|null` | Raw engine check data |
 | `total_instances` | `number` | Count of affected elements across all pages |
 | `evidence` | `object[]` | DOM HTML snippets for each affected element |
 | `screenshot_path` | `string\|null` | Path to element screenshot |
@@ -137,6 +178,10 @@ The primary enriched data artifact. Written by `scripts/engine/analyzer.mjs`. Th
 | `verification_command_fallback` | `string\|null` | Fallback verify command |
 | `pages_affected` | `number\|null` | Number of pages with this violation |
 | `affected_urls` | `string[]\|null` | All URLs where this violation appears |
+
+### `incomplete_findings`
+
+Violations that axe-core flagged as "needs review" (not confirmed pass or fail). Included for manual verification but not counted in the compliance score.
 
 ---
 
@@ -234,6 +279,19 @@ const { findings, metadata } = JSON.parse(fs.readFileSync(findingsPath, "utf-8")
 const symlinkBase = path.join(process.cwd(), "node_modules", "@diegovelasquezweb", "a11y-engine");
 const engineRoot = fs.realpathSync(symlinkBase);
 const findingsPath = path.join(engineRoot, ".audit", "a11y-findings.json");
+```
+
+### Reading `progress.json` for live UI updates
+
+```js
+const progressPath = path.join(engineRoot, ".audit", "progress.json");
+
+// Poll this file during scan execution
+if (fs.existsSync(progressPath)) {
+  const progress = JSON.parse(fs.readFileSync(progressPath, "utf-8"));
+  console.log(`Current step: ${progress.currentStep}`);
+  console.log(`axe found: ${progress.steps?.axe?.found ?? "pending"}`);
+}
 ```
 
 ### Parsing stdout markers

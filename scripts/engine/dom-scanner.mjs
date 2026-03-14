@@ -806,6 +806,7 @@ async function main() {
    * @type {Set<string>}
    */
   const SKIP_SELECTORS = new Set(["html", "body", "head", ":root", "document"]);
+  const SKIP_SELECTOR_PREFIXES = ["meta", "link", "style", "script", "title", "base"];
 
   /**
    * Captures a screenshot of an element associated with an accessibility violation.
@@ -818,7 +819,9 @@ async function main() {
     const firstNode = violation.nodes?.[0];
     if (!firstNode || firstNode.target.length > 1) return;
     const selector = firstNode.target[0];
-    if (!selector || SKIP_SELECTORS.has(selector.toLowerCase())) return;
+    const lowerSelector = (selector || "").toLowerCase();
+    if (!selector || SKIP_SELECTORS.has(lowerSelector)) return;
+    if (SKIP_SELECTOR_PREFIXES.some((p) => lowerSelector.startsWith(p))) return;
     try {
       fs.mkdirSync(args.screenshotsDir, { recursive: true });
       const safeRuleId = violation.id.replace(/[^a-z0-9-]/g, "-");
