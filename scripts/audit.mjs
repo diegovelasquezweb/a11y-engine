@@ -31,6 +31,7 @@ Targeting & Scope:
 
 Audit Intelligence:
   --target <text>         Compliance target label (default: "WCAG 2.2 AA").
+  --axe-tags <csv>        Comma-separated axe tags (e.g., wcag2a,wcag2aa).
   --only-rule <id>        Only check for this specific rule ID.
   --ignore-findings <csv> Ignore specific rule IDs.
   --exclude-selectors <csv> Exclude CSS selectors from scan.
@@ -136,6 +137,7 @@ async function main() {
   const routes = getArgValue("routes");
   const waitMs = getArgValue("wait-ms") || DEFAULTS.waitMs;
   const timeoutMs = getArgValue("timeout-ms") || DEFAULTS.timeoutMs;
+  const axeTags = getArgValue("axe-tags");
 
   const sessionFile = getInternalPath("a11y-session.json");
   let projectDir = getArgValue("project-dir");
@@ -254,6 +256,7 @@ async function main() {
     if (viewport) {
       scanArgs.push("--viewport", `${viewport.width}x${viewport.height}`);
     }
+    if (axeTags) scanArgs.push("--axe-tags", axeTags);
 
     await runScript("engine/dom-scanner.mjs", scanArgs, childEnv);
 
