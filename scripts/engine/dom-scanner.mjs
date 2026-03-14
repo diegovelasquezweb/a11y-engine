@@ -25,6 +25,14 @@ const STACK_DETECTION = loadAssetJson(
   ASSET_PATHS.discovery.stackDetection,
   "assets/discovery/stack-detection.json",
 );
+const CDP_CHECKS = loadAssetJson(
+  ASSET_PATHS.engine.cdpChecks,
+  "assets/engine/cdp-checks.json",
+);
+const PA11Y_CONFIG = loadAssetJson(
+  ASSET_PATHS.engine.pa11yConfig,
+  "assets/engine/pa11y-config.json",
+);
 const AXE_TAGS = [
   "wcag2a",
   "wcag2aa",
@@ -505,9 +513,14 @@ function writeProgress(step, status, extra = {}) {
  */
 async function runCdpChecks(page) {
   const violations = [];
+  const interactiveRoles = CDP_CHECKS.interactiveRoles || [];
+  const rulesById = {};
+  for (const rule of CDP_CHECKS.rules || []) {
+    rulesById[rule.condition] = rule;
+  }
+
   try {
     const cdp = await page.context().newCDPSession(page);
-
     const { nodes } = await cdp.send("Accessibility.getFullAXTree");
 
     for (const node of nodes) {
@@ -521,8 +534,9 @@ async function runCdpChecks(page) {
       const focusable = properties.find((p) => p.name === "focusable")?.value?.value === true;
       const hidden = properties.find((p) => p.name === "hidden")?.value?.value === true;
 
-      const interactiveRoles = ["button", "link", "textbox", "combobox", "listbox", "menuitem", "tab", "checkbox", "radio", "switch", "slider"];
       if (interactiveRoles.includes(role) && !name.trim()) {
+        const rule = rulesById["interactive-no-name"];
+        if (!rule) continue;
         const backendId = node.backendDOMNodeId;
         let selector = "";
         try {
@@ -543,13 +557,15 @@ async function runCdpChecks(page) {
           }
         } catch { /* fallback: no selector */ }
 
+        const desc = (rule.description || "").replace(/\{\{role\}\}/g, role);
+        const msg = (rule.failureMessage || "").replace(/\{\{role\}\}/g, role);
         violations.push({
-          id: "cdp-missing-accessible-name",
-          impact: "serious",
-          tags: ["wcag2a", "wcag412", "cdp-check"],
-          description: `Interactive element with role "${role}" has no accessible name`,
-          help: "Interactive elements must have an accessible name",
-          helpUrl: "https://dequeuniversity.com/rules/axe/4.11/button-name",
+          id: rule.id,
+          impact: rule.impact,
+          tags: rule.tags,
+          description: desc,
+          help: rule.help,
+          helpUrl: rule.helpUrl,
           source: "cdp",
           nodes: [{
             any: [],
@@ -557,26 +573,30 @@ async function runCdpChecks(page) {
               id: "cdp-accessible-name",
               data: { role, name: "(empty)" },
               relatedNodes: [],
-              impact: "serious",
-              message: `Element with role "${role}" has no accessible name in the accessibility tree`,
+              impact: rule.impact,
+              message: msg,
             }],
             none: [],
-            impact: "serious",
+            impact: rule.impact,
             html: `<${role} aria-role="${role}">`,
             target: selector ? [selector] : [`[role="${role}"]`],
-            failureSummary: `Fix all of the following:\n  Element with role "${role}" has no accessible name`,
+            failureSummary: `Fix all of the following:\n  ${msg}`,
           }],
         });
       }
 
       if (hidden && focusable) {
+        const rule = rulesById["hidden-focusable"];
+        if (!rule) continue;
+        const desc = (rule.description || "").replace(/\{\{role\}\}/g, role);
+        const msg = (rule.failureMessage || "").replace(/\{\{role\}\}/g, role);
         violations.push({
-          id: "cdp-aria-hidden-focusable",
-          impact: "serious",
-          tags: ["wcag2a", "wcag412", "cdp-check"],
-          description: `Focusable element with role "${role}" is aria-hidden`,
-          help: "aria-hidden elements must not be focusable",
-          helpUrl: "https://dequeuniversity.com/rules/axe/4.11/aria-hidden-focus",
+          id: rule.id,
+          impact: rule.impact,
+          tags: rule.tags,
+          description: desc,
+          help: rule.help,
+          helpUrl: rule.helpUrl,
           source: "cdp",
           nodes: [{
             any: [],
@@ -584,14 +604,14 @@ async function runCdpChecks(page) {
               id: "cdp-hidden-focusable",
               data: { role },
               relatedNodes: [],
-              impact: "serious",
-              message: `Focusable element with role "${role}" is hidden from the accessibility tree`,
+              impact: rule.impact,
+              message: msg,
             }],
             none: [],
-            impact: "serious",
+            impact: rule.impact,
             html: `<element role="${role}" aria-hidden="true">`,
             target: [`[role="${role}"]`],
-            failureSummary: `Fix all of the following:\n  Focusable element is hidden from the accessibility tree`,
+            failureSummary: `Fix all of the following:\n  ${msg}`,
           }],
         });
       }
@@ -614,6 +634,12 @@ async function runCdpChecks(page) {
  */
 async function runPa11yChecks(routeUrl, axeTags) {
   const violations = [];
+  const equivalenceMap = PA11Y_CONFIG.equivalenceMap || {};
+  const impactMap = {};
+  for (const [k, v] of Object.entries(PA11Y_CONFIG.impactMap || {})) {
+    impactMap[Number(k)] = v;
+  }
+
   try {
     let standard = "WCAG2AA";
     if (axeTags) {
@@ -622,6 +648,9 @@ async function runPa11yChecks(routeUrl, axeTags) {
       else if (axeTags.includes("wcag2a")) standard = "WCAG2A";
     }
 
+    // Build ignore list with dynamic standard prefix
+    const ignoreList = (PA11Y_CONFIG.ignoreByPrinciple || []).map((r) => `${standard}.${r}`);
+
     const results = await pa11y(routeUrl, {
       standard,
       timeout: 30000,
@@ -629,13 +658,8 @@ async function runPa11yChecks(routeUrl, axeTags) {
       chromeLaunchConfig: {
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
       },
-      ignore: [
-        "WCAG2AA.Principle1.Guideline1_4.1_4_3.G18.Fail",
-        "WCAG2AA.Principle4.Guideline4_1.4_1_2.H91.A.NoContent",
-      ],
+      ignore: ignoreList,
     });
-
-    const impactMap = { 1: "serious", 2: "moderate", 3: "minor" };
 
     for (const issue of results.issues || []) {
       if (issue.type === "notice") continue;
@@ -648,7 +672,18 @@ async function runPa11yChecks(routeUrl, axeTags) {
         wcagCriterion = `${wcagMatch[3]}.${wcagMatch[4]}.${wcagMatch[5]}`;
       }
 
-      const ruleId = `pa11y-${(issue.code || "unknown").replace(/\./g, "-").toLowerCase().slice(0, 60)}`;
+      // Resolve axe-equivalent rule ID from equivalence map
+      const codeWithoutStandard = (issue.code || "").replace(/^WCAG2(A{1,3})\./, "");
+      let axeEquivId = null;
+      for (const [pattern, axeId] of Object.entries(equivalenceMap)) {
+        if (codeWithoutStandard.startsWith(pattern)) {
+          axeEquivId = axeId;
+          break;
+        }
+      }
+
+      const ruleId = axeEquivId || `pa11y-${(issue.code || "unknown").replace(/\./g, "-").toLowerCase().slice(0, 60)}`;
+      const originalCode = issue.code || "unknown";
 
       violations.push({
         id: ruleId,
@@ -660,11 +695,12 @@ async function runPa11yChecks(routeUrl, axeTags) {
           ? `https://www.w3.org/WAI/WCAG21/Understanding/${wcagCriterion.replace(/\./g, "")}`
           : "https://squizlabs.github.io/HTML_CodeSniffer/",
         source: "pa11y",
+        source_rule_id: originalCode,
         nodes: [{
           any: [],
           all: [{
             id: "pa11y-check",
-            data: { code: issue.code, context: issue.context?.slice(0, 200) },
+            data: { code: originalCode, context: issue.context?.slice(0, 200) },
             relatedNodes: [],
             impact,
             message: issue.message || "",
@@ -693,20 +729,28 @@ async function runPa11yChecks(routeUrl, axeTags) {
  */
 function mergeViolations(axeViolations, cdpViolations, pa11yViolations) {
   const seen = new Set();
+  const seenRuleTargets = new Map(); // rule -> Set<target> for cross-engine dedup
   const merged = [];
 
+  // Build CDP equivalence map from JSON config
+  const cdpAxeEquiv = {};
+  for (const rule of CDP_CHECKS.rules || []) {
+    cdpAxeEquiv[rule.id] = rule.axeEquivalents || [];
+  }
+
+  // Step 1: axe findings (baseline)
   for (const v of axeViolations) {
-    const key = `${v.id}::${v.nodes?.[0]?.target?.[0] || ""}`;
+    const target = v.nodes?.[0]?.target?.[0] || "";
+    const key = `${v.id}::${target}`;
     seen.add(key);
+    if (!seenRuleTargets.has(v.id)) seenRuleTargets.set(v.id, new Set());
+    seenRuleTargets.get(v.id).add(target);
     merged.push(v);
   }
 
+  // Step 2: CDP findings — check against axe equivalents from JSON
   for (const v of cdpViolations) {
-    const axeEquiv = {
-      "cdp-missing-accessible-name": ["button-name", "link-name", "input-name", "aria-command-name"],
-      "cdp-aria-hidden-focusable": ["aria-hidden-focus"],
-    };
-    const equivRules = axeEquiv[v.id] || [];
+    const equivRules = cdpAxeEquiv[v.id] || [];
     const target = v.nodes?.[0]?.target?.[0] || "";
     const isDuplicate = equivRules.some((r) => seen.has(`${r}::${target}`));
     if (!isDuplicate) {
@@ -718,12 +762,20 @@ function mergeViolations(axeViolations, cdpViolations, pa11yViolations) {
     }
   }
 
+  // Step 3: pa11y findings — check via canonical rule ID (axe-equivalent) + selector
   for (const v of pa11yViolations) {
     const target = v.nodes?.[0]?.target?.[0] || "";
     const key = `${v.id}::${target}`;
-    const selectorCovered = [...seen].some((k) => k.endsWith(`::${target}`) && target);
-    if (!seen.has(key) && (!selectorCovered || !target)) {
+
+    // If pa11y was mapped to an axe rule ID, check if that rule already covers this target
+    const isAxeEquivDuplicate = v.id && seenRuleTargets.has(v.id) && target && seenRuleTargets.get(v.id).has(target);
+    // Also check if any existing finding covers this exact target (broader dedup)
+    const selectorCovered = target && [...seen].some((k) => k.endsWith(`::${target}`));
+
+    if (!seen.has(key) && !isAxeEquivDuplicate && (!selectorCovered || !target)) {
       seen.add(key);
+      if (!seenRuleTargets.has(v.id)) seenRuleTargets.set(v.id, new Set());
+      seenRuleTargets.get(v.id).add(target);
       merged.push(v);
     }
   }

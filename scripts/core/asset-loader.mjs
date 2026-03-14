@@ -34,6 +34,10 @@ export const ASSET_PATHS = {
     ),
     codePatterns: path.join(ASSET_ROOT, "remediation", "code-patterns.json"),
   },
+  engine: {
+    cdpChecks: path.join(ASSET_ROOT, "engine", "cdp-checks.json"),
+    pa11yConfig: path.join(ASSET_ROOT, "engine", "pa11y-config.json"),
+  },
   reporting: {
     wcagReference: path.join(ASSET_ROOT, "reporting", "wcag-reference.json"),
     complianceConfig: path.join(

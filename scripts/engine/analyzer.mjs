@@ -745,7 +745,12 @@ function computeTestingMethodology(payload) {
   const scanned = routes.filter((r) => !r.error).length;
   const errored = routes.filter((r) => r.error).length;
   return {
-    automated_tools: ["axe-core (via @axe-core/playwright)", "Playwright + Chromium"],
+    automated_tools: [
+      "axe-core (via @axe-core/playwright)",
+      "CDP accessibility tree checks (Playwright)",
+      "pa11y (HTML CodeSniffer via Puppeteer)",
+      "Playwright + Chromium",
+    ],
     compliance_target: "WCAG 2.2 AA",
     pages_scanned: scanned,
     pages_errored: errored,
@@ -826,6 +831,8 @@ function buildFindings(inputPayload, cliArgs) {
         findings.push({
           id: "",
           rule_id: v.id,
+          source_rule_id: v.source_rule_id || null,
+          source: v.source || "axe",
           title: v.help,
           severity: IMPACT_MAP[v.impact] || "Medium",
           wcag: mapWcag(v.tags),
