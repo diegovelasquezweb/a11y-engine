@@ -260,3 +260,185 @@ export function computePersonaGroups(findings) {
 
   return groups;
 }
+
+// ---------------------------------------------------------------------------
+// Report generation
+// ---------------------------------------------------------------------------
+
+import {
+  normalizeFindings as normalizeForReports,
+  buildSummary,
+  computeComplianceScore,
+  scoreLabel,
+  buildPersonaSummary,
+  wcagOverallStatus,
+} from "./reports/renderers/findings.mjs";
+
+/**
+ * Generates a PDF report buffer from raw scan findings.
+ * Requires Playwright (chromium) to render the PDF.
+ * @param {{ findings: object[], metadata?: object }} payload - Raw scan output (snake_case keys).
+ * @param {{ baseUrl?: string, target?: string }} [options={}]
+ * @returns {Promise<Buffer>} The PDF as a Node.js Buffer.
+ */
+export async function generatePDF(payload, options = {}) {
+  const { chromium } = await import("playwright");
+  const {
+    buildPdfCoverPage,
+    buildPdfTableOfContents,
+    buildPdfExecutiveSummary,
+    buildPdfRiskSection,
+    buildPdfRemediationRoadmap,
+    buildPdfMethodologySection,
+    buildPdfIssueSummaryTable,
+    buildPdfNextSteps,
+    buildPdfAuditLimitations,
+  } = await import("./reports/renderers/pdf.mjs");
+
+  const args = { baseUrl: options.baseUrl || "", target: options.target || "WCAG 2.2 AA" };
+  const findings = normalizeForReports(payload).filter(
+    (f) => f.wcagClassification !== "AAA" && f.wcagClassification !== "Best Practice",
+  );
+
+  const totals = buildSummary(findings);
+  const score = computeComplianceScore(totals);
+  let siteHostname = args.baseUrl;
+  try { siteHostname = new URL(args.baseUrl.startsWith("http") ? args.baseUrl : `https://${args.baseUrl}`).hostname; } catch {}
+  const coverDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+  const html = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Accessibility Audit — ${siteHostname}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>@page{size:A4;margin:2cm}body{background:white;color:black;font-family:'Libre Baskerville',serif;font-size:11pt;line-height:1.6;margin:0;padding:0}h1,h2,h3,h4{font-family:'Inter',sans-serif;color:black;margin-top:1.5rem;margin-bottom:1rem}.cover-page{height:25.5cm;display:flex;flex-direction:column;page-break-after:always}.finding-entry{border-top:1pt solid black;padding-top:1.5rem;margin-top:2rem;page-break-inside:avoid}.severity-tag{font-weight:800;text-transform:uppercase;border:1.5pt solid black;padding:2pt 6pt;font-size:9pt;margin-bottom:1rem;display:inline-block}.remediation-box{background-color:#f3f4f6;border-left:4pt solid black;padding:1rem;margin:1rem 0;font-style:italic}pre{background:#f9fafb;border:1pt solid #ddd;padding:10pt;font-size:8pt;overflow:hidden;white-space:pre-wrap}.stats-table{width:100%;border-collapse:collapse;margin:2rem 0}.stats-table th,.stats-table td{border:1pt solid black;padding:10pt;text-align:left;font-size:9pt;font-family:'Inter',sans-serif}</style>
+</head><body>
+${buildPdfCoverPage({ siteHostname, target: args.target, score, wcagStatus: wcagOverallStatus(totals), coverDate })}
+${buildPdfTableOfContents()}
+${buildPdfExecutiveSummary(args, findings, totals)}
+${buildPdfRiskSection(totals)}
+${buildPdfRemediationRoadmap(findings)}
+${buildPdfMethodologySection(args, findings)}
+${buildPdfIssueSummaryTable(findings)}
+${buildPdfNextSteps(findings, totals)}
+${buildPdfAuditLimitations()}
+</body></html>`;
+
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "load" });
+    await page.evaluate(() => document.fonts.ready);
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: { top: "1cm", right: "1cm", bottom: "1cm", left: "1cm" },
+      displayHeaderFooter: false,
+    });
+    return Buffer.from(pdfBuffer);
+  } finally {
+    await browser.close();
+  }
+}
+
+/**
+ * Generates a standalone manual accessibility checklist HTML string.
+ * Does not depend on scan results — reads from manual-checks.json asset.
+ * @param {{ baseUrl?: string }} [options={}]
+ * @returns {Promise<string>} The complete checklist HTML document.
+ */
+export async function generateChecklist(options = {}) {
+  const { buildManualCheckCard } = await import("./reports/renderers/html.mjs");
+  const { escapeHtml } = await import("./reports/renderers/utils.mjs");
+
+  const manualChecks = loadAssetJson(ASSET_PATHS.reporting.manualChecks, "manual-checks.json");
+  const siteLabel = options.baseUrl || "your site";
+  const cards = manualChecks.map((c) => buildManualCheckCard(c)).join("\n");
+
+  const TOTAL = manualChecks.length;
+  const COUNT_A = manualChecks.filter((c) => c.level === "A").length;
+  const COUNT_AA = manualChecks.filter((c) => c.level === "AA").length;
+  const COUNT_AT = manualChecks.filter((c) => c.level === "AT").length;
+
+  const selectClasses =
+    "pl-4 pr-10 py-3 bg-white border border-slate-300 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-amber-500/20 focus:border-amber-400 shadow-sm transition-all appearance-none cursor-pointer bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%23374151%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cpath%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_0.5rem_center] bg-no-repeat";
+
+  // Import the full checklist builder to reuse its buildHtml
+  // The checklist builder module has a main() that auto-runs, so we dynamically
+  // construct the same output using the renderer functions directly.
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manual Accessibility Checklist &mdash; ${escapeHtml(siteLabel)}</title>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root { --amber: hsl(38, 92%, 50%); }
+    html { scroll-padding-top: 80px; }
+    body { background-color: #f8fafc; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+    .glass-header { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px) saturate(180%); }
+  </style>
+</head>
+<body class="text-slate-900 min-h-screen">
+  <header class="fixed top-0 left-0 right-0 z-50 glass-header border-b border-slate-200/80 shadow-sm" id="navbar">
+    <nav aria-label="Checklist header">
+    <div class="max-w-4xl mx-auto px-4 h-16 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="px-3 h-10 rounded-lg bg-slate-900 text-white font-bold text-base font-mono flex items-center justify-center shadow-md">a11y</div>
+        <h1 class="text-xl font-bold">Manual <span class="text-slate-500">Checklist</span></h1>
+      </div>
+      <span class="text-sm text-slate-500 font-medium">${escapeHtml(siteLabel)}</span>
+    </div>
+    </nav>
+  </header>
+  <main id="main-content" class="max-w-4xl mx-auto px-4 pt-24 pb-20">
+    <div class="mb-12">
+      <h2 class="text-3xl font-extrabold mb-2">Manual Testing Checklist</h2>
+      <p class="text-slate-600 text-base leading-relaxed max-w-2xl">Automated scans catch ~30-40% of accessibility issues. This checklist covers the rest: keyboard navigation, screen reader behaviour, cognitive flow and more.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3 mb-8">
+      <div class="flex items-center gap-1.5 text-sm font-semibold"><span class="inline-block w-3 h-3 rounded-full bg-slate-300"></span><span id="count-total">${TOTAL}</span> Total</div>
+      <div class="flex items-center gap-1.5 text-sm font-semibold text-emerald-600"><span class="inline-block w-3 h-3 rounded-full bg-emerald-400"></span><span id="count-pass">0</span> Pass</div>
+      <div class="flex items-center gap-1.5 text-sm font-semibold text-rose-600"><span class="inline-block w-3 h-3 rounded-full bg-rose-400"></span><span id="count-fail">0</span> Fail</div>
+      <div class="flex items-center gap-1.5 text-sm font-semibold text-amber-600"><span class="inline-block w-3 h-3 rounded-full bg-amber-400"></span><span id="count-na">0</span> N/A</div>
+      <div class="ml-auto flex items-center gap-2">
+        <select id="level-filter" class="${selectClasses}">
+          <option value="all">All levels</option>
+          <option value="A">Level A (${COUNT_A})</option>
+          <option value="AA">Level AA (${COUNT_AA})</option>
+          <option value="AT">Assistive Tech (${COUNT_AT})</option>
+        </select>
+      </div>
+    </div>
+    <div id="checklist-items" class="space-y-4">${cards}</div>
+  </main>
+  <script>
+    const items = document.querySelectorAll('[data-check]');
+    function updateProgress() {
+      let pass=0,fail=0,na=0;
+      items.forEach(el => { const s=el.dataset.status; if(s==='pass')pass++; else if(s==='fail')fail++; else if(s==='na')na++; });
+      document.getElementById('count-pass').textContent=pass;
+      document.getElementById('count-fail').textContent=fail;
+      document.getElementById('count-na').textContent=na;
+    }
+    document.getElementById('level-filter').addEventListener('change',e=>{
+      const v=e.target.value;
+      items.forEach(el=>{el.style.display=(v==='all'||el.dataset.level===v)?'':'none';});
+    });
+    items.forEach(el=>{
+      el.querySelectorAll('[data-action]').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const action=btn.dataset.action;
+          el.dataset.status=el.dataset.status===action?'none':action;
+          updateProgress();
+        });
+      });
+    });
+    updateProgress();
+  <\/script>
+</body>
+</html>`;
+}
