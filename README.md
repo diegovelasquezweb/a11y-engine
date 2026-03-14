@@ -16,7 +16,7 @@ A Node.js CLI and programmatic engine that:
 
 | Capability | With this engine | Without |
 | :--- | :--- | :--- |
-| **WCAG 2.2 AA Coverage** | axe-core runtime scan + source code pattern scanner | Runtime scan only — misses CSS/source-level issues |
+| **WCAG 2.2 A & AA Coverage** | axe-core runtime scan + source code pattern scanner | Runtime scan only — misses CSS/source-level issues |
 | **Fix Intelligence** | Stack-aware patches with code snippets tailored to detected framework | Raw rule violations with no remediation context |
 | **Structured Artifacts** | JSON + Markdown + HTML + PDF + Checklist — ready to consume or forward | Findings exist only in the terminal session |
 | **CI/Agent Integration** | Deterministic exit codes, stdout-parseable output paths, JSON schema | Requires wrapper scripting |
