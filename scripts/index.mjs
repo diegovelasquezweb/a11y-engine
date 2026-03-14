@@ -42,31 +42,9 @@ function getWcagReference() {
 }
 
 // ---------------------------------------------------------------------------
-// Assets access
+// Pa11y rule canonicalization (internal)
 // ---------------------------------------------------------------------------
 
-/**
- * Returns all engine asset data. Lazy-loaded and cached.
- * @returns {{ intelligence: object, pa11yConfig: object, complianceConfig: object, wcagReference: object }}
- */
-function getAssets() {
-  return {
-    intelligence: getIntelligence(),
-    pa11yConfig: getPa11yConfig(),
-    complianceConfig: getComplianceConfig(),
-    wcagReference: getWcagReference(),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Pa11y rule canonicalization
-// ---------------------------------------------------------------------------
-
-/**
- * Normalizes a pa11y code token for comparison.
- * @param {string} value
- * @returns {string}
- */
 function normalizePa11yToken(value) {
   return value
     .toLowerCase()
@@ -75,13 +53,6 @@ function normalizePa11yToken(value) {
     .replace(/[^a-z0-9]/g, "");
 }
 
-/**
- * Maps a pa11y rule ID to its canonical axe-equivalent ID.
- * @param {string} ruleId - The current rule ID (may already be canonical or a pa11y slug).
- * @param {string|null} sourceRuleId - The original pa11y code if available.
- * @param {object|null} checkData - The check_data object which may contain a `code` field.
- * @returns {string} The canonical rule ID (e.g., "color-contrast").
- */
 function mapPa11yRuleToCanonical(ruleId, sourceRuleId = null, checkData = null) {
   const equivalenceMap = getPa11yConfig().equivalenceMap || {};
 
@@ -110,62 +81,195 @@ function mapPa11yRuleToCanonical(ruleId, sourceRuleId = null, checkData = null) 
 }
 
 // ---------------------------------------------------------------------------
+// Raw finding normalization (internal)
+// ---------------------------------------------------------------------------
+
+const SEVERITY_ORDER = { Critical: 1, Serious: 2, Moderate: 3, Minor: 4 };
+
+function str(v, fallback = "") {
+  return typeof v === "string" ? v : (v != null ? String(v) : fallback);
+}
+
+function strOrNull(v) {
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+function normalizeSingleFinding(item, index, screenshotUrlBuilder) {
+  const screenshotRaw = strOrNull(item.screenshot_path);
+  const screenshotPath = screenshotRaw && screenshotUrlBuilder
+    ? screenshotUrlBuilder(screenshotRaw)
+    : screenshotRaw;
+
+  return {
+    id: str(item.id, `A11Y-${String(index + 1).padStart(3, "0")}`),
+    rule_id: str(item.rule_id),
+    source: str(item.source, "axe"),
+    source_rule_id: strOrNull(item.source_rule_id),
+    wcag_criterion_id: strOrNull(item.wcag_criterion_id),
+    category: strOrNull(item.category),
+    title: str(item.title, "Untitled finding"),
+    severity: str(item.severity, "Unknown"),
+    wcag: str(item.wcag),
+    wcag_classification: strOrNull(item.wcag_classification),
+    area: str(item.area),
+    url: str(item.url),
+    selector: str(item.selector),
+    primary_selector: str(item.primary_selector || item.selector),
+    impacted_users: str(item.impacted_users),
+    actual: str(item.actual),
+    primary_failure_mode: strOrNull(item.primary_failure_mode),
+    relationship_hint: strOrNull(item.relationship_hint),
+    failure_checks: Array.isArray(item.failure_checks) ? item.failure_checks : [],
+    related_context: Array.isArray(item.related_context) ? item.related_context : [],
+    expected: str(item.expected),
+    mdn: strOrNull(item.mdn),
+    fix_description: strOrNull(item.fix_description),
+    fix_code: strOrNull(item.fix_code),
+    fix_code_lang: str(item.fix_code_lang, "html"),
+    recommended_fix: str(item.recommended_fix),
+    evidence: Array.isArray(item.evidence) ? item.evidence : [],
+    total_instances: typeof item.total_instances === "number" ? item.total_instances : null,
+    effort: strOrNull(item.effort),  // null = will be inferred during enrichment
+    related_rules: Array.isArray(item.related_rules) ? item.related_rules : [],
+    screenshot_path: screenshotPath,
+    false_positive_risk: strOrNull(item.false_positive_risk),
+    guardrails: item.guardrails && typeof item.guardrails === "object" ? item.guardrails : null,
+    fix_difficulty_notes: item.fix_difficulty_notes ?? null,
+    framework_notes: strOrNull(item.framework_notes),
+    cms_notes: strOrNull(item.cms_notes),
+    file_search_pattern: strOrNull(item.file_search_pattern),
+    ownership_status: str(item.ownership_status, "unknown"),
+    ownership_reason: strOrNull(item.ownership_reason),
+    primary_source_scope: Array.isArray(item.primary_source_scope) ? item.primary_source_scope : [],
+    search_strategy: str(item.search_strategy, "verify_ownership_before_search"),
+    managed_by_library: strOrNull(item.managed_by_library),
+    component_hint: strOrNull(item.component_hint),
+    verification_command: strOrNull(item.verification_command),
+    verification_command_fallback: strOrNull(item.verification_command_fallback),
+    check_data: item.check_data && typeof item.check_data === "object" ? item.check_data : null,
+    pages_affected: typeof item.pages_affected === "number" ? item.pages_affected : null,
+    affected_urls: Array.isArray(item.affected_urls) ? item.affected_urls : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Finding enrichment
 // ---------------------------------------------------------------------------
 
 /**
- * Enriches findings with intelligence data (fix descriptions, fix code, category).
- * Each finding should have at minimum: { ruleId, sourceRuleId?, checkData?, fixDescription?, fixCode? }
- * @param {object[]} findings - Array of findings with camelCase keys.
- * @returns {object[]} Enriched findings.
+ * Normalizes and enriches raw findings with intelligence data.
+ *
+ * Accepts either:
+ * - A full scan payload: { findings: object[], metadata?: object }
+ * - An array of findings directly: object[]
+ *
+ * Options:
+ * - screenshotUrlBuilder: (rawPath: string) => string — transforms screenshot
+ *   paths into consumer-specific URLs.
+ *
+ * @param {object[]|{findings: object[]}} input
+ * @param {{ screenshotUrlBuilder?: (path: string) => string }} [options={}]
+ * @returns {object[]} Enriched, normalized, sorted findings.
  */
-export function getEnrichedFindings(findings) {
+export function getEnrichedFindings(input, options = {}) {
+  const { screenshotUrlBuilder = null } = options;
   const rules = getIntelligence().rules || {};
 
-  return findings.map((finding) => {
+  // Accept payload object or array directly
+  const rawFindings = Array.isArray(input) ? input : (input?.findings || []);
+
+  // Normalize raw findings
+  const normalized = rawFindings.map((item, index) =>
+    normalizeSingleFinding(item, index, screenshotUrlBuilder)
+  );
+
+  // Enrich with intelligence + camelCase aliases
+  const enriched = normalized.map((finding) => {
     const canonical = mapPa11yRuleToCanonical(
-      finding.ruleId || finding.rule_id || "",
-      finding.sourceRuleId || finding.source_rule_id || null,
-      finding.checkData || finding.check_data || null,
+      finding.rule_id,
+      finding.source_rule_id,
+      finding.check_data,
     );
 
-    // Always create camelCase aliases from snake_case fields
-    const normalized = {
+    // Effort will be inferred after enrichment
+
+    // Always create camelCase aliases
+    const withAliases = {
       ...finding,
       ruleId: canonical,
       rule_id: canonical,
-      sourceRuleId: finding.sourceRuleId || finding.source_rule_id || finding.ruleId || finding.rule_id || null,
-      fixDescription: finding.fixDescription ?? finding.fix_description ?? null,
-      fixCode: finding.fixCode ?? finding.fix_code ?? null,
-      fixCodeLang: finding.fixCodeLang ?? finding.fix_code_lang ?? null,
-      falsePositiveRisk: finding.falsePositiveRisk ?? finding.false_positive_risk ?? null,
-      fixDifficultyNotes: finding.fixDifficultyNotes ?? finding.fix_difficulty_notes ?? null,
-      screenshotPath: finding.screenshotPath ?? finding.screenshot_path ?? null,
-      wcagCriterionId: finding.wcagCriterionId ?? finding.wcag_criterion_id ?? null,
-      impactedUsers: finding.impactedUsers ?? finding.impacted_users ?? null,
+      sourceRuleId: finding.source_rule_id || finding.rule_id || null,
+      fixDescription: finding.fix_description,
+      fixCode: finding.fix_code,
+      fixCodeLang: finding.fix_code_lang,
+      falsePositiveRisk: finding.false_positive_risk,
+      fixDifficultyNotes: finding.fix_difficulty_notes,
+      screenshotPath: finding.screenshot_path,
+      wcagCriterionId: finding.wcag_criterion_id,
+      wcagClassification: finding.wcag_classification,
+      impactedUsers: finding.impacted_users,
+      primarySelector: finding.primary_selector,
+      primaryFailureMode: finding.primary_failure_mode,
+      relationshipHint: finding.relationship_hint,
+      failureChecks: finding.failure_checks,
+      relatedContext: finding.related_context,
+      recommendedFix: finding.recommended_fix,
+      totalInstances: finding.total_instances,
+      relatedRules: finding.related_rules,
+      ownershipStatus: finding.ownership_status,
+      ownershipReason: finding.ownership_reason,
+      primarySourceScope: finding.primary_source_scope,
+      searchStrategy: finding.search_strategy,
+      managedByLibrary: finding.managed_by_library,
+      componentHint: finding.component_hint,
+      verificationCommand: finding.verification_command,
+      verificationCommandFallback: finding.verification_command_fallback,
+      checkData: finding.check_data,
+      pagesAffected: finding.pages_affected,
+      affectedUrls: finding.affected_urls,
     };
 
     // If fix data already exists, no need to look up intelligence
-    if (normalized.fixDescription || normalized.fixCode) {
-      return normalized;
+    let result;
+    if (withAliases.fixDescription || withAliases.fixCode) {
+      result = withAliases;
+    } else {
+      const info = rules[canonical];
+      if (!info) {
+        result = withAliases;
+      } else {
+        result = {
+          ...withAliases,
+          category: withAliases.category ?? info.category ?? null,
+          fixDescription: info.fix?.description ?? null,
+          fix_description: info.fix?.description ?? null,
+          fixCode: info.fix?.code ?? null,
+          fix_code: info.fix?.code ?? withAliases.fix_code ?? null,
+          falsePositiveRisk: withAliases.falsePositiveRisk ?? info.false_positive_risk ?? null,
+          false_positive_risk: withAliases.false_positive_risk ?? info.false_positive_risk ?? null,
+          fixDifficultyNotes: withAliases.fixDifficultyNotes ?? info.fix_difficulty_notes ?? null,
+          fix_difficulty_notes: withAliases.fix_difficulty_notes ?? info.fix_difficulty_notes ?? null,
+        };
+      }
     }
 
-    const info = rules[canonical];
-    if (!info) return normalized;
+    // Infer effort AFTER enrichment so intelligence-provided fixCode is considered
+    if (!result.effort || result.effort === "null") {
+      result.effort = (result.fixCode || result.fix_code) ? "low" : "high";
+    }
 
-    return {
-      ...normalized,
-      category: normalized.category ?? info.category ?? null,
-      fixDescription: info.fix?.description ?? null,
-      fix_description: info.fix?.description ?? normalized.fix_description ?? null,
-      fixCode: info.fix?.code ?? null,
-      fix_code: info.fix?.code ?? normalized.fix_code ?? null,
-      falsePositiveRisk: normalized.falsePositiveRisk ?? info.false_positive_risk ?? null,
-      false_positive_risk: normalized.false_positive_risk ?? info.false_positive_risk ?? null,
-      fixDifficultyNotes: normalized.fixDifficultyNotes ?? info.fix_difficulty_notes ?? null,
-      fix_difficulty_notes: normalized.fix_difficulty_notes ?? info.fix_difficulty_notes ?? null,
-    };
+    return result;
   });
+
+  // Sort by severity then by ID
+  enriched.sort((a, b) => {
+    const sa = SEVERITY_ORDER[a.severity] ?? 99;
+    const sb = SEVERITY_ORDER[b.severity] ?? 99;
+    if (sa !== sb) return sa - sb;
+    return a.id.localeCompare(b.id);
+  });
+
+  return enriched;
 }
 
 // ---------------------------------------------------------------------------
@@ -266,21 +370,58 @@ function getPersonaGroups(findings) {
 
 /**
  * Computes a complete audit summary from enriched findings: severity totals,
- * compliance score, grade label, WCAG status, and persona impact groups.
+ * compliance score, grade label, WCAG status, persona groups, quick wins,
+ * target URL, and detected stack.
+ *
  * @param {object[]} findings - Array of enriched findings.
- * @returns {{ totals, score, label, wcagStatus, personaGroups }}
+ * @param {{ findings: object[], metadata?: object }|null} [payload=null] - Original scan payload for metadata extraction.
+ * @returns {object} Full audit summary.
  */
-export function getAuditSummary(findings) {
+export function getAuditSummary(findings, payload = null) {
   const totals = { Critical: 0, Serious: 0, Moderate: 0, Minor: 0 };
   for (const f of findings) {
-    const severity = f.severity || f.Severity || "";
+    const severity = f.severity || "";
     if (severity in totals) totals[severity] += 1;
   }
 
   const { score, label, wcagStatus } = getComplianceScore(totals);
   const personaGroups = getPersonaGroups(findings);
 
-  return { totals, score, label, wcagStatus, personaGroups };
+  const quickWins = findings
+    .filter((f) =>
+      (f.severity === "Critical" || f.severity === "Serious") &&
+      (f.fixCode || f.fix_code)
+    )
+    .slice(0, 3);
+
+  // Extract metadata from payload if provided
+  let targetUrl = "";
+  let detectedStack = { framework: null, cms: null, uiLibraries: [] };
+
+  if (payload && payload.metadata) {
+    const meta = payload.metadata;
+    const firstUrl = findings.length > 0 ? str(findings[0].url) : "";
+    targetUrl = str(meta.target_url || meta.targetUrl || meta.base_url || firstUrl);
+
+    const ctx = meta.projectContext || {};
+    detectedStack = {
+      framework: strOrNull(ctx.framework),
+      cms: strOrNull(ctx.cms),
+      uiLibraries: Array.isArray(ctx.uiLibraries) ? ctx.uiLibraries : [],
+    };
+  }
+
+  return {
+    totals,
+    score,
+    label,
+    wcagStatus,
+    personaGroups,
+    quickWins,
+    targetUrl,
+    detectedStack,
+    totalFindings: findings.length,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -298,10 +439,9 @@ import {
 
 /**
  * Generates a PDF report buffer from raw scan findings.
- * Requires Playwright (chromium) to render the PDF.
- * @param {{ findings: object[], metadata?: object }} payload - Raw scan output (snake_case keys).
+ * @param {{ findings: object[], metadata?: object }} payload
  * @param {{ baseUrl?: string, target?: string }} [options={}]
- * @returns {Promise<Buffer>} The PDF as a Node.js Buffer.
+ * @returns {Promise<{ buffer: Buffer, contentType: "application/pdf" }>}
  */
 export async function getPDFReport(payload, options = {}) {
   const { chromium } = await import("playwright");
@@ -367,9 +507,8 @@ ${buildPdfAuditLimitations()}
 
 /**
  * Generates a standalone manual accessibility checklist HTML string.
- * Does not depend on scan results — reads from manual-checks.json asset.
  * @param {{ baseUrl?: string }} [options={}]
- * @returns {Promise<string>} The complete checklist HTML document.
+ * @returns {Promise<{ html: string, contentType: "text/html" }>}
  */
 export async function getChecklist(options = {}) {
   const { buildManualCheckCard } = await import("./reports/renderers/html.mjs");
@@ -387,9 +526,6 @@ export async function getChecklist(options = {}) {
   const selectClasses =
     "pl-4 pr-10 py-3 bg-white border border-slate-300 rounded-2xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-amber-500/20 focus:border-amber-400 shadow-sm transition-all appearance-none cursor-pointer bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%23374151%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cpath%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_0.5rem_center] bg-no-repeat";
 
-  // Import the full checklist builder to reuse its buildHtml
-  // The checklist builder module has a main() that auto-runs, so we dynamically
-  // construct the same output using the renderer functions directly.
   const html = `<!doctype html>
 <html lang="en">
 <head>

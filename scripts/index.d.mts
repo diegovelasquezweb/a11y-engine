@@ -63,7 +63,28 @@ export interface EnrichedFinding extends Finding {
   fixDifficultyNotes: string | string[] | null;
   screenshotPath: string | null;
   wcagCriterionId: string | null;
+  wcagClassification: string | null;
   impactedUsers: string | null;
+  primarySelector: string;
+  primaryFailureMode: string | null;
+  relationshipHint: string | null;
+  failureChecks: unknown[];
+  relatedContext: unknown[];
+  recommendedFix: string;
+  totalInstances: number | null;
+  relatedRules: string[];
+  ownershipStatus: string;
+  ownershipReason: string | null;
+  primarySourceScope: string[];
+  searchStrategy: string;
+  managedByLibrary: string | null;
+  componentHint: string | null;
+  verificationCommand: string | null;
+  verificationCommandFallback: string | null;
+  checkData: Record<string, unknown> | null;
+  pagesAffected: number | null;
+  affectedUrls: string[] | null;
+  effort: string;
 }
 
 export interface SeverityTotals {
@@ -79,12 +100,22 @@ export interface PersonaGroup {
   icon: string;
 }
 
+export interface DetectedStack {
+  framework: string | null;
+  cms: string | null;
+  uiLibraries: string[];
+}
+
 export interface AuditSummary {
   totals: SeverityTotals;
   score: number;
   label: string;
   wcagStatus: "Pass" | "Conditional Pass" | "Fail";
   personaGroups: Record<string, PersonaGroup>;
+  quickWins: EnrichedFinding[];
+  targetUrl: string;
+  detectedStack: DetectedStack;
+  totalFindings: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,13 +143,26 @@ export interface ChecklistReport {
 }
 
 // ---------------------------------------------------------------------------
+// Enrichment options
+// ---------------------------------------------------------------------------
+
+export interface EnrichmentOptions {
+  screenshotUrlBuilder?: (rawPath: string) => string;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-export function getEnrichedFindings(findings: Finding[]): EnrichedFinding[];
-export function getEnrichedFindings(findings: Record<string, unknown>[]): EnrichedFinding[];
+export function getEnrichedFindings(
+  input: ScanPayload | Finding[] | Record<string, unknown>[],
+  options?: EnrichmentOptions
+): EnrichedFinding[];
 
-export function getAuditSummary(findings: EnrichedFinding[] | Record<string, unknown>[]): AuditSummary;
+export function getAuditSummary(
+  findings: EnrichedFinding[],
+  payload?: ScanPayload | null
+): AuditSummary;
 
 export function getPDFReport(
   payload: ScanPayload,
