@@ -1,0 +1,30 @@
+{
+  "interactiveRoles": [
+    "button", "link", "textbox", "combobox", "listbox",
+    "menuitem", "tab", "checkbox", "radio", "switch", "slider"
+  ],
+  "rules": [
+    {
+      "id": "cdp-missing-accessible-name",
+      "condition": "interactive-no-name",
+      "impact": "serious",
+      "tags": ["wcag2a", "wcag412", "cdp-check"],
+      "help": "Interactive elements must have an accessible name",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/button-name",
+      "description": "Interactive element with role \"{{role}}\" has no accessible name",
+      "failureMessage": "Element with role \"{{role}}\" has no accessible name in the accessibility tree",
+      "axeEquivalents": ["button-name", "link-name", "input-name", "aria-command-name"]
+    },
+    {
+      "id": "cdp-aria-hidden-focusable",
+      "condition": "hidden-focusable",
+      "impact": "serious",
+      "tags": ["wcag2a", "wcag412", "cdp-check"],
+      "help": "aria-hidden elements must not be focusable",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-hidden-focus",
+      "description": "Focusable element with role \"{{role}}\" is aria-hidden",
+      "failureMessage": "Focusable element with role \"{{role}}\" is hidden from the accessibility tree",
+      "axeEquivalents": ["aria-hidden-focus"]
+    }
+  ]
+}
