@@ -1,6 +1,6 @@
 {
   "name": "@diegovelasquezweb/a11y-engine",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "WCAG 2.2 AA accessibility audit engine — scanner, analyzer, and report builders",
   "type": "module",
   "license": "MIT",
@@ -13,9 +13,13 @@
     "node": ">=18"
   },
   "exports": {
-    ".": "./scripts/index.mjs"
+    ".": {
+      "types": "./scripts/index.d.mts",
+      "default": "./scripts/index.mjs"
+    }
   },
   "main": "scripts/index.mjs",
+  "types": "scripts/index.d.mts",
   "bin": {
     "a11y-audit": "scripts/audit.mjs"
   },
