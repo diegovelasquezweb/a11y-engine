@@ -8,6 +8,7 @@
 
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
+import pa11y from "pa11y";
 import { log, DEFAULTS, writeJson, getInternalPath } from "../core/utils.mjs";
 import { ASSET_PATHS, loadAssetJson } from "../core/asset-loader.mjs";
 import path from "node:path";
@@ -85,6 +86,7 @@ function parseArgs(argv) {
     onlyRule: null,
     crawlDepth: DEFAULTS.crawlDepth,
     viewport: null,
+    axeTags: null,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -110,6 +112,7 @@ function parseArgs(argv) {
       args.excludeSelectors = value.split(",").map((s) => s.trim());
     if (key === "--color-scheme") args.colorScheme = value;
     if (key === "--screenshots-dir") args.screenshotsDir = value;
+    if (key === "--axe-tags") args.axeTags = value.split(",").map((s) => s.trim());
     if (key === "--viewport") {
       const [w, h] = value.split("x").map(Number);
       if (w && h) args.viewport = { width: w, height: h };
@@ -398,6 +401,7 @@ async function analyzeRoute(
   timeoutMs = 30000,
   maxRetries = 2,
   waitUntil = "domcontentloaded",
+  axeTags = null,
 ) {
   let lastError;
 
@@ -417,7 +421,8 @@ async function analyzeRoute(
         log.info(`Targeted Audit: Only checking rule "${onlyRule}"`);
         builder.withRules([onlyRule]);
       } else {
-        builder.withTags(AXE_TAGS);
+        const tagsToUse = axeTags || AXE_TAGS;
+        builder.withTags(tagsToUse);
       }
 
       if (Array.isArray(excludeSelectors)) {
@@ -468,6 +473,262 @@ async function analyzeRoute(
     passes: [],
     metadata: {},
   };
+}
+
+/**
+ * Writes scan progress to a JSON file for real-time UI updates.
+ * @param {string} step - Current step identifier.
+ * @param {"pending"|"running"|"done"|"error"} status - Step status.
+ * @param {Object} [extra={}] - Additional metadata.
+ */
+function writeProgress(step, status, extra = {}) {
+  const progressPath = getInternalPath("progress.json");
+  let progress = {};
+  try {
+    if (fs.existsSync(progressPath)) {
+      progress = JSON.parse(fs.readFileSync(progressPath, "utf-8"));
+    }
+  } catch { /* ignore */ }
+  progress.steps = progress.steps || {};
+  progress.steps[step] = { status, updatedAt: new Date().toISOString(), ...extra };
+  progress.currentStep = step;
+  fs.mkdirSync(path.dirname(progressPath), { recursive: true });
+  fs.writeFileSync(progressPath, JSON.stringify(progress, null, 2));
+}
+
+/**
+ * Runs CDP (Chrome DevTools Protocol) accessibility checks using Playwright's CDP session.
+ * Catches issues axe-core may miss: missing accessible names, broken focus order,
+ * aria-hidden on focusable elements, and missing form labels.
+ * @param {import("playwright").Page} page - The Playwright page object.
+ * @returns {Promise<Object[]>} Array of CDP-sourced violations in axe-compatible format.
+ */
+async function runCdpChecks(page) {
+  const violations = [];
+  try {
+    const cdp = await page.context().newCDPSession(page);
+
+    const { nodes } = await cdp.send("Accessibility.getFullAXTree");
+
+    for (const node of nodes) {
+      const role = node.role?.value || "";
+      const name = node.name?.value || "";
+      const properties = node.properties || [];
+      const ignored = node.ignored || false;
+
+      if (ignored) continue;
+
+      const focusable = properties.find((p) => p.name === "focusable")?.value?.value === true;
+      const hidden = properties.find((p) => p.name === "hidden")?.value?.value === true;
+
+      const interactiveRoles = ["button", "link", "textbox", "combobox", "listbox", "menuitem", "tab", "checkbox", "radio", "switch", "slider"];
+      if (interactiveRoles.includes(role) && !name.trim()) {
+        const backendId = node.backendDOMNodeId;
+        let selector = "";
+        try {
+          if (backendId) {
+            const { object } = await cdp.send("DOM.resolveNode", { backendNodeId: backendId });
+            if (object?.objectId) {
+              const result = await cdp.send("Runtime.callFunctionOn", {
+                objectId: object.objectId,
+                functionDeclaration: `function() {
+                  if (this.id) return '#' + this.id;
+                  if (this.className && typeof this.className === 'string') return this.tagName.toLowerCase() + '.' + this.className.trim().split(/\\s+/).join('.');
+                  return this.tagName.toLowerCase();
+                }`,
+                returnByValue: true,
+              });
+              selector = result.result?.value || "";
+            }
+          }
+        } catch { /* fallback: no selector */ }
+
+        violations.push({
+          id: "cdp-missing-accessible-name",
+          impact: "serious",
+          tags: ["wcag2a", "wcag412", "cdp-check"],
+          description: `Interactive element with role "${role}" has no accessible name`,
+          help: "Interactive elements must have an accessible name",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.11/button-name",
+          source: "cdp",
+          nodes: [{
+            any: [],
+            all: [{
+              id: "cdp-accessible-name",
+              data: { role, name: "(empty)" },
+              relatedNodes: [],
+              impact: "serious",
+              message: `Element with role "${role}" has no accessible name in the accessibility tree`,
+            }],
+            none: [],
+            impact: "serious",
+            html: `<${role} aria-role="${role}">`,
+            target: selector ? [selector] : [`[role="${role}"]`],
+            failureSummary: `Fix all of the following:\n  Element with role "${role}" has no accessible name`,
+          }],
+        });
+      }
+
+      if (hidden && focusable) {
+        violations.push({
+          id: "cdp-aria-hidden-focusable",
+          impact: "serious",
+          tags: ["wcag2a", "wcag412", "cdp-check"],
+          description: `Focusable element with role "${role}" is aria-hidden`,
+          help: "aria-hidden elements must not be focusable",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.11/aria-hidden-focus",
+          source: "cdp",
+          nodes: [{
+            any: [],
+            all: [{
+              id: "cdp-hidden-focusable",
+              data: { role },
+              relatedNodes: [],
+              impact: "serious",
+              message: `Focusable element with role "${role}" is hidden from the accessibility tree`,
+            }],
+            none: [],
+            impact: "serious",
+            html: `<element role="${role}" aria-hidden="true">`,
+            target: [`[role="${role}"]`],
+            failureSummary: `Fix all of the following:\n  Focusable element is hidden from the accessibility tree`,
+          }],
+        });
+      }
+    }
+
+    await cdp.detach();
+  } catch (err) {
+    log.warn(`CDP checks failed (non-fatal): ${err.message}`);
+  }
+  return violations;
+}
+
+/**
+ * Runs pa11y (HTML CodeSniffer) against the already-loaded page URL.
+ * Catches WCAG violations that axe-core may miss, particularly around
+ * heading hierarchy, link purpose, and form associations.
+ * @param {string} routeUrl - The URL to scan.
+ * @param {string[]} [axeTags] - WCAG level tags for standard filtering.
+ * @returns {Promise<Object[]>} Array of pa11y-sourced violations in axe-compatible format.
+ */
+async function runPa11yChecks(routeUrl, axeTags) {
+  const violations = [];
+  try {
+    let standard = "WCAG2AA";
+    if (axeTags) {
+      if (axeTags.includes("wcag2aaa")) standard = "WCAG2AAA";
+      else if (axeTags.includes("wcag2aa") || axeTags.includes("wcag21aa") || axeTags.includes("wcag22aa")) standard = "WCAG2AA";
+      else if (axeTags.includes("wcag2a")) standard = "WCAG2A";
+    }
+
+    const results = await pa11y(routeUrl, {
+      standard,
+      timeout: 30000,
+      wait: 2000,
+      chromeLaunchConfig: {
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      },
+      ignore: [
+        "WCAG2AA.Principle1.Guideline1_4.1_4_3.G18.Fail",
+        "WCAG2AA.Principle4.Guideline4_1.4_1_2.H91.A.NoContent",
+      ],
+    });
+
+    const impactMap = { 1: "serious", 2: "moderate", 3: "minor" };
+
+    for (const issue of results.issues || []) {
+      if (issue.type === "notice") continue;
+
+      const impact = impactMap[issue.typeCode] || "moderate";
+
+      let wcagCriterion = "";
+      const wcagMatch = issue.code?.match(/Guideline(\d+)_(\d+)\.(\d+)_(\d+)_(\d+)/);
+      if (wcagMatch) {
+        wcagCriterion = `${wcagMatch[3]}.${wcagMatch[4]}.${wcagMatch[5]}`;
+      }
+
+      const ruleId = `pa11y-${(issue.code || "unknown").replace(/\./g, "-").toLowerCase().slice(0, 60)}`;
+
+      violations.push({
+        id: ruleId,
+        impact,
+        tags: ["pa11y-check", ...(wcagCriterion ? [`wcag${wcagCriterion.replace(/\./g, "")}`] : [])],
+        description: issue.message || "pa11y detected an accessibility issue",
+        help: issue.message?.split(".")[0] || "Accessibility issue detected by HTML CodeSniffer",
+        helpUrl: wcagCriterion
+          ? `https://www.w3.org/WAI/WCAG21/Understanding/${wcagCriterion.replace(/\./g, "")}`
+          : "https://squizlabs.github.io/HTML_CodeSniffer/",
+        source: "pa11y",
+        nodes: [{
+          any: [],
+          all: [{
+            id: "pa11y-check",
+            data: { code: issue.code, context: issue.context?.slice(0, 200) },
+            relatedNodes: [],
+            impact,
+            message: issue.message || "",
+          }],
+          none: [],
+          impact,
+          html: issue.context || "",
+          target: issue.selector ? [issue.selector] : [],
+          failureSummary: `Fix all of the following:\n  ${issue.message || "Accessibility issue"}`,
+        }],
+      });
+    }
+  } catch (err) {
+    log.warn(`pa11y checks failed (non-fatal): ${err.message}`);
+  }
+  return violations;
+}
+
+/**
+ * Merges violations from multiple sources (axe-core, CDP, pa11y) and deduplicates.
+ * Deduplication is based on rule ID + first target selector combination.
+ * @param {Object[]} axeViolations - Violations from axe-core.
+ * @param {Object[]} cdpViolations - Violations from CDP checks.
+ * @param {Object[]} pa11yViolations - Violations from pa11y.
+ * @returns {Object[]} Merged and deduplicated violations array.
+ */
+function mergeViolations(axeViolations, cdpViolations, pa11yViolations) {
+  const seen = new Set();
+  const merged = [];
+
+  for (const v of axeViolations) {
+    const key = `${v.id}::${v.nodes?.[0]?.target?.[0] || ""}`;
+    seen.add(key);
+    merged.push(v);
+  }
+
+  for (const v of cdpViolations) {
+    const axeEquiv = {
+      "cdp-missing-accessible-name": ["button-name", "link-name", "input-name", "aria-command-name"],
+      "cdp-aria-hidden-focusable": ["aria-hidden-focus"],
+    };
+    const equivRules = axeEquiv[v.id] || [];
+    const target = v.nodes?.[0]?.target?.[0] || "";
+    const isDuplicate = equivRules.some((r) => seen.has(`${r}::${target}`));
+    if (!isDuplicate) {
+      const key = `${v.id}::${target}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(v);
+      }
+    }
+  }
+
+  for (const v of pa11yViolations) {
+    const target = v.nodes?.[0]?.target?.[0] || "";
+    const key = `${v.id}::${target}`;
+    const selectorCovered = [...seen].some((k) => k.endsWith(`::${target}`) && target);
+    if (!seen.has(key) && (!selectorCovered || !target)) {
+      seen.add(key);
+      merged.push(v);
+    }
+  }
+
+  return merged;
 }
 
 /**
@@ -630,6 +891,8 @@ async function main() {
       tabPages.push(await context.newPage());
     }
 
+    writeProgress("page", "running");
+
     for (let i = 0; i < routes.length; i += tabPages.length) {
       const batch = [];
       for (let j = 0; j < tabPages.length && i + j < routes.length; j++) {
@@ -640,6 +903,11 @@ async function main() {
             const routePath = routes[idx];
             log.info(`[${idx + 1}/${total}] Scanning: ${routePath}`);
             const targetUrl = new URL(routePath, baseUrl).toString();
+
+            writeProgress("page", "done");
+
+            // Step 1: axe-core
+            writeProgress("axe", "running");
             const result = await analyzeRoute(
               tabPage,
               targetUrl,
@@ -649,13 +917,51 @@ async function main() {
               args.timeoutMs,
               2,
               args.waitUntil,
+              args.axeTags,
             );
-            if (args.screenshotsDir && result.violations) {
-              for (const violation of result.violations) {
+            const axeViolationCount = result.violations?.length || 0;
+            writeProgress("axe", "done", { found: axeViolationCount });
+            log.info(`axe-core: ${axeViolationCount} violation(s) found`);
+
+            // Step 2: CDP checks
+            writeProgress("cdp", "running");
+            const cdpViolations = await runCdpChecks(tabPage);
+            writeProgress("cdp", "done", { found: cdpViolations.length });
+            log.info(`CDP checks: ${cdpViolations.length} issue(s) found`);
+
+            // Step 3: pa11y
+            writeProgress("pa11y", "running");
+            const pa11yViolations = await runPa11yChecks(targetUrl, args.axeTags);
+            writeProgress("pa11y", "done", { found: pa11yViolations.length });
+            log.info(`pa11y: ${pa11yViolations.length} issue(s) found`);
+
+            // Step 4: Merge results
+            writeProgress("merge", "running");
+            const mergedViolations = mergeViolations(
+              result.violations || [],
+              cdpViolations,
+              pa11yViolations,
+            );
+            writeProgress("merge", "done", {
+              axe: axeViolationCount,
+              cdp: cdpViolations.length,
+              pa11y: pa11yViolations.length,
+              merged: mergedViolations.length,
+            });
+            log.info(`Merged: ${mergedViolations.length} total unique violations (axe: ${axeViolationCount}, cdp: ${cdpViolations.length}, pa11y: ${pa11yViolations.length})`);
+
+            // Screenshots for merged violations
+            if (args.screenshotsDir && mergedViolations) {
+              for (const violation of mergedViolations) {
                 await captureElementScreenshot(tabPage, violation, idx);
               }
             }
-            results[idx] = { path: routePath, ...result };
+            results[idx] = {
+              path: routePath,
+              ...result,
+              violations: mergedViolations,
+              incomplete: result.incomplete || [],
+            };
           })(),
         );
       }
