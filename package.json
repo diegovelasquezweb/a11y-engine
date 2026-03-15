@@ -26,17 +26,14 @@
   },
   "files": [
     "src/**",
-    "assets/source/**",
-    "assets/generated/**",
+    "assets/**",
     "docs/**",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
-    "sync-assets": "node src/sync-assets.mjs",
-    "test": "vitest run",
-    "prepublishOnly": "node src/sync-assets.mjs"
+    "test": "vitest run"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.1",
