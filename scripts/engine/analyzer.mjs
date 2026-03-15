@@ -949,17 +949,23 @@ export function collectIncompleteFindings(routes) {
 }
 
 /**
- * The main execution function for the analyzer script.
- * Reads scan results, processes findings, and writes the final findings JSON.
+ * Runs the analyzer programmatically on a scan payload.
+ * @param {Object} scanPayload - The raw scan output from dom-scanner ({ routes, base_url, projectContext, ... }).
+ * @param {{ ignoreFindings?: string[], framework?: string, output?: string }} [options={}]
+ * @returns {Object} The enriched findings payload { findings, incomplete_findings, metadata, ... }.
  */
-function main() {
-  const args = parseArgs(process.argv.slice(2));
+export function runAnalyzer(scanPayload, options = {}) {
+  if (!scanPayload) throw new Error("Missing scan payload");
+
+  const args = {
+    input: null,
+    output: options.output || getInternalPath("a11y-findings.json"),
+    ignoreFindings: options.ignoreFindings || [],
+    framework: options.framework || null,
+  };
+
   const ignoredRules = new Set(args.ignoreFindings);
-
-  const payload = readJson(args.input);
-  if (!payload) throw new Error(`Input not found or invalid: ${args.input}`);
-
-  const result = buildFindings(payload, args);
+  const result = buildFindings(scanPayload, args);
 
   if (ignoredRules.size > 0) {
     const knownIds = new Set(
@@ -989,15 +995,15 @@ function main() {
   if (deduplicatedCount > 0) log.info(`Deduplicated ${deduplicatedCount} cross-page finding group(s).`);
 
   const overallAssessment = computeOverallAssessment(dedupedFindings);
-  const passedCriteria = computePassedCriteria(payload.routes || [], WCAG_CRITERION_MAP, dedupedFindings);
-  const outOfScope = computeOutOfScope(payload.routes || []);
+  const passedCriteria = computePassedCriteria(scanPayload.routes || [], WCAG_CRITERION_MAP, dedupedFindings);
+  const outOfScope = computeOutOfScope(scanPayload.routes || []);
   const recommendations = computeRecommendations(dedupedFindings);
-  const testingMethodology = computeTestingMethodology(payload);
-  const incompleteFindings = collectIncompleteFindings(payload.routes || []);
+  const testingMethodology = computeTestingMethodology(scanPayload);
+  const incompleteFindings = collectIncompleteFindings(scanPayload.routes || []);
   if (incompleteFindings.length > 0)
     log.info(`${incompleteFindings.length} incomplete finding(s) require manual review.`);
 
-  writeJson(args.output, {
+  const outputPayload = {
     ...result,
     findings: dedupedFindings,
     incomplete_findings: incompleteFindings,
@@ -1011,12 +1017,32 @@ function main() {
       fpFiltered: fpRemovedCount,
       deduplicatedCount,
     },
-  });
+  };
+
+  // Write to disk for CLI compatibility
+  writeJson(args.output, outputPayload);
 
   if (dedupedFindings.length === 0) {
     log.info("Congratulations, no issues found.");
   }
   log.success(`Findings processed and saved to ${args.output}`);
+
+  return outputPayload;
+}
+
+/**
+ * CLI entry point — reads from disk, processes, writes to disk.
+ */
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const payload = readJson(args.input);
+  if (!payload) throw new Error(`Input not found or invalid: ${args.input}`);
+
+  runAnalyzer(payload, {
+    ignoreFindings: args.ignoreFindings,
+    framework: args.framework,
+    output: args.output,
+  });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

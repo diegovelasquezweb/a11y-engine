@@ -425,6 +425,117 @@ export function getAuditSummary(findings, payload = null) {
 }
 
 // ---------------------------------------------------------------------------
+// Full audit pipeline
+// ---------------------------------------------------------------------------
+
+/**
+ * Runs a complete accessibility audit: crawl + scan (axe + CDP + pa11y) + analyze.
+ * Returns the enriched scan payload ready for getEnrichedFindings().
+ *
+ * @param {{
+ *   baseUrl: string,
+ *   maxRoutes?: number,
+ *   crawlDepth?: number,
+ *   routes?: string,
+ *   waitMs?: number,
+ *   timeoutMs?: number,
+ *   headless?: boolean,
+ *   waitUntil?: string,
+ *   colorScheme?: string,
+ *   viewport?: { width: number, height: number },
+ *   axeTags?: string[],
+ *   onlyRule?: string,
+ *   excludeSelectors?: string[],
+ *   ignoreFindings?: string[],
+ *   framework?: string,
+ *   projectDir?: string,
+ *   skipPatterns?: boolean,
+ *   onProgress?: (step: string, status: string, extra?: object) => void,
+ * }} options
+ * @returns {Promise<{ findings: object[], metadata: object, incomplete_findings?: object[] }>}
+ */
+export async function runAudit(options) {
+  if (!options.baseUrl) throw new Error("runAudit requires baseUrl");
+
+  const { runDomScanner } = await import("./engine/dom-scanner.mjs");
+  const { runAnalyzer } = await import("./engine/analyzer.mjs");
+
+  const onProgress = options.onProgress || null;
+
+  // Step 1: DOM scan (axe + CDP + pa11y)
+  if (onProgress) onProgress("page", "running");
+
+  const scanPayload = await runDomScanner(
+    {
+      baseUrl: options.baseUrl,
+      maxRoutes: options.maxRoutes,
+      crawlDepth: options.crawlDepth,
+      routes: options.routes,
+      waitMs: options.waitMs,
+      timeoutMs: options.timeoutMs,
+      headless: options.headless,
+      waitUntil: options.waitUntil,
+      colorScheme: options.colorScheme,
+      viewport: options.viewport,
+      axeTags: options.axeTags,
+      onlyRule: options.onlyRule,
+      excludeSelectors: options.excludeSelectors,
+    },
+    { onProgress },
+  );
+
+  // Step 2: Analyze + enrich
+  if (onProgress) onProgress("intelligence", "running");
+
+  const findingsPayload = runAnalyzer(scanPayload, {
+    ignoreFindings: options.ignoreFindings,
+    framework: options.framework,
+  });
+
+  // Step 3: Source patterns (optional)
+  if (options.projectDir && !options.skipPatterns) {
+    try {
+      const { resolveScanDirs, scanPattern } = await import("./engine/source-scanner.mjs");
+      const { patterns } = loadAssetJson(ASSET_PATHS.remediation.codePatterns, "code-patterns.json");
+
+      let resolvedFramework = options.framework;
+      if (!resolvedFramework && findingsPayload.metadata?.projectContext?.framework) {
+        resolvedFramework = findingsPayload.metadata.projectContext.framework;
+      }
+
+      const scanDirs = resolveScanDirs(resolvedFramework || null, options.projectDir);
+      const allPatternFindings = [];
+      for (const pattern of patterns) {
+        for (const scanDir of scanDirs) {
+          allPatternFindings.push(...scanPattern(pattern, scanDir, options.projectDir));
+        }
+      }
+
+      if (allPatternFindings.length > 0) {
+        findingsPayload.patternFindings = {
+          generated_at: new Date().toISOString(),
+          project_dir: options.projectDir,
+          findings: allPatternFindings,
+          summary: {
+            total: allPatternFindings.length,
+            confirmed: allPatternFindings.filter((f) => f.status === "confirmed").length,
+            potential: allPatternFindings.filter((f) => f.status === "potential").length,
+          },
+        };
+      }
+    } catch (err) {
+      // Non-fatal: source scanning is optional
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`Source pattern scan failed (non-fatal): ${msg}`);
+    }
+  }
+
+  if (onProgress) onProgress("intelligence", "done");
+
+  return findingsPayload;
+}
+
+// ---------------------------------------------------------------------------
 // Report generation
 // ---------------------------------------------------------------------------
 

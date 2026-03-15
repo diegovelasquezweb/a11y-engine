@@ -193,6 +193,31 @@ export interface SourcePatternOptions {
 }
 
 // ---------------------------------------------------------------------------
+// Audit options
+// ---------------------------------------------------------------------------
+
+export interface RunAuditOptions {
+  baseUrl: string;
+  maxRoutes?: number;
+  crawlDepth?: number;
+  routes?: string;
+  waitMs?: number;
+  timeoutMs?: number;
+  headless?: boolean;
+  waitUntil?: string;
+  colorScheme?: string;
+  viewport?: { width: number; height: number };
+  axeTags?: string[];
+  onlyRule?: string;
+  excludeSelectors?: string[];
+  ignoreFindings?: string[];
+  framework?: string;
+  projectDir?: string;
+  skipPatterns?: boolean;
+  onProgress?: (step: string, status: string, extra?: Record<string, unknown>) => void;
+}
+
+// ---------------------------------------------------------------------------
 // Enrichment options
 // ---------------------------------------------------------------------------
 
@@ -203,6 +228,8 @@ export interface EnrichmentOptions {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+export function runAudit(options: RunAuditOptions): Promise<ScanPayload>;
 
 export function getEnrichedFindings(
   input: ScanPayload | Finding[] | Record<string, unknown>[],

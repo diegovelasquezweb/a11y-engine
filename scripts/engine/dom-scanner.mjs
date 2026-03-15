@@ -489,7 +489,16 @@ async function analyzeRoute(
  * @param {"pending"|"running"|"done"|"error"} status - Step status.
  * @param {Object} [extra={}] - Additional metadata.
  */
+/** @type {((step: string, status: string, extra?: object) => void) | null} */
+let _onProgressCallback = null;
+
 function writeProgress(step, status, extra = {}) {
+  // Notify external callback if set (programmatic API)
+  if (_onProgressCallback) {
+    _onProgressCallback(step, status, extra);
+  }
+
+  // Always write to disk for CLI consumers
   const progressPath = getInternalPath("progress.json");
   let progress = {};
   try {
@@ -788,8 +797,45 @@ function mergeViolations(axeViolations, cdpViolations, pa11yViolations) {
  * Coordinates browser setup, crawling/discovery, parallel scanning, and result saving.
  * @throws {Error} If navigation to the base URL fails or browser setup issues occur.
  */
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
+/**
+ * Runs the DOM scanner programmatically.
+ * @param {Object} options - Scanner configuration (same shape as CLI args object).
+ * @param {{ onProgress?: (step: string, status: string, extra?: object) => void }} [callbacks={}]
+ * @returns {Promise<Object>} The scan payload { generated_at, base_url, onlyRule, projectContext, routes }.
+ */
+export async function runDomScanner(options = {}, callbacks = {}) {
+  const args = {
+    baseUrl: options.baseUrl || "",
+    routes: options.routes || "",
+    output: options.output || getInternalPath("a11y-scan-results.json"),
+    maxRoutes: options.maxRoutes ?? DEFAULTS.maxRoutes,
+    waitMs: options.waitMs ?? DEFAULTS.waitMs,
+    timeoutMs: options.timeoutMs ?? DEFAULTS.timeoutMs,
+    headless: options.headless ?? DEFAULTS.headless,
+    waitUntil: options.waitUntil ?? DEFAULTS.waitUntil,
+    colorScheme: options.colorScheme || null,
+    screenshotsDir: options.screenshotsDir || getInternalPath("screenshots"),
+    excludeSelectors: options.excludeSelectors || [],
+    onlyRule: options.onlyRule || null,
+    crawlDepth: Math.min(Math.max(options.crawlDepth ?? DEFAULTS.crawlDepth, 1), 3),
+    viewport: options.viewport || null,
+    axeTags: options.axeTags || null,
+  };
+
+  if (!args.baseUrl) throw new Error("Missing required option: baseUrl");
+
+  if (callbacks.onProgress) {
+    _onProgressCallback = callbacks.onProgress;
+  }
+
+  try {
+    return await _runDomScannerInternal(args);
+  } finally {
+    _onProgressCallback = null;
+  }
+}
+
+async function _runDomScannerInternal(args) {
   const baseUrl = new URL(args.baseUrl).toString();
   const origin = new URL(baseUrl).origin;
 
@@ -850,7 +896,7 @@ async function main() {
   } catch (err) {
     log.error(`Fatal: Could not load base URL ${baseUrl}: ${err.message}`);
     await browser.close();
-    process.exit(1);
+    throw new Error(`Could not load base URL ${baseUrl}: ${err.message}`);
   }
 
   /**
@@ -1036,6 +1082,13 @@ async function main() {
 
   writeJson(args.output, payload);
   log.success(`Routes scan complete. Results saved to ${args.output}`);
+
+  return payload;
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  await runDomScanner(args);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
