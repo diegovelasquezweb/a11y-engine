@@ -16,7 +16,8 @@
     ".": {
       "types": "./scripts/index.d.mts",
       "default": "./scripts/index.mjs"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "main": "scripts/index.mjs",
   "types": "scripts/index.d.mts",

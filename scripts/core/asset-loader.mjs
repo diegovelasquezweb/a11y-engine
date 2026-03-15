@@ -10,27 +10,37 @@ import { createRequire } from "node:module";
 
 /**
  * Resolves the assets root directory. Uses import.meta.url when running from
- * the original file location (CLI, direct node). Falls back to require.resolve
- * when running inside a bundler (e.g. Turbopack) where import.meta.url points
- * to a generated chunk instead of the original file.
+ * the original file location (CLI, direct node). Falls back to multiple
+ * strategies when running inside a bundler (e.g. Turbopack) where
+ * import.meta.url points to a generated chunk.
  */
 function resolveAssetRoot() {
   // Primary: resolve relative to this file's location
-  const selfDir = path.dirname(fileURLToPath(import.meta.url));
-  const candidate = path.join(selfDir, "..", "..", "assets");
-  if (fs.existsSync(candidate)) return candidate;
-
-  // Fallback: resolve via require.resolve against node_modules
   try {
-    const req = createRequire(import.meta.url);
-    const pkgJson = req.resolve("@diegovelasquezweb/a11y-engine/package.json");
-    const pkgRoot = path.dirname(pkgJson);
-    const fallback = path.join(pkgRoot, "assets");
-    if (fs.existsSync(fallback)) return fallback;
-  } catch { /* not installed as dependency — skip */ }
+    const selfDir = path.dirname(fileURLToPath(import.meta.url));
+    const candidate = path.join(selfDir, "..", "..", "assets");
+    if (fs.existsSync(candidate)) return candidate;
+  } catch { /* import.meta.url might be a virtual URL in bundlers */ }
 
-  // Last resort: original candidate (will fail with a clear error at load time)
-  return candidate;
+  // Fallback 1: require.resolve with createRequire from process.cwd()
+  try {
+    const req = createRequire(path.join(process.cwd(), "package.json"));
+    const pkgJson = req.resolve("@diegovelasquezweb/a11y-engine/package.json");
+    const fallback = path.join(path.dirname(pkgJson), "assets");
+    if (fs.existsSync(fallback)) return fallback;
+  } catch { /* package not installed or exports block it */ }
+
+  // Fallback 2: walk node_modules directly (handles pnpm symlinks)
+  try {
+    const nmBase = path.join(process.cwd(), "node_modules", "@diegovelasquezweb", "a11y-engine");
+    const realBase = fs.realpathSync(nmBase);
+    const fallback = path.join(realBase, "assets");
+    if (fs.existsSync(fallback)) return fallback;
+  } catch { /* not in node_modules */ }
+
+  // Last resort: relative to this file (will fail with a clear error at load time)
+  const selfDir = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(selfDir, "..", "..", "assets");
 }
 
 const ASSET_ROOT = resolveAssetRoot();
