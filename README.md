@@ -6,6 +6,7 @@ Accessibility automation engine for web applications. It orchestrates multi engi
 
 | Capability | Description |
 | :--- | :--- |
+| **Route discovery crawler** | Builds the scan route set using sitemap discovery first, then same origin BFS crawl with robots filtering, depth control, and max route limits |
 | **Multi engine scanning** | Runs axe-core, CDP accessibility tree checks, and pa11y HTML CodeSniffer against each page, then merges and deduplicates findings across all three engines |
 | **Stack detection** | Detects framework and CMS from runtime signals and from project source signals such as package.json and file structure |
 | **Fix intelligence** | Enriches each finding with WCAG mapping, fix code snippets, framework and CMS specific notes, UI library ownership hints, effort estimates, and persona impact |
@@ -24,11 +25,6 @@ npx puppeteer browsers install chrome  # used by pa11y
 
 ## API Reference
 
-The API is organized in two groups:
-
-- **Core API** builds and summarizes audit data.
-- **Output API** renders deliverables from that data.
-
 ### Core API
 
 ```ts
@@ -46,7 +42,7 @@ import {
 
 #### runAudit
 
-Runs the full scan pipeline: crawl, scan with 3 engines, merge, analyze. Returns a payload ready for `getEnrichedFindings`.
+Runs the full scan pipeline: route discovery crawler, scan, merge, and analyze. Returns a payload ready for `getEnrichedFindings`.
 
 ```ts
 const payload = await runAudit({
@@ -59,29 +55,18 @@ const payload = await runAudit({
 
 Progress steps emitted: `page`, `axe`, `cdp`, `pa11y`, `merge`, `intelligence`.
 
-**Options (`RunAuditOptions`)**
+**Common `runAudit` options**
 
-| Option | Type | Description |
-| :--- | :--- | :--- |
-| `baseUrl` | `string` | Target URL to scan |
-| `maxRoutes` | `number` | Maximum routes to scan |
-| `crawlDepth` | `number` | Route discovery depth |
-| `routes` | `string` | Comma separated explicit routes |
-| `waitMs` | `number` | Post load wait before scanning |
-| `timeoutMs` | `number` | Per page timeout |
-| `headless` | `boolean` | Run browser headless or headed |
-| `waitUntil` | `string` | Playwright wait strategy |
-| `colorScheme` | `string` | Emulated color scheme |
-| `viewport` | `{ width: number; height: number }` | Emulated viewport |
-| `axeTags` | `string[]` | axe tag filters |
-| `onlyRule` | `string` | Run a single rule |
-| `excludeSelectors` | `string[]` | Exclude selectors from scan |
-| `ignoreFindings` | `string[]` | Drop findings by rule id |
-| `framework` | `string` | Force framework context |
-| `projectDir` | `string` | Project source path |
-| `skipPatterns` | `boolean` | Disable source pattern scan |
-| `screenshotsDir` | `string` | Output path for screenshots |
-| `onProgress` | `(step, status, extra?) => void` | Progress callback |
+| Option | Description |
+| :--- | :--- |
+| `baseUrl` | Target URL to scan |
+| `maxRoutes` | Maximum routes to scan |
+| `axeTags` | WCAG tag filters |
+| `projectDir` | Project source path for source-aware detection and pattern scanning |
+| `skipPatterns` | Disable source pattern scanning |
+| `onProgress` | Progress callback for UI updates |
+
+For the full `RunAuditOptions` contract, see `src/index.d.mts`.
 
 #### getEnrichedFindings
 
@@ -128,17 +113,7 @@ These functions render final artifacts from scan payload data.
 | `getRemediationGuide(payload, options?)` | `{ markdown, contentType }` | Markdown remediation guide |
 | `getSourcePatterns(projectDir, options?)` | `{ findings, summary }` | Source code pattern analysis |
 
-**Output API options**
-
-| Function | Options type | Supported options |
-| :--- | :--- | :--- |
-| `getPDFReport` | `ReportOptions` | `baseUrl?: string`, `target?: string` |
-| `getHTMLReport` | `HTMLReportOptions` | `baseUrl?: string`, `target?: string`, `screenshotsDir?: string` |
-| `getChecklist` | `Pick<ReportOptions, "baseUrl">` | `baseUrl?: string` |
-| `getRemediationGuide` | `RemediationOptions` | `baseUrl?: string`, `target?: string`, `patternFindings?: object \| null` |
-| `getSourcePatterns` | `SourcePatternOptions` | `framework?: string`, `onlyPattern?: string` |
-
-For the canonical type definitions, see `src/index.d.mts`.
+For exact options and return types, see `src/index.d.mts`.
 
 ## Optional CLI
 
