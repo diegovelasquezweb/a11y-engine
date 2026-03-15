@@ -46,6 +46,8 @@ function parseArgs(argv) {
 
   const args = {
     projectDir: null,
+    repoUrl: null,
+    githubToken: null,
     framework: null,
     output: getInternalPath("a11y-pattern-findings.json"),
     onlyPattern: null,
@@ -56,13 +58,15 @@ function parseArgs(argv) {
     const value = argv[i + 1];
     if (!key.startsWith("--") || value === undefined) continue;
     if (key === "--project-dir") args.projectDir = value;
+    if (key === "--repo-url") args.repoUrl = value;
+    if (key === "--github-token") args.githubToken = value;
     if (key === "--framework") args.framework = value;
     if (key === "--output") args.output = value;
     if (key === "--only-pattern") args.onlyPattern = value;
     i++;
   }
 
-  if (!args.projectDir) throw new Error("Missing required --project-dir");
+  if (!args.projectDir && !args.repoUrl) throw new Error("Missing required --project-dir or --repo-url");
   return args;
 }
 
@@ -320,7 +324,7 @@ export async function scanPatternRemote(pattern, repoUrl, githubToken, framework
 /**
  * Main execution function for the pattern scanner.
  */
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   const { patterns } = loadAssetJson(
     ASSET_PATHS.remediation.codePatterns,
@@ -339,23 +343,44 @@ function main() {
     process.exit(0);
   }
 
-  const scanDirs = resolveScanDirs(args.framework, args.projectDir);
-  log.info(`Scanning source code at: ${args.projectDir}`);
-  if (scanDirs.length > 1 || scanDirs[0] !== args.projectDir) {
-    log.info(`  Scoped to: ${scanDirs.map((d) => relative(args.projectDir, d)).join(", ")}`);
-  }
-  log.info(`Running ${activePatterns.length} pattern(s)...`);
-
   const allFindings = [];
-  for (const pattern of activePatterns) {
-    const findings = [];
-    for (const scanDir of scanDirs) {
-      findings.push(...scanPattern(pattern, scanDir, args.projectDir));
+
+  if (args.repoUrl) {
+    // Remote scan via GitHub API — no clone needed
+    log.info(`Scanning source code at: ${args.repoUrl}`);
+    log.info(`Running ${activePatterns.length} pattern(s) via GitHub API...`);
+
+    for (const pattern of activePatterns) {
+      const findings = await scanPatternRemote(
+        pattern,
+        args.repoUrl,
+        args.githubToken || null,
+        args.framework || null,
+      );
+      if (findings.length > 0) {
+        log.info(`  ${pattern.id}: ${findings.length} match(es)`);
+      }
+      allFindings.push(...findings);
     }
-    if (findings.length > 0) {
-      log.info(`  ${pattern.id}: ${findings.length} match(es)`);
+  } else {
+    // Local filesystem scan
+    const scanDirs = resolveScanDirs(args.framework, args.projectDir);
+    log.info(`Scanning source code at: ${args.projectDir}`);
+    if (scanDirs.length > 1 || scanDirs[0] !== args.projectDir) {
+      log.info(`  Scoped to: ${scanDirs.map((d) => relative(args.projectDir, d)).join(", ")}`);
     }
-    allFindings.push(...findings);
+    log.info(`Running ${activePatterns.length} pattern(s)...`);
+
+    for (const pattern of activePatterns) {
+      const findings = [];
+      for (const scanDir of scanDirs) {
+        findings.push(...scanPattern(pattern, scanDir, args.projectDir));
+      }
+      if (findings.length > 0) {
+        log.info(`  ${pattern.id}: ${findings.length} match(es)`);
+      }
+      allFindings.push(...findings);
+    }
   }
 
   const confirmed = allFindings.filter((f) => f.status === "confirmed").length;
@@ -363,7 +388,7 @@ function main() {
 
   writeJson(args.output, {
     generated_at: new Date().toISOString(),
-    project_dir: args.projectDir,
+    project_dir: args.repoUrl || args.projectDir,
     findings: allFindings,
     summary: {
       total: allFindings.length,
@@ -378,10 +403,8 @@ function main() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  try {
-    main();
-  } catch (error) {
+  main().catch((error) => {
     log.error(error.message);
     process.exit(1);
-  }
+  });
 }

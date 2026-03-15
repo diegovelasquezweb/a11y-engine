@@ -140,6 +140,9 @@ async function main() {
   const timeoutMs = getArgValue("timeout-ms") || DEFAULTS.timeoutMs;
   const axeTags = getArgValue("axe-tags");
 
+  const repoUrl = getArgValue("repo-url");
+  const githubToken = getArgValue("github-token");
+
   const sessionFile = getInternalPath("a11y-session.json");
   let projectDir = getArgValue("project-dir");
   if (projectDir) {
@@ -268,8 +271,14 @@ async function main() {
     if (framework) analyzerArgs.push("--framework", framework);
     await runScript("../enrichment/analyzer.mjs", analyzerArgs);
 
-    if (projectDir && !skipPatterns) {
-      const patternArgs = ["--project-dir", path.resolve(projectDir)];
+    if ((projectDir || repoUrl) && !skipPatterns) {
+      const patternArgs = [];
+      if (projectDir) {
+        patternArgs.push("--project-dir", path.resolve(projectDir));
+      } else {
+        patternArgs.push("--repo-url", repoUrl);
+        if (githubToken) patternArgs.push("--github-token", githubToken);
+      }
       let resolvedFramework = framework;
       if (!resolvedFramework) {
         try {
