@@ -394,10 +394,20 @@ export interface RunAuditOptions {
   ignoreFindings?: string[];
   framework?: string;
   projectDir?: string;
+  repoUrl?: string;
+  githubToken?: string;
   skipPatterns?: boolean;
   screenshotsDir?: string;
   engines?: EngineSelection;
+  ai?: AiOptions;
   onProgress?: (step: string, status: string, extra?: Record<string, unknown>) => void;
+}
+
+export interface AiOptions {
+  enabled?: boolean;
+  apiKey?: string;
+  githubToken?: string;
+  model?: string;
 }
 
 

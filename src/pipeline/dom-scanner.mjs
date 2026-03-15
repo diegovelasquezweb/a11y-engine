@@ -342,14 +342,60 @@ export async function discoverRoutes(page, baseUrl, maxRoutes, crawlDepth = 2) {
 }
 
 /**
+ * Extracts framework and UI library info from a parsed package.json object.
+ * Used both for local file reads and remote GitHub API reads.
+ * @param {Record<string, unknown>} pkg
+ * @returns {{ framework: string|null, uiLibraries: string[] }}
+ */
+function detectFromPackageJson(pkg) {
+  const uiLibraries = [];
+  let pkgFramework = null;
+
+  const allDeps = Object.keys({
+    ...(pkg.dependencies || {}),
+    ...(pkg.devDependencies || {}),
+  });
+
+  for (const [dep, fw] of STACK_DETECTION.frameworkPackageDetectors) {
+    if (allDeps.some((d) => d === dep || d.startsWith(`${dep}/`))) {
+      pkgFramework = fw;
+      break;
+    }
+  }
+  for (const [prefix, name] of STACK_DETECTION.uiLibraryPackageDetectors) {
+    if (allDeps.some((d) => d === prefix || d.startsWith(`${prefix}/`))) {
+      uiLibraries.push(name);
+    }
+  }
+
+  return { framework: pkgFramework, uiLibraries };
+}
+
+/**
  * Detects the web framework and UI libraries used by analyzing package.json and file structure.
+ * Accepts either a local project directory path or a pre-parsed package.json object
+ * (useful when the package.json was fetched remotely via GitHub API).
+ *
  * @param {string|null} [explicitProjectDir=null] - Explicit project directory. Falls back to env/cwd.
+ * @param {Record<string, unknown>|null} [remotePackageJson=null] - Pre-parsed package.json from GitHub API.
  * @returns {Object} An object containing detected framework and UI libraries.
  */
-function detectProjectContext(explicitProjectDir = null) {
+function detectProjectContext(explicitProjectDir = null, remotePackageJson = null) {
   const uiLibraries = [];
   let pkgFramework = null;
   let fileFramework = null;
+
+  // If a remote package.json was provided (from GitHub API), use it directly
+  if (remotePackageJson) {
+    const result = detectFromPackageJson(remotePackageJson);
+    if (result.framework) {
+      log.info(`Detected framework: ${result.framework} (from remote package.json)`);
+    }
+    if (result.uiLibraries.length) {
+      log.info(`Detected UI libraries: ${result.uiLibraries.join(", ")}`);
+    }
+    return result;
+  }
 
   const projectDir = explicitProjectDir || process.env.A11Y_PROJECT_DIR || null;
   if (!projectDir) {
@@ -360,21 +406,9 @@ function detectProjectContext(explicitProjectDir = null) {
     const pkgPath = path.join(projectDir, "package.json");
     if (fs.existsSync(pkgPath)) {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-      const allDeps = Object.keys({
-        ...(pkg.dependencies || {}),
-        ...(pkg.devDependencies || {}),
-      });
-      for (const [dep, fw] of STACK_DETECTION.frameworkPackageDetectors) {
-        if (allDeps.some((d) => d === dep || d.startsWith(`${dep}/`))) {
-          pkgFramework = fw;
-          break;
-        }
-      }
-      for (const [prefix, name] of STACK_DETECTION.uiLibraryPackageDetectors) {
-        if (allDeps.some((d) => d === prefix || d.startsWith(`${prefix}/`))) {
-          uiLibraries.push(name);
-        }
-      }
+      const result = detectFromPackageJson(pkg);
+      pkgFramework = result.framework;
+      uiLibraries.push(...result.uiLibraries);
     }
   } catch { /* package.json unreadable */ }
 
@@ -951,6 +985,7 @@ export async function runDomScanner(options = {}, callbacks = {}) {
     viewport: options.viewport || null,
     axeTags: options.axeTags || null,
     projectDir: options.projectDir || null,
+    remotePackageJson: options.remotePackageJson || null,
     engines: {
       axe: options.engines?.axe !== false,
       cdp: options.engines?.cdp !== false,
@@ -1002,8 +1037,8 @@ async function _runDomScannerInternal(args) {
       timeout: args.timeoutMs,
     });
 
-    // 1. File-system / package.json detection (works when projectDir is available)
-    const repoCtx = detectProjectContext(args.projectDir || null);
+    // 1. File-system / package.json detection (local projectDir) or remote package.json
+    const repoCtx = detectProjectContext(args.projectDir || null, args.remotePackageJson || null);
 
     // 2. DOM/runtime detection (always works for any remote URL)
     let domCtx = { framework: null, cms: null, uiLibraries: [] };

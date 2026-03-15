@@ -231,6 +231,93 @@ export function scanPattern(pattern, scanDir, projectDir = scanDir) {
 }
 
 /**
+ * Scans files in a remote GitHub repository for a pattern.
+ * Functionally equivalent to scanPattern but reads files via GitHub API.
+ *
+ * @param {Object} pattern
+ * @param {string} repoUrl
+ * @param {string|undefined} githubToken
+ * @param {string|null} framework
+ * @returns {Promise<Object[]>}
+ */
+export async function scanPatternRemote(pattern, repoUrl, githubToken, framework = null) {
+  const { fetchRepoFile, listRepoFiles, parseRepoUrl } = await import("../core/github-api.mjs");
+  const parsed = parseRepoUrl(repoUrl);
+  if (!parsed) return [];
+
+  const extensions = [...parseExtensions(pattern.globs)];
+  if (extensions.length === 0) return [];
+
+  const allFiles = await listRepoFiles(repoUrl, extensions, githubToken);
+
+  // Scope to framework boundaries if known
+  const boundaries = framework ? SOURCE_BOUNDARIES?.[framework] : null;
+  let scopedFiles = allFiles;
+  if (boundaries) {
+    const allGlobs = [boundaries.components, boundaries.styles]
+      .filter(Boolean)
+      .flatMap((g) => g.split(",").map((s) => s.trim()));
+
+    const prefixes = new Set();
+    for (const glob of allGlobs) {
+      const prefix = glob.split(/[*?{]/)[0].replace(/\/$/, "");
+      if (prefix) prefixes.add(prefix);
+    }
+
+    if (prefixes.size > 0) {
+      scopedFiles = allFiles.filter((f) =>
+        [...prefixes].some((p) => f.startsWith(p))
+      );
+      if (scopedFiles.length === 0) scopedFiles = allFiles; // fallback
+    }
+  }
+
+  const regex = new RegExp(pattern.regex, "gi");
+  const findings = [];
+
+  for (const filePath of scopedFiles) {
+    const content = await fetchRepoFile(repoUrl, filePath, githubToken);
+    if (!content) continue;
+
+    const lines = content.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+      regex.lastIndex = 0;
+      if (!regex.test(lines[i])) continue;
+
+      const contextStart = Math.max(0, i - 3);
+      const contextEnd = Math.min(lines.length - 1, i + 3);
+      const context = lines
+        .slice(contextStart, contextEnd + 1)
+        .map((l, idx) => `${contextStart + idx + 1}  ${l}`)
+        .join("\n");
+
+      const confirmed = isConfirmedByContext(pattern, lines, i);
+
+      findings.push({
+        id: makeFindingId(pattern.id, filePath, i + 1),
+        pattern_id: pattern.id,
+        title: pattern.title,
+        severity: pattern.severity,
+        wcag: pattern.wcag,
+        wcag_criterion: pattern.wcag_criterion,
+        wcag_level: pattern.wcag_level,
+        type: pattern.type,
+        fix_description: pattern.fix_description ?? null,
+        status: confirmed ? "confirmed" : "potential",
+        file: filePath,
+        line: i + 1,
+        match: lines[i].trim(),
+        context,
+        source: "code-pattern",
+      });
+    }
+  }
+
+  return findings;
+}
+
+/**
  * Main execution function for the pattern scanner.
  */
 function main() {

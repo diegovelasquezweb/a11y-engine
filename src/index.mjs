@@ -188,6 +188,11 @@ export function getFindings(input, options = {}) {
   const { screenshotUrlBuilder = null } = options;
   const rules = getIntelligence().rules || {};
 
+  // If AI enrichment ran, return those findings directly (already normalized + enriched)
+  if (input?.ai_enriched_findings?.length > 0 && !screenshotUrlBuilder) {
+    return input.ai_enriched_findings;
+  }
+
   const rawFindings = input?.findings || [];
 
   // Normalize raw findings
@@ -652,6 +657,20 @@ export async function runAudit(options) {
     pa11y: options.engines?.pa11y !== false,
   };
 
+  // Fetch remote package.json via GitHub API if repoUrl is provided
+  let remotePackageJson = null;
+  if (options.repoUrl && !options.projectDir) {
+    try {
+      const { fetchPackageJson } = await import("./core/github-api.mjs");
+      remotePackageJson = await fetchPackageJson(options.repoUrl, options.githubToken);
+      if (remotePackageJson) {
+        console.info("[a11y-engine] Fetched package.json from GitHub repo");
+      }
+    } catch (err) {
+      console.warn(`[a11y-engine] Could not fetch package.json from repo (non-fatal): ${err.message}`);
+    }
+  }
+
   // Step 1: DOM scan (selected engines)
   if (onProgress) onProgress("page", "running");
 
@@ -672,6 +691,7 @@ export async function runAudit(options) {
       excludeSelectors: options.excludeSelectors,
       screenshotsDir: options.screenshotsDir,
       projectDir: options.projectDir,
+      remotePackageJson,
       engines,
     },
     { onProgress },
@@ -685,10 +705,10 @@ export async function runAudit(options) {
     framework: options.framework,
   });
 
-  // Step 3: Source patterns (optional)
-  if (options.projectDir && !options.skipPatterns) {
+  // Step 3: Source patterns (optional) — works with local projectDir or remote repoUrl
+  const hasSourceContext = (options.projectDir || options.repoUrl) && !options.skipPatterns;
+  if (hasSourceContext) {
     try {
-      const { resolveScanDirs, scanPattern } = await import("./source-patterns/source-scanner.mjs");
       const { patterns } = loadAssetJson(ASSET_PATHS.remediation.codePatterns, "code-patterns.json");
 
       let resolvedFramework = options.framework;
@@ -696,18 +716,35 @@ export async function runAudit(options) {
         resolvedFramework = findingsPayload.metadata.projectContext.framework;
       }
 
-      const scanDirs = resolveScanDirs(resolvedFramework || null, options.projectDir);
-      const allPatternFindings = [];
-      for (const pattern of patterns) {
-        for (const scanDir of scanDirs) {
-          allPatternFindings.push(...scanPattern(pattern, scanDir, options.projectDir));
+      let allPatternFindings = [];
+
+      if (options.projectDir) {
+        // Local filesystem scan
+        const { resolveScanDirs, scanPattern } = await import("./source-patterns/source-scanner.mjs");
+        const scanDirs = resolveScanDirs(resolvedFramework || null, options.projectDir);
+        for (const pattern of patterns) {
+          for (const scanDir of scanDirs) {
+            allPatternFindings.push(...scanPattern(pattern, scanDir, options.projectDir));
+          }
+        }
+      } else if (options.repoUrl) {
+        // Remote GitHub API scan
+        const { scanPatternRemote } = await import("./source-patterns/source-scanner.mjs");
+        for (const pattern of patterns) {
+          const remoteFindings = await scanPatternRemote(
+            pattern,
+            options.repoUrl,
+            options.githubToken,
+            resolvedFramework || null,
+          );
+          allPatternFindings.push(...remoteFindings);
         }
       }
 
       if (allPatternFindings.length > 0) {
         findingsPayload.patternFindings = {
           generated_at: new Date().toISOString(),
-          project_dir: options.projectDir,
+          project_dir: options.projectDir || options.repoUrl,
           findings: allPatternFindings,
           summary: {
             total: allPatternFindings.length,
@@ -724,6 +761,43 @@ export async function runAudit(options) {
   }
 
   if (onProgress) onProgress("intelligence", "done");
+
+  // Step 4: AI enrichment (optional) — requires ANTHROPIC_API_KEY
+  const aiOptions = options.ai || {};
+  const aiEnabled = aiOptions.enabled !== false && !!aiOptions.apiKey;
+  if (aiEnabled) {
+    try {
+      if (onProgress) onProgress("ai", "running");
+      const { enrichWithAI } = await import("./ai/claude.mjs");
+
+      const projectContext = findingsPayload.metadata?.projectContext || {};
+      const rawFindings = getFindings(findingsPayload);
+
+      const enrichedFindings = await enrichWithAI(
+        rawFindings,
+        {
+          stack: {
+            framework: projectContext.framework || null,
+            cms: projectContext.cms || null,
+            uiLibraries: projectContext.uiLibraries || [],
+          },
+          repoUrl: options.repoUrl,
+        },
+        {
+          enabled: true,
+          apiKey: aiOptions.apiKey,
+          githubToken: aiOptions.githubToken || options.githubToken,
+          model: aiOptions.model,
+        }
+      );
+
+      // Store enriched findings back into the payload
+      findingsPayload.ai_enriched_findings = enrichedFindings;
+      if (onProgress) onProgress("ai", "done");
+    } catch (err) {
+      console.warn(`[a11y-engine] AI step failed (non-fatal): ${err.message}`);
+    }
+  }
 
   // Attach active engines to metadata so consumers know which ran
   findingsPayload.metadata = findingsPayload.metadata || {};
