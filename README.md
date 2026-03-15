@@ -62,29 +62,7 @@ const payload = await runAudit({
 });
 ```
 
-Progress steps emitted: `repo`, `page`, `axe`, `cdp`, `pa11y`, `merge`, `intelligence`, `patterns`, `ai`. Steps are conditional — `repo` only fires when `repoUrl` is set, `patterns` when source scanning is active, and `ai` when AI enrichment is configured.
-
-**`runAudit` options**
-
-| Option | Type | Description |
-| :--- | :--- | :--- |
-| `baseUrl` | `string` | Target URL to scan |
-| `maxRoutes` | `number` | Maximum routes to discover and scan |
-| `crawlDepth` | `number` | How many link levels to follow from the starting URL |
-| `axeTags` | `string[]` | WCAG tag filters (e.g. `["wcag2a", "wcag2aa"]`) |
-| `engines` | `{ axe?, cdp?, pa11y? }` | Enable or disable individual scan engines |
-| `waitUntil` | `string` | Page load strategy: `"domcontentloaded"`, `"load"`, or `"networkidle"` |
-| `timeoutMs` | `number` | Per-page timeout in milliseconds |
-| `viewport` | `{ width, height }` | Browser viewport size |
-| `colorScheme` | `string` | Emulated color scheme: `"light"` or `"dark"` |
-| `projectDir` | `string` | Local project path for stack detection and source pattern scanning |
-| `repoUrl` | `string` | GitHub repo URL for remote stack detection and source pattern scanning |
-| `githubToken` | `string` | GitHub token for API access when using `repoUrl` |
-| `skipPatterns` | `boolean` | Disable source pattern scanning |
-| `ai` | `{ enabled?, apiKey?, githubToken?, model? }` | AI enrichment configuration |
-| `onProgress` | `(step, status, extra?) => void` | Progress callback for UI updates |
-
-See [API Reference](docs/api-reference.md) for the full `RunAuditOptions` contract.
+See [API Reference](docs/api-reference.md) for options, progress steps, and return types.
 
 #### getFindings
 
@@ -133,13 +111,13 @@ These functions render final artifacts from scan payload data.
 
 ### Knowledge API
 
-These functions expose scanner help content, persona explanations, conformance levels, and UI copy so frontends or agents can render tooltips and guidance from engine-owned data.
+These functions expose scanner help content, persona explanations, conformance levels, and UI copy so frontends or agents can render guidance from engine-owned data.
 
 | Function | Returns | Description |
 | :--- | :--- | :--- |
 | `getScannerHelp(options?)` | `{ locale, version, title, engines, options }` | Scanner option and engine help metadata |
 | `getPersonaReference(options?)` | `{ locale, version, personas }` | Persona labels, descriptions, and mapping hints |
-| `getUiHelp(options?)` | `{ locale, version, tooltips, glossary }` | Shared tooltip copy and glossary entries |
+| `getUiHelp(options?)` | `{ locale, version, concepts, glossary }` | Shared concept definitions and glossary entries |
 | `getConformanceLevels(options?)` | `{ locale, version, conformanceLevels }` | WCAG conformance level definitions with axe tag mappings |
 | `getWcagPrinciples(options?)` | `{ locale, version, wcagPrinciples }` | The four WCAG principles with criterion prefix patterns |
 | `getSeverityLevels(options?)` | `{ locale, version, severityLevels }` | Severity level definitions with labels and ordering |

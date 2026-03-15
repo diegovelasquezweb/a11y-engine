@@ -8,7 +8,7 @@
 
 ### `runAudit(options)`
 
-Runs route discovery, runtime scan, merge, and analyzer enrichment.
+Runs route discovery, runtime scan, merge, analyzer enrichment, and optional AI enrichment. Supports local project paths or remote GitHub repos for stack detection and source pattern scanning.
 
 `options` (`RunAuditOptions`):
 
@@ -30,9 +30,27 @@ Runs route discovery, runtime scan, merge, and analyzer enrichment.
 | `ignoreFindings` | `string[]` |
 | `framework` | `string` |
 | `projectDir` | `string` |
+| `repoUrl` | `string` |
+| `githubToken` | `string` |
 | `skipPatterns` | `boolean` |
 | `screenshotsDir` | `string` |
+| `engines` | `{ axe?: boolean; cdp?: boolean; pa11y?: boolean }` |
+| `ai` | `{ enabled?: boolean; apiKey?: string; githubToken?: string; model?: string }` |
 | `onProgress` | `(step: string, status: string, extra?: Record<string, unknown>) => void` |
+
+Progress steps emitted via `onProgress`:
+
+| Step | When |
+| :--- | :--- |
+| `page` | Always — page load |
+| `axe` | Always — axe-core scan |
+| `cdp` | Always — CDP accessibility tree check |
+| `pa11y` | Always — pa11y HTML CodeSniffer scan |
+| `merge` | Always — finding deduplication |
+| `intelligence` | Always — enrichment and WCAG mapping |
+| `repo` | When `repoUrl` is set |
+| `patterns` | When source scanning is active |
+| `ai` | When AI enrichment is configured |
 
 Returns: `Promise<ScanPayload>`
 
@@ -123,14 +141,35 @@ Returns: `PersonaReference` (`{ locale, version, personas }`)
 - `options`: `KnowledgeOptions`
   - `locale?: string`
 
-Returns: `UiHelp` (`{ locale, version, tooltips, glossary }`)
+Returns: `UiHelp` (`{ locale, version, concepts, glossary }`)
+
+### `getConformanceLevels(options?)`
+
+- `options`: `KnowledgeOptions`
+  - `locale?: string`
+
+Returns: `ConformanceLevelsResult` (`{ locale, version, conformanceLevels }`)
+
+### `getWcagPrinciples(options?)`
+
+- `options`: `KnowledgeOptions`
+  - `locale?: string`
+
+Returns: `WcagPrinciplesResult` (`{ locale, version, wcagPrinciples }`)
+
+### `getSeverityLevels(options?)`
+
+- `options`: `KnowledgeOptions`
+  - `locale?: string`
+
+Returns: `SeverityLevelsResult` (`{ locale, version, severityLevels }`)
 
 ### `getKnowledge(options?)`
 
 - `options`: `KnowledgeOptions`
   - `locale?: string`
 
-Returns: `EngineKnowledge` (`{ locale, version, scanner, personas, tooltips, glossary }`)
+Returns: `EngineKnowledge` (`{ locale, version, scanner, personas, concepts, glossary, docs, conformanceLevels, wcagPrinciples, severityLevels }`)
 
 ---
 
