@@ -10,7 +10,7 @@ import { spawn, execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
-import { log, DEFAULTS, SKILL_ROOT, getInternalPath } from "./core/utils.mjs";
+import { log, DEFAULTS, SKILL_ROOT, getInternalPath } from "../core/utils.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -205,7 +205,7 @@ async function main() {
       log.success("Dependencies ready.");
     }
 
-    await runScript("core/toolchain.mjs");
+    await runScript("../core/toolchain.mjs");
 
     const screenshotsDir = getInternalPath("screenshots");
     fs.rmSync(screenshotsDir, { recursive: true, force: true });
@@ -258,12 +258,12 @@ async function main() {
     }
     if (axeTags) scanArgs.push("--axe-tags", axeTags);
 
-    await runScript("engine/dom-scanner.mjs", scanArgs, childEnv);
+    await runScript("../pipeline/dom-scanner.mjs", scanArgs, childEnv);
 
     const analyzerArgs = [];
     if (ignoreFindings) analyzerArgs.push("--ignore-findings", ignoreFindings);
     if (framework) analyzerArgs.push("--framework", framework);
-    await runScript("engine/analyzer.mjs", analyzerArgs);
+    await runScript("../enrichment/analyzer.mjs", analyzerArgs);
 
     if (projectDir && !skipPatterns) {
       const patternArgs = ["--project-dir", path.resolve(projectDir)];
@@ -275,7 +275,7 @@ async function main() {
         } catch { /* ignore */ }
       }
       if (resolvedFramework) patternArgs.push("--framework", resolvedFramework);
-      await runScript("engine/source-scanner.mjs", patternArgs);
+      await runScript("../source-patterns/source-scanner.mjs", patternArgs);
     }
 
     const mdOutput = getInternalPath("remediation.md");
@@ -283,7 +283,7 @@ async function main() {
     if (target) mdArgs.push("--target", target);
 
     if (skipReports) {
-      await runScript("reports/builders/md.mjs", mdArgs);
+      await runScript("../reports/md.mjs", mdArgs);
     } else {
       const output = getArgValue("output");
       if (!output) {
@@ -307,10 +307,10 @@ async function main() {
       const checklistArgs = ["--output", checklistOutput, "--base-url", baseUrl];
 
       await Promise.all([
-        runScript("reports/builders/html.mjs", buildArgs),
-        runScript("reports/builders/checklist.mjs", checklistArgs),
-        runScript("reports/builders/md.mjs", mdArgs),
-        runScript("reports/builders/pdf.mjs", pdfArgs),
+        runScript("../reports/html.mjs", buildArgs),
+        runScript("../reports/checklist.mjs", checklistArgs),
+        runScript("../reports/md.mjs", mdArgs),
+        runScript("../reports/pdf.mjs", pdfArgs),
       ]);
 
       console.log(`REPORT_PATH=${absoluteOutputPath}`);

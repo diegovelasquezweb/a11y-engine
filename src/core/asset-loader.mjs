@@ -5,18 +5,18 @@
  * This ensures bundlers (Turbopack, Webpack) can trace them automatically.
  */
 
-import crawlerConfig from "../../assets/discovery/crawler-config.mjs";
-import stackDetection from "../../assets/discovery/stack-detection.mjs";
-import cdpChecks from "../../assets/engine/cdp-checks.mjs";
-import pa11yConfig from "../../assets/engine/pa11y-config.mjs";
-import axeCheckMaps from "../../assets/remediation/axe-check-maps.mjs";
-import codePatterns from "../../assets/remediation/code-patterns.mjs";
-import guardrails from "../../assets/remediation/guardrails.mjs";
-import intelligence from "../../assets/remediation/intelligence.mjs";
-import sourceBoundaries from "../../assets/remediation/source-boundaries.mjs";
-import complianceConfig from "../../assets/reporting/compliance-config.mjs";
-import manualChecks from "../../assets/reporting/manual-checks.mjs";
-import wcagReference from "../../assets/reporting/wcag-reference.mjs";
+import crawlerConfig from "../../assets/generated/discovery/crawler-config.mjs";
+import stackDetection from "../../assets/generated/discovery/stack-detection.mjs";
+import cdpChecks from "../../assets/generated/engine/cdp-checks.mjs";
+import pa11yConfig from "../../assets/generated/engine/pa11y-config.mjs";
+import axeCheckMaps from "../../assets/generated/remediation/axe-check-maps.mjs";
+import codePatterns from "../../assets/generated/remediation/code-patterns.mjs";
+import guardrails from "../../assets/generated/remediation/guardrails.mjs";
+import intelligence from "../../assets/generated/remediation/intelligence.mjs";
+import sourceBoundaries from "../../assets/generated/remediation/source-boundaries.mjs";
+import complianceConfig from "../../assets/generated/reporting/compliance-config.mjs";
+import manualChecks from "../../assets/generated/reporting/manual-checks.mjs";
+import wcagReference from "../../assets/generated/reporting/wcag-reference.mjs";
 
 /**
  * Pre-loaded asset map. Each value is the parsed JSON object, ready to use.

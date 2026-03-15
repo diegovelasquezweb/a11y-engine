@@ -457,8 +457,8 @@ export function getAuditSummary(findings, payload = null) {
 export async function runAudit(options) {
   if (!options.baseUrl) throw new Error("runAudit requires baseUrl");
 
-  const { runDomScanner } = await import("./engine/dom-scanner.mjs");
-  const { runAnalyzer } = await import("./engine/analyzer.mjs");
+  const { runDomScanner } = await import("./pipeline/dom-scanner.mjs");
+  const { runAnalyzer } = await import("./enrichment/analyzer.mjs");
 
   const onProgress = options.onProgress || null;
 
@@ -497,7 +497,7 @@ export async function runAudit(options) {
   // Step 3: Source patterns (optional)
   if (options.projectDir && !options.skipPatterns) {
     try {
-      const { resolveScanDirs, scanPattern } = await import("./engine/source-scanner.mjs");
+      const { resolveScanDirs, scanPattern } = await import("./source-patterns/source-scanner.mjs");
       const { patterns } = loadAssetJson(ASSET_PATHS.remediation.codePatterns, "code-patterns.json");
 
       let resolvedFramework = options.framework;
@@ -893,7 +893,7 @@ export async function getRemediationGuide(payload, options = {}) {
  * @returns {Promise<{ findings: object[], summary: { total: number, confirmed: number, potential: number } }>}
  */
 export async function getSourcePatterns(projectDir, options = {}) {
-  const { scanPattern, resolveScanDirs } = await import("./engine/source-scanner.mjs");
+  const { scanPattern, resolveScanDirs } = await import("./source-patterns/source-scanner.mjs");
 
   const { patterns } = loadAssetJson(ASSET_PATHS.remediation.codePatterns, "code-patterns.json");
 

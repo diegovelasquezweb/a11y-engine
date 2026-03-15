@@ -1,6 +1,6 @@
 {
   "name": "@diegovelasquezweb/a11y-engine",
-  "version": "0.3.1",
+  "version": "0.4.1",
   "description": "WCAG 2.2 AA accessibility audit engine — scanner, analyzer, and report builders",
   "type": "module",
   "license": "MIT",
@@ -14,27 +14,29 @@
   },
   "exports": {
     ".": {
-      "types": "./scripts/index.d.mts",
-      "default": "./scripts/index.mjs"
+      "types": "./src/index.d.mts",
+      "default": "./src/index.mjs"
     },
     "./package.json": "./package.json"
   },
-  "main": "scripts/index.mjs",
-  "types": "scripts/index.d.mts",
+  "main": "src/index.mjs",
+  "types": "src/index.d.mts",
   "bin": {
-    "a11y-audit": "scripts/audit.mjs"
+    "a11y-audit": "src/cli/audit.mjs"
   },
   "files": [
-    "scripts/**",
-    "assets/**",
+    "src/**",
+    "assets/source/**",
+    "assets/generated/**",
     "docs/**",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
+    "sync-assets": "node src/sync-assets.mjs",
     "test": "vitest run",
-    "prepublishOnly": "node -e \"console.log('Publishing @diegovelasquezweb/a11y-engine...')\""
+    "prepublishOnly": "node src/sync-assets.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.1",
