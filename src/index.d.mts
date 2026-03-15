@@ -263,19 +263,6 @@ export interface SeverityLevel {
   order: number;
 }
 
-export interface OutputFormatInfo {
-  title: string;
-  description: string;
-  detail: string;
-}
-
-export interface OutputsInfo {
-  pdf: OutputFormatInfo;
-  checklist: OutputFormatInfo;
-  json: OutputFormatInfo;
-  remediation: OutputFormatInfo;
-}
-
 export interface ConformanceLevelsResult {
   locale: string;
   version: string;
@@ -292,72 +279,6 @@ export interface SeverityLevelsResult {
   locale: string;
   version: string;
   severityLevels: SeverityLevel[];
-}
-
-export interface OutputsInfoResult {
-  locale: string;
-  version: string;
-  outputs: OutputsInfo;
-}
-
-export interface ScannerHelp {
-  locale: string;
-  version: string;
-  title: string;
-  engines: ScannerEngineHelp[];
-  options: ScannerOptionHelp[];
-}
-
-export interface PersonaReferenceItem {
-  id: string;
-  icon: string;
-  label: string;
-  description: string;
-  keywords: string[];
-  mappedRules: string[];
-}
-
-export interface PersonaReference {
-  locale: string;
-  version: string;
-  personas: PersonaReferenceItem[];
-}
-
-export interface ConceptEntry {
-  title: string;
-  body: string;
-  context?: string;
-}
-
-export interface GlossaryEntry {
-  term: string;
-  definition: string;
-}
-
-export interface DocArticle {
-  id: string;
-  title: string;
-  icon?: string;
-  badge?: string;
-  summary: string;
-  body: string;
-}
-
-export interface DocGroup {
-  id: string;
-  label: string;
-  articles: DocArticle[];
-}
-
-export interface DocSection {
-  id: string;
-  heading: string;
-  articles?: DocArticle[];
-  groups?: DocGroup[];
-}
-
-export interface KnowledgeDocs {
-  sections: DocSection[];
 }
 
 export interface UiHelp {
@@ -382,7 +303,6 @@ export interface EngineKnowledge {
   conformanceLevels: ConformanceLevel[];
   wcagPrinciples: WcagPrinciple[];
   severityLevels: SeverityLevel[];
-  outputs: OutputsInfo;
 }
 
 export interface KnowledgeOptions {
@@ -485,7 +405,5 @@ export function getConformanceLevels(options?: KnowledgeOptions): ConformanceLev
 export function getWcagPrinciples(options?: KnowledgeOptions): WcagPrinciplesResult;
 
 export function getSeverityLevels(options?: KnowledgeOptions): SeverityLevelsResult;
-
-export function getOutputsInfo(options?: KnowledgeOptions): OutputsInfoResult;
 
 export function getKnowledge(options?: KnowledgeOptions): EngineKnowledge;

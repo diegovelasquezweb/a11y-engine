@@ -238,28 +238,6 @@ export default {
           body: "Filter findings by severity or WCAG principle to focus remediation.",
         },
       },
-      outputs: {
-        pdf: {
-          title: "Stakeholder Report",
-          description: "A formal PDF accessibility compliance report.",
-          detail: "Designed for clients, non-technical stakeholders, project managers, and auditors. Includes the compliance score, WCAG status, severity breakdown, and a prioritized list of findings with recommended fixes — formatted for sharing and sign-off.",
-        },
-        checklist: {
-          title: "Manual Checklist",
-          description: "An interactive WCAG 2.2 AA manual testing checklist.",
-          detail: "Automated scanners catch around 30–40% of accessibility issues. This checklist covers the remaining manual checks — keyboard navigation, screen reader behavior, focus management, motion, zoom, and cognitive accessibility. Use it alongside the automated findings for a complete audit.",
-        },
-        json: {
-          title: "JSON Export",
-          description: "Machine-readable snapshot of all findings, scores, and metadata.",
-          detail: "Useful for integrating with CI/CD pipelines, tracking compliance over time, importing into dashboards, or diffing two audits programmatically. Includes all enriched findings with WCAG mappings, fix code, severity, and page location.",
-        },
-        remediation: {
-          title: "Remediation Guide",
-          description: "A structured Markdown guide for AI agents and developers.",
-          detail: "Contains prioritized fixes with ready-to-use code snippets, framework-specific guardrails, WCAG mappings, selector context, and verification commands. Designed to be fed directly into an AI coding agent (Claude, Copilot, Cursor) or used by developers for systematic remediation.",
-        },
-      },
       docs: {
         sections: [
           {

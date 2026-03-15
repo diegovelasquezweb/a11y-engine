@@ -578,23 +578,6 @@ export function getSeverityLevels(options = {}) {
   };
 }
 
-/**
- * Returns output format descriptions for each report type the engine produces.
- *
- * @param {{ locale?: string }} [options={}]
- * @returns {{ locale: string, version: string, outputs: object }}
- */
-export function getOutputsInfo(options = {}) {
-  const locale = resolveKnowledgeLocale(options.locale || "en");
-  const payload = getKnowledgeData();
-  const outputs = payload.locales[locale]?.outputs || {};
-  return {
-    locale,
-    version: payload.version || "1.0.0",
-    outputs: clone(outputs),
-  };
-}
-
 export function getKnowledge(options = {}) {
   const scanner = getScannerHelp(options);
   const personas = getPersonaReference(options);
@@ -602,8 +585,6 @@ export function getKnowledge(options = {}) {
   const conformance = getConformanceLevels(options);
   const principles = getWcagPrinciples(options);
   const severity = getSeverityLevels(options);
-  const outputsInfo = getOutputsInfo(options);
-
   const payload = getKnowledgeData();
   const docs = clone(payload.locales[scanner.locale]?.docs ?? { sections: [] });
 
@@ -622,7 +603,6 @@ export function getKnowledge(options = {}) {
     conformanceLevels: conformance.conformanceLevels,
     wcagPrinciples: principles.wcagPrinciples,
     severityLevels: severity.severityLevels,
-    outputs: outputsInfo.outputs,
   };
 }
 
