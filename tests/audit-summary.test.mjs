@@ -40,12 +40,18 @@ describe("getAuditSummary", () => {
     expect(summary.quickWins).toHaveLength(3);
   });
 
-  it("includes quickWins when fix_code is snake_case", () => {
-    const findings = [
-      { id: "1", severity: "Serious", fix_code: "<button aria-label='x'></button>", url: "https://example.com" },
-    ];
-    const summary = getAuditSummary(findings, { metadata: {} });
-    expect(summary.quickWins).toHaveLength(1);
+  it("includes quickWins only when fixCode (camelCase) is provided", () => {
+    const withCamelCase = getAuditSummary(
+      [{ id: "1", severity: "Serious", fixCode: "<button aria-label='x'></button>", url: "https://example.com" }],
+      { metadata: {} },
+    );
+    expect(withCamelCase.quickWins).toHaveLength(1);
+
+    const withSnakeCase = getAuditSummary(
+      [{ id: "1", severity: "Serious", fix_code: "<button aria-label='x'></button>", url: "https://example.com" }],
+      { metadata: {} },
+    );
+    expect(withSnakeCase.quickWins).toHaveLength(0);
   });
 
   it("handles missing payload metadata safely", () => {

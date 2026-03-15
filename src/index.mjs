@@ -183,7 +183,7 @@ export function getEnrichedFindings(input, options = {}) {
     normalizeSingleFinding(item, index, screenshotUrlBuilder)
   );
 
-  // Enrich with intelligence + camelCase aliases
+  // Enrich with intelligence and output camelCase-only findings
   const enriched = normalized.map((finding) => {
     const canonical = mapPa11yRuleToCanonical(
       finding.rule_id,
@@ -191,31 +191,45 @@ export function getEnrichedFindings(input, options = {}) {
       finding.check_data,
     );
 
-    // Effort will be inferred after enrichment
-
-    // Always create camelCase aliases
-    const withAliases = {
-      ...finding,
+    // Build camelCase-only enriched finding
+    const enrichedFinding = {
+      id: finding.id,
       ruleId: canonical,
-      rule_id: canonical,
+      source: finding.source,
       sourceRuleId: finding.source_rule_id || finding.rule_id || null,
-      fixDescription: finding.fix_description,
-      fixCode: finding.fix_code,
-      fixCodeLang: finding.fix_code_lang,
-      falsePositiveRisk: finding.false_positive_risk,
-      fixDifficultyNotes: finding.fix_difficulty_notes,
-      screenshotPath: finding.screenshot_path,
+      title: finding.title,
+      severity: finding.severity,
+      wcag: finding.wcag,
       wcagCriterionId: finding.wcag_criterion_id,
       wcagClassification: finding.wcag_classification,
-      impactedUsers: finding.impacted_users,
+      category: finding.category,
+      area: finding.area,
+      url: finding.url,
+      selector: finding.selector,
       primarySelector: finding.primary_selector,
+      impactedUsers: finding.impacted_users,
+      actual: finding.actual,
+      expected: finding.expected,
       primaryFailureMode: finding.primary_failure_mode,
       relationshipHint: finding.relationship_hint,
       failureChecks: finding.failure_checks,
       relatedContext: finding.related_context,
+      mdn: finding.mdn,
+      fixDescription: finding.fix_description,
+      fixCode: finding.fix_code,
+      fixCodeLang: finding.fix_code_lang,
       recommendedFix: finding.recommended_fix,
+      evidence: finding.evidence,
       totalInstances: finding.total_instances,
+      effort: finding.effort,
       relatedRules: finding.related_rules,
+      screenshotPath: finding.screenshot_path,
+      falsePositiveRisk: finding.false_positive_risk,
+      guardrails: finding.guardrails,
+      fixDifficultyNotes: finding.fix_difficulty_notes,
+      frameworkNotes: finding.framework_notes,
+      cmsNotes: finding.cms_notes,
+      fileSearchPattern: finding.file_search_pattern,
       ownershipStatus: finding.ownership_status,
       ownershipReason: finding.ownership_reason,
       primarySourceScope: finding.primary_source_scope,
@@ -229,36 +243,24 @@ export function getEnrichedFindings(input, options = {}) {
       affectedUrls: finding.affected_urls,
     };
 
-    // If fix data already exists, no need to look up intelligence
-    let result;
-    if (withAliases.fixDescription || withAliases.fixCode) {
-      result = withAliases;
-    } else {
+    // Enrich from intelligence if no fix data exists yet
+    if (!enrichedFinding.fixDescription && !enrichedFinding.fixCode) {
       const info = rules[canonical];
-      if (!info) {
-        result = withAliases;
-      } else {
-        result = {
-          ...withAliases,
-          category: withAliases.category ?? info.category ?? null,
-          fixDescription: info.fix?.description ?? null,
-          fix_description: info.fix?.description ?? null,
-          fixCode: info.fix?.code ?? null,
-          fix_code: info.fix?.code ?? withAliases.fix_code ?? null,
-          falsePositiveRisk: withAliases.falsePositiveRisk ?? info.false_positive_risk ?? null,
-          false_positive_risk: withAliases.false_positive_risk ?? info.false_positive_risk ?? null,
-          fixDifficultyNotes: withAliases.fixDifficultyNotes ?? info.fix_difficulty_notes ?? null,
-          fix_difficulty_notes: withAliases.fix_difficulty_notes ?? info.fix_difficulty_notes ?? null,
-        };
+      if (info) {
+        enrichedFinding.category = enrichedFinding.category ?? info.category ?? null;
+        enrichedFinding.fixDescription = info.fix?.description ?? null;
+        enrichedFinding.fixCode = info.fix?.code ?? null;
+        enrichedFinding.falsePositiveRisk = enrichedFinding.falsePositiveRisk ?? info.false_positive_risk ?? null;
+        enrichedFinding.fixDifficultyNotes = enrichedFinding.fixDifficultyNotes ?? info.fix_difficulty_notes ?? null;
       }
     }
 
     // Infer effort AFTER enrichment so intelligence-provided fixCode is considered
-    if (!result.effort || result.effort === "null") {
-      result.effort = (result.fixCode || result.fix_code) ? "low" : "high";
+    if (!enrichedFinding.effort || enrichedFinding.effort === "null") {
+      enrichedFinding.effort = enrichedFinding.fixCode ? "low" : "high";
     }
 
-    return result;
+    return enrichedFinding;
   });
 
   // Sort by severity then by ID
@@ -332,9 +334,9 @@ function getPersonaGroups(findings) {
   }
 
   for (const f of findings) {
-    const ruleId = (f.ruleId || f.rule_id || "").toLowerCase();
-    const wcagCriterionId = f.wcagCriterionId || f.wcag_criterion_id || "";
-    const users = (f.impactedUsers || f.impacted_users || "").toLowerCase();
+    const ruleId = (f.ruleId || "").toLowerCase();
+    const wcagCriterionId = f.wcagCriterionId || "";
+    const users = (f.impactedUsers || "").toLowerCase();
     const matchedPersonas = new Set();
 
     for (const [personaKey, mapping] of Object.entries(personaMapping)) {
@@ -390,7 +392,7 @@ export function getAuditSummary(findings, payload = null) {
   const quickWins = findings
     .filter((f) =>
       (f.severity === "Critical" || f.severity === "Serious") &&
-      (f.fixCode || f.fix_code)
+      f.fixCode
     )
     .slice(0, 3);
 

@@ -144,15 +144,17 @@ function buildIncompleteSection(incompleteFindings) {
   if (!Array.isArray(incompleteFindings) || incompleteFindings.length === 0) return "";
   const rows = incompleteFindings.map((f) => {
     const msg = (f.message || f.description || "Needs manual review").replace(/\|/g, "\\|");
-    const areaCell = f.pages_affected > 1
-      ? `${f.pages_affected} pages`
+    const pagesAffected = f.pagesAffected ?? f.pages_affected;
+    const ruleId = f.ruleId ?? f.rule_id;
+    const areaCell = pagesAffected > 1
+      ? `${pagesAffected} pages`
       : `\`${f.areas?.[0] ?? "?"}\``;
     let actionableHint = "";
-    if (f.rule_id === "duplicate-id-aria" && f.message) {
+    if (ruleId === "duplicate-id-aria" && f.message) {
       const idMatch = f.message.match(/same id attribute[:\s]+(\S+?)\.?\s*$/i);
       if (idMatch) actionableHint = ` — grep: \`id="${idMatch[1]}"\``;
     }
-    return `| \`${f.rule_id}\` | ${f.impact ?? "?"} | ${areaCell} | ${msg}${actionableHint} |`;
+    return `| \`${ruleId}\` | ${f.impact ?? "?"} | ${areaCell} | ${msg}${actionableHint} |`;
   });
   return `## Potential Issues — Manual Review Required
 

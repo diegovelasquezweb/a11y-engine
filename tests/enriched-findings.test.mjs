@@ -14,15 +14,20 @@ function makeFinding(overrides = {}) {
 }
 
 describe("getEnrichedFindings", () => {
-  it("creates camelCase aliases and keeps snake_case fields", () => {
+  it("outputs camelCase only without snake_case duplicates", () => {
     const input = [makeFinding({ rule_id: "image-alt", screenshot_path: "shot.png" })];
     const out = getEnrichedFindings(input);
 
     expect(out).toHaveLength(1);
     expect(out[0].ruleId).toBe("image-alt");
-    expect(out[0].rule_id).toBe("image-alt");
     expect(out[0].screenshotPath).toBe("shot.png");
-    expect(out[0].screenshot_path).toBe("shot.png");
+
+    // snake_case keys should NOT exist on enriched output
+    expect(out[0]).not.toHaveProperty("rule_id");
+    expect(out[0]).not.toHaveProperty("screenshot_path");
+    expect(out[0]).not.toHaveProperty("fix_description");
+    expect(out[0]).not.toHaveProperty("fix_code");
+    expect(out[0]).not.toHaveProperty("wcag_criterion_id");
   });
 
   it("applies screenshotUrlBuilder when provided", () => {

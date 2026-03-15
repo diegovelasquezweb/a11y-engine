@@ -53,26 +53,44 @@ export interface Finding {
   affected_urls?: string[] | null;
 }
 
-export interface EnrichedFinding extends Finding {
+export interface EnrichedFinding {
+  id: string;
   ruleId: string;
+  source: string;
   sourceRuleId: string | null;
-  fixDescription: string | null;
-  fixCode: string | null;
-  fixCodeLang: string | null;
-  falsePositiveRisk: string | null;
-  fixDifficultyNotes: string | string[] | null;
-  screenshotPath: string | null;
+  title: string;
+  severity: string;
+  wcag: string;
   wcagCriterionId: string | null;
   wcagClassification: string | null;
-  impactedUsers: string | null;
+  category: string | null;
+  area: string;
+  url: string;
+  selector: string;
   primarySelector: string;
+  impactedUsers: string | null;
+  actual: string;
+  expected: string;
   primaryFailureMode: string | null;
   relationshipHint: string | null;
   failureChecks: unknown[];
   relatedContext: unknown[];
+  mdn: string | null;
+  fixDescription: string | null;
+  fixCode: string | null;
+  fixCodeLang: string | null;
   recommendedFix: string;
+  evidence: unknown[];
   totalInstances: number | null;
+  effort: string;
   relatedRules: string[];
+  screenshotPath: string | null;
+  falsePositiveRisk: string | null;
+  guardrails: Record<string, unknown> | null;
+  fixDifficultyNotes: string | string[] | null;
+  frameworkNotes: string | null;
+  cmsNotes: string | null;
+  fileSearchPattern: string | null;
   ownershipStatus: string;
   ownershipReason: string | null;
   primarySourceScope: string[];
@@ -84,7 +102,6 @@ export interface EnrichedFinding extends Finding {
   checkData: Record<string, unknown> | null;
   pagesAffected: number | null;
   affectedUrls: string[] | null;
-  effort: string;
 }
 
 export interface SeverityTotals {

@@ -68,7 +68,7 @@ const findings = getEnrichedFindings(payload, {
 });
 ```
 
-Returns `EnrichedFinding[]` with both snake_case and camelCase fields.
+Returns `EnrichedFinding[]` with camelCase fields only.
 
 #### getAuditSummary
 
