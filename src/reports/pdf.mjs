@@ -8,13 +8,13 @@
 import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
-import { readJson, log, getInternalPath, DEFAULTS } from "../../core/utils.mjs";
+import { readJson, log, getInternalPath, DEFAULTS } from "../core/utils.mjs";
 import {
   normalizeFindings,
   buildSummary,
   computeComplianceScore,
   wcagOverallStatus,
-} from "../renderers/findings.mjs";
+} from "./renderers/findings.mjs";
 import {
   scoreMetrics,
   buildPdfTableOfContents,
@@ -26,7 +26,7 @@ import {
   buildPdfNextSteps,
   buildPdfAuditLimitations,
   buildPdfCoverPage,
-} from "../renderers/pdf.mjs";
+} from "./renderers/pdf.mjs";
 
 /**
  * Prints the CLI usage instructions and available options for the PDF report builder.

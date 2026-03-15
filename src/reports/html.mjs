@@ -5,8 +5,8 @@
  * a premium design system with persona-based impact analysis.
  */
 
-import { log, readJson, getInternalPath, DEFAULTS } from "../../core/utils.mjs";
-import { ASSET_PATHS, loadAssetJson } from "../../core/asset-loader.mjs";
+import { log, readJson, getInternalPath, DEFAULTS } from "../core/utils.mjs";
+import { ASSET_PATHS, loadAssetJson } from "../core/asset-loader.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -16,8 +16,8 @@ import {
   scoreLabel,
   buildPersonaSummary,
   wcagOverallStatus,
-} from "../renderers/findings.mjs";
-import { escapeHtml } from "../renderers/utils.mjs";
+} from "./renderers/findings.mjs";
+import { escapeHtml } from "./renderers/utils.mjs";
 
 const RULE_METADATA = loadAssetJson(
   ASSET_PATHS.reporting.wcagReference,
@@ -27,7 +27,7 @@ const RULE_METADATA = loadAssetJson(
 import {
   buildIssueCard,
   buildPageGroupedSection,
-} from "../renderers/html.mjs";
+} from "./renderers/html.mjs";
 
 /**
  * Prints the CLI usage instructions and available options for the HTML report builder.

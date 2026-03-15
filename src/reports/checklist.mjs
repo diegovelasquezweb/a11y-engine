@@ -6,10 +6,10 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { log, getInternalPath } from "../../core/utils.mjs";
-import { ASSET_PATHS, loadAssetJson } from "../../core/asset-loader.mjs";
-import { buildManualCheckCard } from "../renderers/html.mjs";
-import { escapeHtml } from "../renderers/utils.mjs";
+import { log, getInternalPath } from "../core/utils.mjs";
+import { ASSET_PATHS, loadAssetJson } from "../core/asset-loader.mjs";
+import { buildManualCheckCard } from "./renderers/html.mjs";
+import { escapeHtml } from "./renderers/utils.mjs";
 
 const MANUAL_CHECKS = loadAssetJson(
   ASSET_PATHS.reporting.manualChecks,
