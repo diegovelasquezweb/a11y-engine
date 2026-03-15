@@ -262,6 +262,33 @@ export interface GlossaryEntry {
   definition: string;
 }
 
+export interface DocArticle {
+  id: string;
+  title: string;
+  icon?: string;
+  tag?: string;
+  tagVariant?: string;
+  summary: string;
+  body: string;
+}
+
+export interface DocGroup {
+  id: string;
+  label: string;
+  articles: DocArticle[];
+}
+
+export interface DocSection {
+  id: string;
+  heading: string;
+  articles?: DocArticle[];
+  groups?: DocGroup[];
+}
+
+export interface KnowledgeDocs {
+  sections: DocSection[];
+}
+
 export interface UiHelp {
   locale: string;
   version: string;
@@ -280,6 +307,7 @@ export interface EngineKnowledge {
   personas: PersonaReferenceItem[];
   tooltips: Record<string, UiTooltip>;
   glossary: GlossaryEntry[];
+  docs: KnowledgeDocs;
 }
 
 export interface KnowledgeOptions {

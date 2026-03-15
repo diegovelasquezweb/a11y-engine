@@ -532,6 +532,9 @@ export function getKnowledge(options = {}) {
   const personas = getPersonaReference(options);
   const ui = getUiHelp(options);
 
+  const payload = getUxCopy();
+  const docs = clone(payload.locales[scanner.locale]?.docs ?? { sections: [] });
+
   return {
     locale: scanner.locale,
     version: scanner.version,
@@ -543,6 +546,7 @@ export function getKnowledge(options = {}) {
     personas: personas.personas,
     tooltips: ui.tooltips,
     glossary: ui.glossary,
+    docs,
   };
 }
 
