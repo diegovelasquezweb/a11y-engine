@@ -855,7 +855,7 @@ async function runPa11yChecks(routeUrl, axeTags) {
         }
       }
 
-      const ruleId = axeEquivId || `pa11y-${(issue.code || "unknown").replace(/\./g, "-").toLowerCase().slice(0, 60)}`;
+      const ruleId = axeEquivId || `pa11y-${((issue.code || "unknown").split(".").pop() || "unknown").toLowerCase()}`;
       const originalCode = issue.code || "unknown";
 
       violations.push({
