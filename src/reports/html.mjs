@@ -285,7 +285,7 @@ function buildHtml(args, findings, metadata = {}) {
               </div>
             </div>
             <h3 class="text-xl font-bold text-slate-900 mb-1">${label} Compliance</h3>
-            <p class="text-xs font-medium text-slate-500 max-w-[200px] leading-snug">Automated testing coverage based on ${escapeHtml(args.target)} technical checks.</p>
+            <p class="text-xs font-medium text-slate-500 max-w-50 leading-snug">Automated testing coverage based on ${escapeHtml(args.target)} technical checks.</p>
           </div>
 
           <div class="md:col-span-7 grid grid-cols-2 gap-4">
@@ -334,13 +334,13 @@ function buildHtml(args, findings, metadata = {}) {
             <div class="group">
               <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600 group-hover:bg-[var(--primary-light)] group-hover:text-[var(--primary)] transition-colors">${p.icon}</div>
+                  <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600 group-hover:bg-(--primary-light) group-hover:text-(--primary) transition-colors">${p.icon}</div>
                   <span class="text-sm font-bold text-slate-700">${p.label}</span>
                 </div>
                 <span class="text-xs font-black text-slate-900">${p.count} issues</span>
               </div>
               <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                <div class="bg-[var(--primary)] h-full rounded-full transition-all duration-500" style="width: ${findings.length > 0 ? (p.count / findings.length) * 100 : 0}%"></div>
+                <div class="bg-(--primary) h-full rounded-full transition-all duration-500" style="width: ${findings.length > 0 ? (p.count / findings.length) * 100 : 0}%"></div>
               </div>
             </div>`,
               )
@@ -355,14 +355,14 @@ function buildHtml(args, findings, metadata = {}) {
           ? `
       <div class="premium-card rounded-2xl bg-slate-900 p-6 mb-12 relative overflow-hidden">
         <div class="absolute -right-4 -bottom-4 opacity-10">
-          <svg class="w-32 h-32 text-[var(--primary)]" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <svg class="w-32 h-32 text-(--primary)" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <div class="relative z-10">
           <div class="flex items-center gap-3 mb-4">
-            <span class="px-2 py-0.5 rounded bg-[var(--primary)] text-[10px] font-black text-white uppercase tracking-tighter">AI Analysis</span>
+            <span class="px-2 py-0.5 rounded bg-(--primary) text-[10px] font-black text-white uppercase tracking-tighter">AI Analysis</span>
             <h3 class="text-xl font-bold text-white">Recommended Quick Wins</h3>
           </div>
-          <p class="text-xs text-[var(--primary)]/80 mb-6 -mt-2 leading-relaxed italic">High-priority issues with ready-to-use code fixes for immediate remediation.</p>
+          <p class="text-xs text-(--primary)/80 mb-6 -mt-2 leading-relaxed italic">High-priority issues with ready-to-use code fixes for immediate remediation.</p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             ${quickWins
               .map(
@@ -393,7 +393,7 @@ function buildHtml(args, findings, metadata = {}) {
           <div class="flex items-center gap-4">
             <h3 class="text-xl font-extrabold text-slate-900 tracking-tight">Findings <span class="text-slate-600 font-bold ml-1">${findings.length}</span></h3>
             <div class="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-              <button onclick="setView('severity')" id="view-severity" class="view-btn px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest bg-[var(--primary-light)] text-[var(--primary)] transition-all">By Severity</button>
+              <button onclick="setView('severity')" id="view-severity" class="view-btn px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest bg-(--primary-light) text-(--primary) transition-all">By Severity</button>
               ${
                 Object.keys(_pageCounts).length > 1
                   ? `<button onclick="setView('page')" id="view-page" class="view-btn px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-slate-700 transition-all">By Page</button>`
@@ -407,7 +407,7 @@ function buildHtml(args, findings, metadata = {}) {
         <!-- Row 2: Search & Filter Select -->
         <div class="flex items-center gap-4 w-full">
           <div class="relative flex-1">
-            <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="Search violations..." class="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[var(--primary)]/10 focus:border-[var(--primary)] transition-all shadow-sm">
+            <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="Search violations..." class="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-(--primary)/10 focus:border-(--primary) transition-all shadow-sm">
             <svg class="absolute left-4 top-3.5 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           
@@ -444,7 +444,7 @@ function buildHtml(args, findings, metadata = {}) {
       </div>
 
       <footer class="mt-10 py-6 border-t border-slate-200 text-center">
-        <p class="text-slate-600 text-sm font-medium">Generated by <a href="https://github.com/diegovelasquezweb/a11y" target="_blank" class="text-slate-700 hover:text-[var(--primary)] font-semibold transition-colors">a11y</a> &bull; <span class="text-slate-700">${escapeHtml(args.target)}</span></p>
+        <p class="text-slate-600 text-sm font-medium">Generated by <a href="https://github.com/diegovelasquezweb/a11y" target="_blank" class="text-slate-700 hover:text-(--primary) font-semibold transition-colors">a11y</a> &bull; <span class="text-slate-700">${escapeHtml(args.target)}</span></p>
       </footer>
     </main>
 

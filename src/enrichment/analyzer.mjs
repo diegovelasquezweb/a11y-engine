@@ -832,7 +832,7 @@ function buildFindings(inputPayload, cliArgs) {
 
         findings.push({
           id: "",
-          rule_id: v.id,
+          rule_id: v.source === "cdp" ? v.id.replace(/^cdp-/, "") : v.id,
           source_rule_id: v.source_rule_id || null,
           source: v.source || "axe",
           title: v.help,
