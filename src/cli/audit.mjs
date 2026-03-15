@@ -143,6 +143,28 @@ async function main() {
   const repoUrl = getArgValue("repo-url");
   const githubToken = getArgValue("github-token");
 
+  let remotePackageJson = null;
+  let detectedFramework = null;
+  if (repoUrl) {
+    try {
+      const { fetchPackageJson } = await import("../core/github-api.mjs");
+      remotePackageJson = await fetchPackageJson(repoUrl, githubToken || undefined);
+      if (remotePackageJson) {
+        const { detectProjectContext } = await import("../pipeline/dom-scanner.mjs");
+        const ctx = detectProjectContext(null, remotePackageJson);
+        if (ctx.framework) {
+          detectedFramework = ctx.framework;
+          log.info(`Detected framework from repository: ${ctx.framework}`);
+        }
+        if (ctx.uiLibraries.length) {
+          log.info(`Detected UI libraries: ${ctx.uiLibraries.join(", ")}`);
+        }
+      }
+    } catch (err) {
+      log.warn(`Could not fetch package.json from repo: ${err.message}`);
+    }
+  }
+
   const sessionFile = getInternalPath("a11y-session.json");
   let projectDir = getArgValue("project-dir");
   if (projectDir) {
@@ -268,7 +290,8 @@ async function main() {
 
     const analyzerArgs = [];
     if (ignoreFindings) analyzerArgs.push("--ignore-findings", ignoreFindings);
-    if (framework) analyzerArgs.push("--framework", framework);
+    const resolvedFramework = framework || detectedFramework;
+    if (resolvedFramework) analyzerArgs.push("--framework", resolvedFramework);
     await runScript("../enrichment/analyzer.mjs", analyzerArgs);
 
     if ((projectDir || repoUrl) && !skipPatterns) {
@@ -279,7 +302,7 @@ async function main() {
         patternArgs.push("--repo-url", repoUrl);
         if (githubToken) patternArgs.push("--github-token", githubToken);
       }
-      let resolvedFramework = framework;
+      let resolvedFramework = framework || detectedFramework;
       if (!resolvedFramework) {
         try {
           const findings = JSON.parse(fs.readFileSync(getInternalPath("a11y-findings.json"), "utf-8"));
