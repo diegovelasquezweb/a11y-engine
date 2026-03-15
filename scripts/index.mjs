@@ -481,6 +481,7 @@ export async function runAudit(options) {
       onlyRule: options.onlyRule,
       excludeSelectors: options.excludeSelectors,
       screenshotsDir: options.screenshotsDir,
+      projectDir: options.projectDir,
     },
     { onProgress },
   );

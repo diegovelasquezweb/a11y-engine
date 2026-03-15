@@ -337,14 +337,18 @@ export async function discoverRoutes(page, baseUrl, maxRoutes, crawlDepth = 2) {
 
 /**
  * Detects the web framework and UI libraries used by analyzing package.json and file structure.
+ * @param {string|null} [explicitProjectDir=null] - Explicit project directory. Falls back to env/cwd.
  * @returns {Object} An object containing detected framework and UI libraries.
  */
-function detectProjectContext() {
+function detectProjectContext(explicitProjectDir = null) {
   const uiLibraries = [];
   let pkgFramework = null;
   let fileFramework = null;
 
-  const projectDir = process.env.A11Y_PROJECT_DIR || process.cwd();
+  const projectDir = explicitProjectDir || process.env.A11Y_PROJECT_DIR || null;
+  if (!projectDir) {
+    return { framework: null, uiLibraries: [] };
+  }
 
   try {
     const pkgPath = path.join(projectDir, "package.json");
@@ -386,6 +390,126 @@ function detectProjectContext() {
   if (uiLibraries.length) log.info(`Detected UI libraries: ${uiLibraries.join(", ")}`);
 
   return { framework: resolvedFramework, uiLibraries };
+}
+
+/**
+ * Detects the web framework, CMS, and UI libraries by inspecting the live page DOM,
+ * window globals, script sources, and meta tags. This works for any remote URL
+ * without needing access to the project source code.
+ * @param {import("playwright").Page} page - The Playwright page object (already navigated).
+ * @returns {Promise<{ framework: string|null, cms: string|null, uiLibraries: string[] }>}
+ */
+async function detectProjectContextFromDom(page) {
+  const frameworkDetectors = STACK_DETECTION.domFrameworkDetectors || [];
+  const cmsDetectors = STACK_DETECTION.domCmsDetectors || [];
+  const uiDetectors = STACK_DETECTION.domUiLibraryDetectors || [];
+
+  const result = await page.evaluate(({ frameworkDetectors, cmsDetectors, uiDetectors }) => {
+    function checkSignals(signals) {
+      let matched = 0;
+      for (const signal of signals) {
+        try {
+          if (signal.kind === "global") {
+            if (typeof window[signal.key] !== "undefined" && window[signal.key] !== null) {
+              matched++;
+            }
+          } else if (signal.kind === "selector") {
+            if (document.querySelector(signal.value)) {
+              matched++;
+            }
+          } else if (signal.kind === "scriptSrc") {
+            const scripts = document.querySelectorAll("script[src]");
+            for (const s of scripts) {
+              if (s.getAttribute("src")?.includes(signal.pattern)) {
+                matched++;
+                break;
+              }
+            }
+          } else if (signal.kind === "meta") {
+            const metas = document.querySelectorAll(`meta[name="${signal.name}"],meta[property="${signal.name}"]`);
+            if (metas.length > 0) {
+              if (signal.pattern) {
+                for (const m of metas) {
+                  if (m.getAttribute("content")?.toLowerCase().includes(signal.pattern.toLowerCase())) {
+                    matched++;
+                    break;
+                  }
+                }
+              } else {
+                matched++;
+              }
+            }
+          }
+        } catch {
+          // ignore individual signal errors
+        }
+      }
+      return matched;
+    }
+
+    function detectBest(detectors) {
+      let best = null;
+      let bestScore = 0;
+      for (const detector of detectors) {
+        const score = checkSignals(detector.signals);
+        if (score > 0 && score > bestScore) {
+          bestScore = score;
+          best = detector.id;
+        }
+      }
+      return best;
+    }
+
+    function detectAllUiLibs(detectors) {
+      const found = [];
+      for (const detector of detectors) {
+        let total = 0;
+        let strongSignals = 0;
+        for (const signal of detector.signals) {
+          try {
+            let hit = false;
+            if (signal.kind === "global") {
+              hit = typeof window[signal.key] !== "undefined" && window[signal.key] !== null;
+            } else if (signal.kind === "selector") {
+              hit = !!document.querySelector(signal.value);
+            } else if (signal.kind === "scriptSrc") {
+              const scripts = document.querySelectorAll("script[src]");
+              for (const s of scripts) {
+                if (s.getAttribute("src")?.includes(signal.pattern)) { hit = true; break; }
+              }
+            } else if (signal.kind === "meta") {
+              const metas = document.querySelectorAll(`meta[name="${signal.name}"],meta[property="${signal.name}"]`);
+              for (const m of metas) {
+                if (!signal.pattern || m.getAttribute("content")?.toLowerCase().includes(signal.pattern.toLowerCase())) {
+                  hit = true; break;
+                }
+              }
+            }
+            if (hit) {
+              total++;
+              if (signal.kind !== "selector") strongSignals++;
+            }
+          } catch {}
+        }
+        if (total >= 2 || strongSignals >= 1) {
+          found.push(detector.id);
+        }
+      }
+      return found;
+    }
+
+    const framework = detectBest(frameworkDetectors);
+    const cms = detectBest(cmsDetectors);
+    const uiLibraries = detectAllUiLibs(uiDetectors);
+
+    return { framework, cms, uiLibraries };
+  }, { frameworkDetectors, cmsDetectors, uiDetectors });
+
+  if (result.framework) log.info(`DOM detection: framework=${result.framework}`);
+  if (result.cms) log.info(`DOM detection: cms=${result.cms}`);
+  if (result.uiLibraries.length) log.info(`DOM detection: uiLibraries=${result.uiLibraries.join(", ")}`);
+
+  return result;
 }
 
 /**
@@ -820,6 +944,7 @@ export async function runDomScanner(options = {}, callbacks = {}) {
     crawlDepth: Math.min(Math.max(options.crawlDepth ?? DEFAULTS.crawlDepth, 1), 3),
     viewport: options.viewport || null,
     axeTags: options.axeTags || null,
+    projectDir: options.projectDir || null,
   };
 
   if (!args.baseUrl) throw new Error("Missing required option: baseUrl");
@@ -859,14 +984,33 @@ async function _runDomScannerInternal(args) {
   const page = await context.newPage();
 
   let routes = [];
-  let projectContext = { framework: null, uiLibraries: [] };
+  let projectContext = { framework: null, cms: null, uiLibraries: [] };
   try {
     await page.goto(baseUrl, {
       waitUntil: args.waitUntil,
       timeout: args.timeoutMs,
     });
 
-    projectContext = detectProjectContext();
+    // 1. File-system / package.json detection (works when projectDir is available)
+    const repoCtx = detectProjectContext(args.projectDir || null);
+
+    // 2. DOM/runtime detection (always works for any remote URL)
+    let domCtx = { framework: null, cms: null, uiLibraries: [] };
+    try {
+      domCtx = await detectProjectContextFromDom(page);
+    } catch (err) {
+      log.warn(`DOM stack detection failed (non-fatal): ${err.message}`);
+    }
+
+    // 3. Merge: repo detection takes priority, DOM fills gaps
+    projectContext = {
+      framework: repoCtx.framework || domCtx.framework || null,
+      cms: domCtx.cms || null,
+      uiLibraries: [...new Set([
+        ...(repoCtx.uiLibraries || []),
+        ...(domCtx.uiLibraries || []),
+      ])],
+    };
 
     const cliRoutes = parseRoutesArg(args.routes, origin);
 

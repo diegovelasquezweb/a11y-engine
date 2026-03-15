@@ -755,6 +755,7 @@ function computeTestingMethodology(payload) {
     pages_scanned: scanned,
     pages_errored: errored,
     framework_detected: payload.projectContext?.framework || "Not detected",
+    cms_detected: payload.projectContext?.cms || "Not detected",
     manual_testing: "Not performed (automated scan only)",
     assistive_tech_tested: "None (automated scan only)",
   };
@@ -772,6 +773,7 @@ function buildFindings(inputPayload, cliArgs) {
   const routes = inputPayload.routes || [];
   const ctx = inputPayload.projectContext || {
     framework: null,
+    cms: null,
     uiLibraries: [],
   };
   if (cliArgs?.framework) ctx.framework = cliArgs.framework;
