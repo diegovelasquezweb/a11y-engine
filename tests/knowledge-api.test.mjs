@@ -24,10 +24,10 @@ describe("knowledge APIs", () => {
     expect(ref.personas.every((p) => Array.isArray(p.mappedRules))).toBe(true);
   });
 
-  it("returns ui tooltips and glossary", () => {
+  it("returns ui concepts and glossary", () => {
     const ui = getUiHelp();
 
-    expect(ui.tooltips.scoreGauge.title).toBeTruthy();
+    expect(ui.concepts.score.title).toBeTruthy();
     expect(ui.glossary.length).toBeGreaterThan(0);
   });
 
@@ -36,7 +36,7 @@ describe("knowledge APIs", () => {
 
     expect(knowledge.scanner.engines.length).toBeGreaterThan(0);
     expect(knowledge.personas.length).toBeGreaterThan(0);
-    expect(knowledge.tooltips.quickWins.title).toBeTruthy();
+    expect(knowledge.concepts.quickWins.title).toBeTruthy();
   });
 
   it("falls back to English when locale is unavailable", () => {

@@ -217,7 +217,15 @@ export interface ScannerEngineHelp {
   id: "axe" | "cdp" | "pa11y" | string;
   label: string;
   description: string;
+  coverage: string;
+  speed: "Fast" | "Medium" | "Slow" | string;
   defaultEnabled: boolean;
+}
+
+export interface EnumOptionValue {
+  value: string;
+  label: string;
+  description?: string;
 }
 
 export interface ScannerOptionHelp {
@@ -226,7 +234,70 @@ export interface ScannerOptionHelp {
   description: string;
   defaultValue: unknown;
   type: string;
-  allowedValues?: unknown[];
+  allowedValues?: unknown[] | EnumOptionValue[];
+}
+
+export interface ConformanceLevel {
+  id: "A" | "AA" | "AAA";
+  label: string;
+  badge: string;
+  description: string;
+  shortDescription: string;
+  hint: string;
+  tags: string[];
+}
+
+export interface WcagPrinciple {
+  id: string;
+  name: string;
+  description: string;
+  criterionPrefix: string;
+  number: number;
+}
+
+export interface SeverityLevel {
+  id: "Critical" | "Serious" | "Moderate" | "Minor";
+  label: string;
+  shortDescription: string;
+  description: string;
+  order: number;
+}
+
+export interface OutputFormatInfo {
+  title: string;
+  description: string;
+  detail: string;
+}
+
+export interface OutputsInfo {
+  pdf: OutputFormatInfo;
+  checklist: OutputFormatInfo;
+  json: OutputFormatInfo;
+  remediation: OutputFormatInfo;
+}
+
+export interface ConformanceLevelsResult {
+  locale: string;
+  version: string;
+  conformanceLevels: ConformanceLevel[];
+}
+
+export interface WcagPrinciplesResult {
+  locale: string;
+  version: string;
+  wcagPrinciples: WcagPrinciple[];
+}
+
+export interface SeverityLevelsResult {
+  locale: string;
+  version: string;
+  severityLevels: SeverityLevel[];
+}
+
+export interface OutputsInfoResult {
+  locale: string;
+  version: string;
+  outputs: OutputsInfo;
 }
 
 export interface ScannerHelp {
@@ -252,9 +323,10 @@ export interface PersonaReference {
   personas: PersonaReferenceItem[];
 }
 
-export interface UiTooltip {
+export interface ConceptEntry {
   title: string;
   body: string;
+  context?: string;
 }
 
 export interface GlossaryEntry {
@@ -266,8 +338,7 @@ export interface DocArticle {
   id: string;
   title: string;
   icon?: string;
-  tag?: string;
-  tagVariant?: string;
+  badge?: string;
   summary: string;
   body: string;
 }
@@ -292,7 +363,7 @@ export interface KnowledgeDocs {
 export interface UiHelp {
   locale: string;
   version: string;
-  tooltips: Record<string, UiTooltip>;
+  concepts: Record<string, ConceptEntry>;
   glossary: GlossaryEntry[];
 }
 
@@ -305,9 +376,13 @@ export interface EngineKnowledge {
     options: ScannerOptionHelp[];
   };
   personas: PersonaReferenceItem[];
-  tooltips: Record<string, UiTooltip>;
+  concepts: Record<string, ConceptEntry>;
   glossary: GlossaryEntry[];
   docs: KnowledgeDocs;
+  conformanceLevels: ConformanceLevel[];
+  wcagPrinciples: WcagPrinciple[];
+  severityLevels: SeverityLevel[];
+  outputs: OutputsInfo;
 }
 
 export interface KnowledgeOptions {
@@ -404,5 +479,13 @@ export function getScannerHelp(options?: KnowledgeOptions): ScannerHelp;
 export function getPersonaReference(options?: KnowledgeOptions): PersonaReference;
 
 export function getUiHelp(options?: KnowledgeOptions): UiHelp;
+
+export function getConformanceLevels(options?: KnowledgeOptions): ConformanceLevelsResult;
+
+export function getWcagPrinciples(options?: KnowledgeOptions): WcagPrinciplesResult;
+
+export function getSeverityLevels(options?: KnowledgeOptions): SeverityLevelsResult;
+
+export function getOutputsInfo(options?: KnowledgeOptions): OutputsInfoResult;
 
 export function getKnowledge(options?: KnowledgeOptions): EngineKnowledge;

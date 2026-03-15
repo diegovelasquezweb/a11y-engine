@@ -515,7 +515,7 @@ export function getUiHelp(options = {}) {
   return {
     locale,
     version: payload.version || "1.0.0",
-    tooltips: clone(localePayload.tooltips || {}),
+    concepts: clone(localePayload.concepts || {}),
     glossary: clone(localePayload.glossary || []),
   };
 }
@@ -527,10 +527,82 @@ export function getUiHelp(options = {}) {
  * @param {{ locale?: string }} [options={}]
  * @returns {{ locale: string, version: string, scanner: object, personas: object[], tooltips: Record<string, object>, glossary: object[] }}
  */
+/**
+ * Returns conformance level definitions with WCAG axe-core tag mappings.
+ *
+ * @param {{ locale?: string }} [options={}]
+ * @returns {{ locale: string, version: string, conformanceLevels: object[] }}
+ */
+export function getConformanceLevels(options = {}) {
+  const locale = resolveKnowledgeLocale(options.locale || "en");
+  const payload = getKnowledgeData();
+  const levels = payload.locales[locale]?.conformanceLevels || [];
+  return {
+    locale,
+    version: payload.version || "1.0.0",
+    conformanceLevels: clone(levels),
+  };
+}
+
+/**
+ * Returns the four WCAG principles with their criterion prefix patterns.
+ *
+ * @param {{ locale?: string }} [options={}]
+ * @returns {{ locale: string, version: string, wcagPrinciples: object[] }}
+ */
+export function getWcagPrinciples(options = {}) {
+  const locale = resolveKnowledgeLocale(options.locale || "en");
+  const payload = getKnowledgeData();
+  const principles = payload.locales[locale]?.wcagPrinciples || [];
+  return {
+    locale,
+    version: payload.version || "1.0.0",
+    wcagPrinciples: clone(principles),
+  };
+}
+
+/**
+ * Returns severity level definitions with labels, descriptions, and ordering.
+ *
+ * @param {{ locale?: string }} [options={}]
+ * @returns {{ locale: string, version: string, severityLevels: object[] }}
+ */
+export function getSeverityLevels(options = {}) {
+  const locale = resolveKnowledgeLocale(options.locale || "en");
+  const payload = getKnowledgeData();
+  const levels = payload.locales[locale]?.severityLevels || [];
+  return {
+    locale,
+    version: payload.version || "1.0.0",
+    severityLevels: clone(levels),
+  };
+}
+
+/**
+ * Returns output format descriptions for each report type the engine produces.
+ *
+ * @param {{ locale?: string }} [options={}]
+ * @returns {{ locale: string, version: string, outputs: object }}
+ */
+export function getOutputsInfo(options = {}) {
+  const locale = resolveKnowledgeLocale(options.locale || "en");
+  const payload = getKnowledgeData();
+  const outputs = payload.locales[locale]?.outputs || {};
+  return {
+    locale,
+    version: payload.version || "1.0.0",
+    outputs: clone(outputs),
+  };
+}
+
 export function getKnowledge(options = {}) {
   const scanner = getScannerHelp(options);
   const personas = getPersonaReference(options);
   const ui = getUiHelp(options);
+  const conformance = getConformanceLevels(options);
+  const principles = getWcagPrinciples(options);
+  const severity = getSeverityLevels(options);
+  const outputsInfo = getOutputsInfo(options);
 
   const payload = getKnowledgeData();
   const docs = clone(payload.locales[scanner.locale]?.docs ?? { sections: [] });
@@ -544,9 +616,13 @@ export function getKnowledge(options = {}) {
       options: scanner.options,
     },
     personas: personas.personas,
-    tooltips: ui.tooltips,
+    concepts: ui.concepts,
     glossary: ui.glossary,
     docs,
+    conformanceLevels: conformance.conformanceLevels,
+    wcagPrinciples: principles.wcagPrinciples,
+    severityLevels: severity.severityLevels,
+    outputs: outputsInfo.outputs,
   };
 }
 
