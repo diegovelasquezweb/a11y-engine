@@ -480,6 +480,7 @@ export async function runAudit(options) {
       axeTags: options.axeTags,
       onlyRule: options.onlyRule,
       excludeSelectors: options.excludeSelectors,
+      screenshotsDir: options.screenshotsDir,
     },
     { onProgress },
   );

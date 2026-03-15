@@ -214,6 +214,7 @@ export interface RunAuditOptions {
   framework?: string;
   projectDir?: string;
   skipPatterns?: boolean;
+  screenshotsDir?: string;
   onProgress?: (step: string, status: string, extra?: Record<string, unknown>) => void;
 }
 
