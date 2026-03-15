@@ -46,13 +46,18 @@ async function main() {
     githubToken,
   });
 
-  writeJson(findingsPath, { ...payload, findings: enriched });
+  const enrichedWithFlag = enriched.map((f, i) => {
+    const original = findings[i];
+    const wasImproved = original && (
+      f.fixDescription !== original.fixDescription ||
+      f.fixCode !== original.fixCode
+    );
+    return wasImproved ? { ...f, aiEnhanced: true } : f;
+  });
 
-  const improved = enriched.filter((f, i) =>
-    f.fixDescription !== findings[i]?.fixDescription ||
-    f.fixCode !== findings[i]?.fixCode
-  ).length;
+  writeJson(findingsPath, { ...payload, findings: enrichedWithFlag });
 
+  const improved = enrichedWithFlag.filter((f) => f.aiEnhanced).length;
   log.success(`AI enrichment complete. ${improved} finding(s) improved.`);
 }
 
