@@ -113,7 +113,7 @@ function walkFiles(dir, extensions, results = []) {
  * @param {string} projectDir
  * @returns {string[]}
  */
-function resolveScanDirs(framework, projectDir) {
+export function resolveScanDirs(framework, projectDir) {
   const boundaries = framework ? SOURCE_BOUNDARIES?.[framework] : null;
   if (!boundaries) return [projectDir];
 

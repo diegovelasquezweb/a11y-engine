@@ -137,9 +137,59 @@ export interface PDFReport {
   contentType: "application/pdf";
 }
 
+export interface HTMLReport {
+  html: string;
+  contentType: "text/html";
+}
+
 export interface ChecklistReport {
   html: string;
   contentType: "text/html";
+}
+
+export interface RemediationGuide {
+  markdown: string;
+  contentType: "text/markdown";
+}
+
+export interface SourcePatternFinding {
+  id: string;
+  pattern_id: string;
+  title: string;
+  severity: string;
+  wcag: string;
+  wcag_criterion: string;
+  wcag_level: string;
+  type: string;
+  fix_description: string | null;
+  status: "confirmed" | "potential";
+  file: string;
+  line: number;
+  match: string;
+  context: string;
+  source: "code-pattern";
+}
+
+export interface SourcePatternResult {
+  findings: SourcePatternFinding[];
+  summary: {
+    total: number;
+    confirmed: number;
+    potential: number;
+  };
+}
+
+export interface HTMLReportOptions extends ReportOptions {
+  screenshotsDir?: string;
+}
+
+export interface RemediationOptions extends ReportOptions {
+  patternFindings?: Record<string, unknown> | null;
+}
+
+export interface SourcePatternOptions {
+  framework?: string;
+  onlyPattern?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -172,3 +222,18 @@ export function getPDFReport(
 export function getChecklist(
   options?: Pick<ReportOptions, "baseUrl">
 ): Promise<ChecklistReport>;
+
+export function getHTMLReport(
+  payload: ScanPayload,
+  options?: HTMLReportOptions
+): Promise<HTMLReport>;
+
+export function getRemediationGuide(
+  payload: ScanPayload & { incomplete_findings?: unknown[] },
+  options?: RemediationOptions
+): Promise<RemediationGuide>;
+
+export function getSourcePatterns(
+  projectDir: string,
+  options?: SourcePatternOptions
+): Promise<SourcePatternResult>;

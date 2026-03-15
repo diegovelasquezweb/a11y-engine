@@ -608,3 +608,204 @@ export async function getChecklist(options = {}) {
     contentType: "text/html",
   };
 }
+
+// ---------------------------------------------------------------------------
+// HTML Report
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates an interactive HTML audit dashboard from raw scan findings.
+ * Embeds screenshots as base64 data URIs when available.
+ * @param {{ findings: object[], metadata?: object }} payload - Raw scan output.
+ * @param {{ baseUrl?: string, target?: string, screenshotsDir?: string }} [options={}]
+ * @returns {Promise<{ html: string, contentType: "text/html" }>}
+ */
+export async function getHTMLReport(payload, options = {}) {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const { buildIssueCard, buildPageGroupedSection } = await import("./reports/renderers/html.mjs");
+  const { escapeHtml } = await import("./reports/renderers/utils.mjs");
+
+  const args = { baseUrl: options.baseUrl || "", target: options.target || "WCAG 2.2 AA" };
+  const findings = normalizeForReports(payload).filter(
+    (f) => f.wcagClassification !== "AAA" && f.wcagClassification !== "Best Practice",
+  );
+
+  // Embed screenshots as base64 if screenshotsDir is provided
+  if (options.screenshotsDir) {
+    for (const finding of findings) {
+      if (finding.screenshotPath) {
+        const filename = path.basename(finding.screenshotPath);
+        const absolutePath = path.join(options.screenshotsDir, filename);
+        try {
+          if (fs.existsSync(absolutePath)) {
+            const data = fs.readFileSync(absolutePath);
+            finding.screenshotPath = `data:image/png;base64,${data.toString("base64")}`;
+          } else {
+            finding.screenshotPath = null;
+          }
+        } catch {
+          finding.screenshotPath = null;
+        }
+      }
+    }
+  }
+
+  // Dynamically import the html builder's buildHtml — it auto-executes main() on import,
+  // so we replicate its logic here using the renderers directly.
+  const {
+    buildSummary: buildSummaryLocal,
+    computeComplianceScore: computeScoreLocal,
+    scoreLabel: scoreLabelLocal,
+    buildPersonaSummary: buildPersonaSummaryLocal,
+    wcagOverallStatus: wcagOverallStatusLocal,
+  } = await import("./reports/renderers/findings.mjs");
+
+  // Use the builder's internal buildHtml by re-importing it
+  // Since html.mjs auto-runs main() on import, we cannot import it directly.
+  // Instead, we construct the HTML using the same renderers.
+  const totals = buildSummaryLocal(findings);
+  const score = computeScoreLocal(totals);
+  const label = scoreLabelLocal(score);
+  const wcagStatus = wcagOverallStatusLocal(totals);
+  const personaCounts = buildPersonaSummaryLocal(findings);
+
+  let siteHostname = args.baseUrl;
+  try {
+    siteHostname = new URL(args.baseUrl.startsWith("http") ? args.baseUrl : `https://${args.baseUrl}`).hostname;
+  } catch {}
+
+  const pageGroups = {};
+  for (const f of findings) {
+    const area = f.area || "Unknown";
+    if (!pageGroups[area]) pageGroups[area] = [];
+    pageGroups[area].push(f);
+  }
+
+  const issueCards = findings.map((f) => buildIssueCard(f)).join("\n");
+  const pageGroupedSections = Object.entries(pageGroups)
+    .map(([area, group]) => buildPageGroupedSection(area, group))
+    .join("\n");
+
+  const quickWins = findings
+    .filter((f) => (f.severity === "Critical" || f.severity === "Serious") && f.fixCode)
+    .slice(0, 3);
+
+  // Build a self-contained HTML report
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accessibility Audit — ${escapeHtml(siteHostname)}</title>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+  </style>
+</head>
+<body>
+  <main class="max-w-5xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-extrabold mb-2">Accessibility Audit Dashboard</h1>
+    <p class="text-slate-500 mb-8">${escapeHtml(siteHostname)} — ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <div class="text-3xl font-black">${score}</div>
+        <div class="text-xs font-bold text-slate-500 uppercase">${label}</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <div class="text-3xl font-black">${findings.length}</div>
+        <div class="text-xs font-bold text-slate-500 uppercase">Issues</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <div class="text-3xl font-black ${wcagStatus === 'Pass' ? 'text-emerald-600' : 'text-rose-600'}">${wcagStatus}</div>
+        <div class="text-xs font-bold text-slate-500 uppercase">WCAG 2.2 AA</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <div class="text-3xl font-black">${Object.keys(pageGroups).length}</div>
+        <div class="text-xs font-bold text-slate-500 uppercase">Pages</div>
+      </div>
+    </div>
+    <div class="space-y-4">
+      ${pageGroupedSections}
+    </div>
+  </main>
+</body>
+</html>`;
+
+  return {
+    html,
+    contentType: "text/html",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Remediation Guide (Markdown)
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates a Markdown remediation guide from raw scan findings.
+ * @param {{ findings: object[], metadata?: object, incomplete_findings?: object[] }} payload
+ * @param {{ baseUrl?: string, target?: string, patternFindings?: object }} [options={}]
+ * @returns {Promise<{ markdown: string, contentType: "text/markdown" }>}
+ */
+export async function getRemediationGuide(payload, options = {}) {
+  const { buildMarkdownSummary } = await import("./reports/renderers/md.mjs");
+
+  const args = { baseUrl: options.baseUrl || "", target: options.target || "WCAG 2.2 AA" };
+  const findings = normalizeForReports(payload);
+
+  const markdown = buildMarkdownSummary(args, findings, {
+    ...payload.metadata,
+    incomplete_findings: payload.incomplete_findings,
+    pattern_findings: options.patternFindings || null,
+  });
+
+  return {
+    markdown,
+    contentType: "text/markdown",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Source Pattern Scanner
+// ---------------------------------------------------------------------------
+
+/**
+ * Scans a project's source code for accessibility patterns not detectable by axe-core.
+ * @param {string} projectDir - Absolute path to the project root.
+ * @param {{ framework?: string, onlyPattern?: string }} [options={}]
+ * @returns {Promise<{ findings: object[], summary: { total: number, confirmed: number, potential: number } }>}
+ */
+export async function getSourcePatterns(projectDir, options = {}) {
+  const { scanPattern, resolveScanDirs } = await import("./engine/source-scanner.mjs");
+
+  const { patterns } = loadAssetJson(ASSET_PATHS.remediation.codePatterns, "code-patterns.json");
+
+  const activePatterns = options.onlyPattern
+    ? patterns.filter((p) => p.id === options.onlyPattern)
+    : patterns;
+
+  if (activePatterns.length === 0) {
+    return { findings: [], summary: { total: 0, confirmed: 0, potential: 0 } };
+  }
+
+  const scanDirs = resolveScanDirs(options.framework || null, projectDir);
+  const allFindings = [];
+
+  for (const pattern of activePatterns) {
+    for (const scanDir of scanDirs) {
+      allFindings.push(...scanPattern(pattern, scanDir, projectDir));
+    }
+  }
+
+  const confirmed = allFindings.filter((f) => f.status === "confirmed").length;
+  const potential = allFindings.filter((f) => f.status === "potential").length;
+
+  return {
+    findings: allFindings,
+    summary: { total: allFindings.length, confirmed, potential },
+  };
+}
