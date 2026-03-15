@@ -159,24 +159,19 @@ function normalizeSingleFinding(item, index, screenshotUrlBuilder) {
 /**
  * Normalizes and enriches raw findings with intelligence data.
  *
- * Accepts either:
- * - A full scan payload: { findings: object[], metadata?: object }
- * - An array of findings directly: object[]
- *
  * Options:
  * - screenshotUrlBuilder: (rawPath: string) => string — transforms screenshot
  *   paths into consumer-specific URLs.
  *
- * @param {object[]|{findings: object[]}} input
+ * @param {{findings: object[]}} input
  * @param {{ screenshotUrlBuilder?: (path: string) => string }} [options={}]
  * @returns {object[]} Enriched, normalized, sorted findings.
  */
-export function getEnrichedFindings(input, options = {}) {
+export function getFindings(input, options = {}) {
   const { screenshotUrlBuilder = null } = options;
   const rules = getIntelligence().rules || {};
 
-  // Accept payload object or array directly
-  const rawFindings = Array.isArray(input) ? input : (input?.findings || []);
+  const rawFindings = input?.findings || [];
 
   // Normalize raw findings
   const normalized = rawFindings.map((item, index) =>
@@ -379,7 +374,7 @@ function getPersonaGroups(findings) {
  * @param {{ findings: object[], metadata?: object }|null} [payload=null] - Original scan payload for metadata extraction.
  * @returns {object} Full audit summary.
  */
-export function getAuditSummary(findings, payload = null) {
+export function getOverview(findings, payload = null) {
   const totals = { Critical: 0, Serious: 0, Moderate: 0, Minor: 0 };
   for (const f of findings) {
     const severity = f.severity || "";
@@ -426,17 +421,13 @@ export function getAuditSummary(findings, payload = null) {
   };
 }
 
-// Friendly aliases (preferred for new integrations)
-export const getFindings = getEnrichedFindings;
-export const getOverview = getAuditSummary;
-
 // ---------------------------------------------------------------------------
 // Full audit pipeline
 // ---------------------------------------------------------------------------
 
 /**
  * Runs a complete accessibility audit: crawl + scan (axe + CDP + pa11y) + analyze.
- * Returns the enriched scan payload ready for getEnrichedFindings().
+ * Returns the scan payload ready for getFindings().
  *
  * @param {{
  *   baseUrl: string,

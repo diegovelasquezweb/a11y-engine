@@ -70,15 +70,7 @@ See [API Reference](docs/api-reference.md) for the full `RunAuditOptions` contra
 
 #### getFindings
 
-Transforms raw scan findings into the final app-ready findings list.
-
-It does five things in order:
-
-1. normalizes finding fields
-2. maps pa11y rule ids to canonical axe-equivalent ids
-3. enriches findings with intelligence data
-4. infers effort level when missing
-5. sorts by severity
+Builds the enriched findings list from the `payload` returned by `runAudit`.
 
 ```ts
 const findings = getFindings(payload, {
@@ -86,9 +78,7 @@ const findings = getFindings(payload, {
 });
 ```
 
-Input: `ScanPayload` or `Finding[]`.
-
-Output: `EnrichedFinding[]` ready for UI rendering, filtering, and report generation.
+Returns `EnrichedFinding[]` ready for UI rendering and report generation.
 
 **Options (`EnrichmentOptions`)**
 
@@ -110,11 +100,6 @@ const summary = getOverview(findings, payload);
 // summary.quickWins     -> [top 3 fixable Critical/Serious findings]
 // summary.detectedStack -> { framework: "nextjs", cms: null, uiLibraries: [] }
 ```
-
-Legacy names are still supported for compatibility:
-
-- `getEnrichedFindings` -> same as `getFindings`
-- `getAuditSummary` -> same as `getOverview`
 
 ### Output API
 

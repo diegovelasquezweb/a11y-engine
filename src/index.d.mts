@@ -249,20 +249,10 @@ export interface EnrichmentOptions {
 
 export function runAudit(options: RunAuditOptions): Promise<ScanPayload>;
 
-export function getEnrichedFindings(
-  input: ScanPayload | Finding[] | Record<string, unknown>[],
-  options?: EnrichmentOptions
-): EnrichedFinding[];
-
 export function getFindings(
-  input: ScanPayload | Finding[] | Record<string, unknown>[],
+  input: ScanPayload,
   options?: EnrichmentOptions
 ): EnrichedFinding[];
-
-export function getAuditSummary(
-  findings: EnrichedFinding[],
-  payload?: ScanPayload | null
-): AuditSummary;
 
 export function getOverview(
   findings: EnrichedFinding[],

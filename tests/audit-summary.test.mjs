@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { getAuditSummary } from "../src/index.mjs";
+import { getOverview } from "../src/index.mjs";
 
-describe("getAuditSummary", () => {
+describe("getOverview", () => {
   it("computes totals, wcag status and stack metadata", () => {
     const findings = [
       { id: "1", severity: "Critical", fixCode: "x", url: "https://example.com" },
@@ -20,7 +20,7 @@ describe("getAuditSummary", () => {
       },
     };
 
-    const summary = getAuditSummary(findings, payload);
+    const summary = getOverview(findings, payload);
 
     expect(summary.totals).toEqual({ Critical: 1, Serious: 1, Moderate: 1, Minor: 0 });
     expect(summary.wcagStatus).toBe("Fail");
@@ -36,18 +36,18 @@ describe("getAuditSummary", () => {
       { id: "4", severity: "Serious", fixCode: "x", url: "https://example.com" },
     ];
 
-    const summary = getAuditSummary(findings, { metadata: {} });
+    const summary = getOverview(findings, { metadata: {} });
     expect(summary.quickWins).toHaveLength(3);
   });
 
   it("includes quickWins only when fixCode (camelCase) is provided", () => {
-    const withCamelCase = getAuditSummary(
+    const withCamelCase = getOverview(
       [{ id: "1", severity: "Serious", fixCode: "<button aria-label='x'></button>", url: "https://example.com" }],
       { metadata: {} },
     );
     expect(withCamelCase.quickWins).toHaveLength(1);
 
-    const withSnakeCase = getAuditSummary(
+    const withSnakeCase = getOverview(
       [{ id: "1", severity: "Serious", fix_code: "<button aria-label='x'></button>", url: "https://example.com" }],
       { metadata: {} },
     );
@@ -55,7 +55,7 @@ describe("getAuditSummary", () => {
   });
 
   it("handles missing payload metadata safely", () => {
-    const summary = getAuditSummary([{ id: "1", severity: "Minor", fixCode: null, url: "https://a.com" }], null);
+    const summary = getOverview([{ id: "1", severity: "Minor", fixCode: null, url: "https://a.com" }], null);
     expect(summary.targetUrl).toBe("");
     expect(summary.detectedStack).toEqual({ framework: null, cms: null, uiLibraries: [] });
     expect(summary.wcagStatus).toBe("Conditional Pass");

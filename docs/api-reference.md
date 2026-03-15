@@ -40,7 +40,7 @@ Returns: `Promise<ScanPayload>`
 
 Normalizes and enriches findings and returns sorted enriched findings.
 
-- `input`: `ScanPayload | Finding[] | Record<string, unknown>[]`
+- `input`: `ScanPayload` from `runAudit`
 - `options` (`EnrichmentOptions`):
   - `screenshotUrlBuilder?: (rawPath: string) => string`
 
@@ -54,11 +54,6 @@ Computes totals, score, WCAG status, persona groups, quick wins, target URL, and
 - `payload`: `ScanPayload | null`
 
 Returns: `AuditSummary`
-
-Compatibility aliases:
-
-- `getEnrichedFindings` -> `getFindings`
-- `getAuditSummary` -> `getOverview`
 
 ## Output API
 

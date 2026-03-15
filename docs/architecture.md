@@ -56,8 +56,8 @@ flowchart LR
     subgraph API[Programmatic Mode]
       A1[src/index.mjs]
       A2[runAudit]
-      A3[getEnrichedFindings]
-      A4[getAuditSummary]
+      A3[getFindings]
+      A4[getOverview]
       A5[get*Report functions]
       A1 --> A2
       A1 --> A3
@@ -79,7 +79,7 @@ flowchart LR
 | `src/reports/*.mjs` | Report builders for markdown/html/pdf/checklist |
 | `src/reports/renderers/*.mjs` | Shared rendering and normalization helpers |
 | `src/core/asset-loader.mjs` | Centralized access to bundled assets |
-| `src/index.mjs` | Public API facade (`runAudit`, `getEnrichedFindings`, `getAuditSummary`, report APIs, source patterns) |
+| `src/index.mjs` | Public API facade (`runAudit`, `getFindings`, `getOverview`, report APIs, source patterns) |
 
 ## Stack Detection Model
 

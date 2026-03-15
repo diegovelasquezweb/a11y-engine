@@ -261,8 +261,8 @@ The engine exports functions that process scan data directly in memory — no fi
 
 ```ts
 import {
-  getEnrichedFindings,
-  getAuditSummary,
+  getFindings,
+  getOverview,
   getPDFReport,
   getHTMLReport,
   getChecklist,
@@ -274,12 +274,12 @@ import {
 const payload = JSON.parse(fs.readFileSync(findingsPath, "utf-8"));
 
 // Enrich findings with fix intelligence
-const findings = getEnrichedFindings(payload, {
+const findings = getFindings(payload, {
   screenshotUrlBuilder: (path) => `/api/screenshot?path=${encodeURIComponent(path)}`,
 });
 
 // Get full audit summary
-const summary = getAuditSummary(findings, payload);
+const summary = getOverview(findings, payload);
 
 // Generate reports
 const pdf = await getPDFReport(payload, { baseUrl: "https://example.com" });
