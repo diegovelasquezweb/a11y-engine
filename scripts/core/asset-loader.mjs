@@ -1,93 +1,91 @@
 /**
- * @file assets.mjs
- * @description Centralized asset paths and JSON loaders for the a11y skill.
+ * @file asset-loader.mjs
+ * @description Centralized asset loading for the a11y engine.
+ * Assets are imported as ES modules — no filesystem reads required.
+ * This ensures bundlers (Turbopack, Webpack) can trace them automatically.
  */
 
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
+import crawlerConfig from "../../assets/discovery/crawler-config.mjs";
+import stackDetection from "../../assets/discovery/stack-detection.mjs";
+import cdpChecks from "../../assets/engine/cdp-checks.mjs";
+import pa11yConfig from "../../assets/engine/pa11y-config.mjs";
+import axeCheckMaps from "../../assets/remediation/axe-check-maps.mjs";
+import codePatterns from "../../assets/remediation/code-patterns.mjs";
+import guardrails from "../../assets/remediation/guardrails.mjs";
+import intelligence from "../../assets/remediation/intelligence.mjs";
+import sourceBoundaries from "../../assets/remediation/source-boundaries.mjs";
+import complianceConfig from "../../assets/reporting/compliance-config.mjs";
+import manualChecks from "../../assets/reporting/manual-checks.mjs";
+import wcagReference from "../../assets/reporting/wcag-reference.mjs";
 
 /**
- * Resolves the assets root directory. Uses import.meta.url when running from
- * the original file location (CLI, direct node). Falls back to multiple
- * strategies when running inside a bundler (e.g. Turbopack) where
- * import.meta.url points to a generated chunk.
+ * Pre-loaded asset map. Each value is the parsed JSON object, ready to use.
  */
-function resolveAssetRoot() {
-  // Primary: resolve relative to this file's location
-  try {
-    const selfDir = path.dirname(fileURLToPath(import.meta.url));
-    const candidate = path.join(selfDir, "..", "..", "assets");
-    if (fs.existsSync(candidate)) return candidate;
-  } catch { /* import.meta.url might be a virtual URL in bundlers */ }
-
-  // Fallback 1: require.resolve with createRequire from process.cwd()
-  try {
-    const req = createRequire(path.join(process.cwd(), "package.json"));
-    const pkgJson = req.resolve("@diegovelasquezweb/a11y-engine/package.json");
-    const fallback = path.join(path.dirname(pkgJson), "assets");
-    if (fs.existsSync(fallback)) return fallback;
-  } catch { /* package not installed or exports block it */ }
-
-  // Fallback 2: walk node_modules directly (handles pnpm symlinks)
-  try {
-    const nmBase = path.join(process.cwd(), "node_modules", "@diegovelasquezweb", "a11y-engine");
-    const realBase = fs.realpathSync(nmBase);
-    const fallback = path.join(realBase, "assets");
-    if (fs.existsSync(fallback)) return fallback;
-  } catch { /* not in node_modules */ }
-
-  // Last resort: relative to this file (will fail with a clear error at load time)
-  const selfDir = path.dirname(fileURLToPath(import.meta.url));
-  return path.join(selfDir, "..", "..", "assets");
-}
-
-const ASSET_ROOT = resolveAssetRoot();
-
-export const ASSET_PATHS = {
+export const ASSETS = {
   discovery: {
-    crawlerConfig: path.join(ASSET_ROOT, "discovery", "crawler-config.json"),
-    stackDetection: path.join(
-      ASSET_ROOT,
-      "discovery",
-      "stack-detection.json",
-    ),
-  },
-  remediation: {
-    intelligence: path.join(ASSET_ROOT, "remediation", "intelligence.json"),
-    axeCheckMaps: path.join(
-      ASSET_ROOT,
-      "remediation",
-      "axe-check-maps.json",
-    ),
-    guardrails: path.join(ASSET_ROOT, "remediation", "guardrails.json"),
-    sourceBoundaries: path.join(
-      ASSET_ROOT,
-      "remediation",
-      "source-boundaries.json",
-    ),
-    codePatterns: path.join(ASSET_ROOT, "remediation", "code-patterns.json"),
+    crawlerConfig,
+    stackDetection,
   },
   engine: {
-    cdpChecks: path.join(ASSET_ROOT, "engine", "cdp-checks.json"),
-    pa11yConfig: path.join(ASSET_ROOT, "engine", "pa11y-config.json"),
+    cdpChecks,
+    pa11yConfig,
+  },
+  remediation: {
+    intelligence,
+    axeCheckMaps,
+    guardrails,
+    sourceBoundaries,
+    codePatterns,
   },
   reporting: {
-    wcagReference: path.join(ASSET_ROOT, "reporting", "wcag-reference.json"),
-    complianceConfig: path.join(
-      ASSET_ROOT,
-      "reporting",
-      "compliance-config.json",
-    ),
-    manualChecks: path.join(ASSET_ROOT, "reporting", "manual-checks.json"),
+    complianceConfig,
+    wcagReference,
+    manualChecks,
   },
 };
 
-export function loadAssetJson(filePath, label) {
-  try {
-    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  } catch {
-    throw new Error(`Missing or invalid ${label} — reinstall the skill.`);
+/**
+ * Backwards-compatible path map. Points to the same assets but by key name.
+ * Consumers that used ASSET_PATHS + loadAssetJson can now use ASSETS directly.
+ * @deprecated Use ASSETS instead.
+ */
+export const ASSET_PATHS = {
+  discovery: {
+    crawlerConfig: "discovery.crawlerConfig",
+    stackDetection: "discovery.stackDetection",
+  },
+  engine: {
+    cdpChecks: "engine.cdpChecks",
+    pa11yConfig: "engine.pa11yConfig",
+  },
+  remediation: {
+    intelligence: "remediation.intelligence",
+    axeCheckMaps: "remediation.axeCheckMaps",
+    guardrails: "remediation.guardrails",
+    sourceBoundaries: "remediation.sourceBoundaries",
+    codePatterns: "remediation.codePatterns",
+  },
+  reporting: {
+    complianceConfig: "reporting.complianceConfig",
+    wcagReference: "reporting.wcagReference",
+    manualChecks: "reporting.manualChecks",
+  },
+};
+
+/**
+ * Backwards-compatible loader. Returns the pre-imported asset by path key.
+ * @param {string} pathKey - The ASSET_PATHS key (e.g., "reporting.complianceConfig")
+ * @param {string} label - Human-readable label for error messages.
+ * @returns {object} The parsed asset data.
+ */
+export function loadAssetJson(pathKey, label) {
+  const parts = pathKey.split(".");
+  let obj = ASSETS;
+  for (const part of parts) {
+    obj = obj?.[part];
   }
+  if (!obj) {
+    throw new Error(`Missing or invalid ${label} — asset key "${pathKey}" not found.`);
+  }
+  return obj;
 }
