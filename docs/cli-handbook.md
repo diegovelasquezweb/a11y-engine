@@ -235,3 +235,7 @@ The engine never exits `1` just because findings were found. Exit `1` only indic
 REMEDIATION_PATH=<abs-path>   # always printed on success
 REPORT_PATH=<abs-path>        # only printed when --with-reports is set
 ```
+
+## Programmatic alternative
+
+For applications that embed the engine as a dependency (e.g. web dashboards, CI pipelines), the engine also exports a programmatic API that processes scan data in memory without filesystem operations. See the [README](../README.md#programmatic-api) for full documentation.

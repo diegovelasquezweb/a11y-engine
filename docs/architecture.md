@@ -205,6 +205,28 @@ Assets are static JSON files bundled with the package under `assets/`. They are 
 | `remediation/axe-check-maps.json` | axe check-to-rule mapping |
 | `remediation/source-boundaries.json` | Framework-specific source file locations |
 
+## Programmatic API
+
+In addition to the CLI pipeline, the engine exports 7 functions via `scripts/index.mjs` for direct consumption by Node.js applications (e.g. `a11y-scanner`). These functions reuse the same internal renderers, assets, and enrichment logic as the CLI — no duplication.
+
+```
+scripts/index.mjs (public API)
+  ├── getEnrichedFindings()   ← uses asset-loader, intelligence.json, pa11y-config.json
+  ├── getAuditSummary()       ← uses compliance-config.json, wcag-reference.json
+  ├── getPDFReport()          ← uses reports/renderers/pdf.mjs + Playwright
+  ├── getHTMLReport()         ← uses reports/renderers/html.mjs + findings.mjs
+  ├── getChecklist()          ← uses reports/renderers/html.mjs (manual checks)
+  ├── getRemediationGuide()   ← uses reports/renderers/md.mjs
+  └── getSourcePatterns()     ← uses engine/source-scanner.mjs
+```
+
+### Key design decisions
+
+- **No filesystem output** — all API functions return data in memory (strings, Buffers, arrays). The consumer decides where to write.
+- **Payload in, results out** — functions accept the raw `{ findings, metadata }` payload that `a11y-findings.json` contains. No need to resolve paths or read files.
+- **`screenshotUrlBuilder` callback** — `getEnrichedFindings` accepts an optional function to transform raw screenshot paths (e.g. `screenshots/0-color-contrast.png`) into consumer-specific URLs (e.g. `/api/scan/{id}/screenshot?path=...`). This keeps URL construction out of the engine.
+- **CLI unaffected** — the `audit.mjs` orchestrator and all CLI builders continue to work exactly as before. The API is additive.
+
 ## Execution model and timeouts
 
 `audit.mjs` spawns each stage as a child process via `node:child_process`. All child processes:

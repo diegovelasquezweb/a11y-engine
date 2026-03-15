@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Programmatic API** — 7 exported functions accessible via `import { ... } from "@diegovelasquezweb/a11y-engine"`:
+  - `getEnrichedFindings(input, options?)` — normalizes raw findings, canonicalizes pa11y rules, enriches with fix intelligence, infers effort, sorts by severity. Accepts a full scan payload or a raw findings array. Supports `screenshotUrlBuilder` callback for consumer-specific screenshot URLs.
+  - `getAuditSummary(findings, payload?)` — computes severity totals, compliance score, grade label, WCAG pass/fail status, persona impact groups, quick wins, target URL, and detected stack from metadata.
+  - `getPDFReport(payload, options?)` — generates a formal A4 PDF compliance report via Playwright. Returns `{ buffer, contentType }`.
+  - `getChecklist(options?)` — generates a standalone manual accessibility testing checklist as HTML. Returns `{ html, contentType }`.
+  - `getHTMLReport(payload, options?)` — generates an interactive HTML audit dashboard with severity filters and fix guidance. Supports embedded base64 screenshots via `screenshotsDir`. Returns `{ html, contentType }`.
+  - `getRemediationGuide(payload, options?)` — generates a Markdown remediation guide optimized for AI agents. Supports optional `patternFindings` from source scanner. Returns `{ markdown, contentType }`.
+  - `getSourcePatterns(projectDir, options?)` — scans project source code for accessibility patterns not detectable by axe-core. Returns `{ findings, summary }`.
+- **TypeScript type declarations** shipped with the package (`scripts/index.d.mts`):
+  - `Finding` — raw finding with all snake_case fields
+  - `EnrichedFinding` — extends Finding with camelCase aliases and enriched fields
+  - `AuditSummary` — full audit summary including totals, score, personas, quick wins, detected stack
+  - `SeverityTotals`, `PersonaGroup`, `DetectedStack`, `ComplianceScore`
+  - `ScanPayload`, `EnrichmentOptions`, `ReportOptions`
+  - `PDFReport`, `HTMLReport`, `ChecklistReport`, `RemediationGuide`
+  - `SourcePatternFinding`, `SourcePatternResult`, `SourcePatternOptions`
+- `exports` and `main` fields in `package.json` pointing to `scripts/index.mjs`
+- `--axe-tags` CLI flag passthrough from `audit.mjs` to `dom-scanner.mjs`
+- `resolveScanDirs` exported from `source-scanner.mjs` for programmatic use
+
+### Changed
+
+- `getEnrichedFindings` always creates camelCase aliases (`fixDescription`, `fixCode`, `screenshotPath`, `wcagCriterionId`, `impactedUsers`, etc.) regardless of whether the finding already has fix data — fixes bug where camelCase fields were `undefined` when snake_case data existed
+- `getEnrichedFindings` infers `effort` field after intelligence enrichment: findings with `fixCode` default to `"low"`, others to `"high"` — unless an explicit effort value already exists
+- `getEnrichedFindings` normalizes raw findings internally — consumers no longer need to pre-process the findings array
+- `getEnrichedFindings` sorts findings by severity (Critical > Serious > Moderate > Minor) then by ID
+- `getAuditSummary` now includes `quickWins` (top 3 Critical/Serious findings with fix code), `targetUrl` (extracted from metadata with fallbacks), and `detectedStack` (framework/CMS/libraries from project context)
+- CLI (`audit.mjs`) continues to work standalone — the programmatic API is additive
+
 ---
 
 ## [0.1.3] — 2026-03-14

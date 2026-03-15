@@ -257,40 +257,54 @@ Written to the same directory as `--output` as `checklist.html`.
 
 ## Consuming outputs programmatically
 
-### Reading `a11y-findings.json` from an integration
+### Using the programmatic API (recommended)
 
-```js
-import fs from "node:fs";
-import path from "node:path";
-import { createRequire } from "node:module";
+The engine exports functions that process scan data directly in memory — no filesystem path resolution needed:
 
-// Resolve real path (handles pnpm symlinks)
-const req = createRequire(import.meta.url);
-const auditScript = req.resolve("@diegovelasquezweb/a11y-engine/scripts/audit.mjs");
-const engineRoot = path.dirname(path.dirname(auditScript));
-const findingsPath = path.join(engineRoot, ".audit", "a11y-findings.json");
+```ts
+import {
+  getEnrichedFindings,
+  getAuditSummary,
+  getPDFReport,
+  getHTMLReport,
+  getChecklist,
+  getRemediationGuide,
+  getSourcePatterns,
+} from "@diegovelasquezweb/a11y-engine";
 
-const { findings, metadata } = JSON.parse(fs.readFileSync(findingsPath, "utf-8"));
+// After running audit.mjs via CLI, read the findings file
+const payload = JSON.parse(fs.readFileSync(findingsPath, "utf-8"));
+
+// Enrich findings with fix intelligence
+const findings = getEnrichedFindings(payload, {
+  screenshotUrlBuilder: (path) => `/api/screenshot?path=${encodeURIComponent(path)}`,
+});
+
+// Get full audit summary
+const summary = getAuditSummary(findings, payload);
+
+// Generate reports
+const pdf = await getPDFReport(payload, { baseUrl: "https://example.com" });
+const html = await getHTMLReport(payload, { baseUrl: "https://example.com" });
+const checklist = await getChecklist({ baseUrl: "https://example.com" });
+const guide = await getRemediationGuide(payload, { baseUrl: "https://example.com" });
+
+// Scan source code patterns
+const patterns = await getSourcePatterns("/path/to/project", { framework: "nextjs" });
 ```
 
-> Note: `import.meta.url` may be mangled by bundlers (e.g. Next.js). In that case, use `fs.realpathSync` on the known symlink instead:
-
-```js
-const symlinkBase = path.join(process.cwd(), "node_modules", "@diegovelasquezweb", "a11y-engine");
-const engineRoot = fs.realpathSync(symlinkBase);
-const findingsPath = path.join(engineRoot, ".audit", "a11y-findings.json");
-```
+See the [README](../README.md#programmatic-api) for full API documentation and type signatures.
 
 ### Reading `progress.json` for live UI updates
+
+During CLI execution, `progress.json` is written to `.audit/` in real-time. This is relevant when using the CLI via `child_process` — the programmatic API does not write progress files.
 
 ```js
 const progressPath = path.join(engineRoot, ".audit", "progress.json");
 
-// Poll this file during scan execution
 if (fs.existsSync(progressPath)) {
   const progress = JSON.parse(fs.readFileSync(progressPath, "utf-8"));
   console.log(`Current step: ${progress.currentStep}`);
-  console.log(`axe found: ${progress.steps?.axe?.found ?? "pending"}`);
 }
 ```
 
