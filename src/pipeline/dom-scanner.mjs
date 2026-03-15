@@ -1184,6 +1184,10 @@ async function _runDomScannerInternal(args) {
 
     writeProgress("page", "running");
 
+    // Track which steps have already emitted "done" so multi-route scans
+    // don't reset progress back to "running" for routes after the first.
+    const emittedDone = new Set();
+
     for (let i = 0; i < routes.length; i += tabPages.length) {
       const batch = [];
       for (let j = 0; j < tabPages.length && i + j < routes.length; j++) {
@@ -1195,7 +1199,10 @@ async function _runDomScannerInternal(args) {
             log.info(`[${idx + 1}/${total}] Scanning: ${routePath}`);
             const targetUrl = new URL(routePath, baseUrl).toString();
 
-            writeProgress("page", "done");
+            if (!emittedDone.has("page")) {
+              writeProgress("page", "done");
+              emittedDone.add("page");
+            }
 
             let result = { url: targetUrl, violations: [], incomplete: [], passes: [], metadata: {} };
             let cdpViolations = [];
@@ -1203,7 +1210,7 @@ async function _runDomScannerInternal(args) {
 
             // Step 1: axe-core (conditional)
             if (args.engines.axe) {
-              writeProgress("axe", "running");
+              if (!emittedDone.has("axe")) writeProgress("axe", "running");
               result = await analyzeRoute(
                 tabPage,
                 targetUrl,
@@ -1216,7 +1223,10 @@ async function _runDomScannerInternal(args) {
                 args.axeTags,
               );
               const axeViolationCount = result.violations?.length || 0;
-              writeProgress("axe", "done", { found: axeViolationCount });
+              if (!emittedDone.has("axe")) {
+                writeProgress("axe", "done", { found: axeViolationCount });
+                emittedDone.add("axe");
+              }
               log.info(`axe-core: ${axeViolationCount} violation(s) found`);
             } else {
               // Navigate for CDP/pa11y even if axe is off
@@ -1228,9 +1238,12 @@ async function _runDomScannerInternal(args) {
 
             // Step 2: CDP checks (conditional)
             if (args.engines.cdp) {
-              writeProgress("cdp", "running");
+              if (!emittedDone.has("cdp")) writeProgress("cdp", "running");
               cdpViolations = await runCdpChecks(tabPage);
-              writeProgress("cdp", "done", { found: cdpViolations.length });
+              if (!emittedDone.has("cdp")) {
+                writeProgress("cdp", "done", { found: cdpViolations.length });
+                emittedDone.add("cdp");
+              }
               log.info(`CDP checks: ${cdpViolations.length} issue(s) found`);
             } else {
               log.info("CDP checks: skipped (disabled)");
@@ -1238,9 +1251,12 @@ async function _runDomScannerInternal(args) {
 
             // Step 3: pa11y (conditional)
             if (args.engines.pa11y) {
-              writeProgress("pa11y", "running");
+              if (!emittedDone.has("pa11y")) writeProgress("pa11y", "running");
               pa11yViolations = await runPa11yChecks(targetUrl, args.axeTags);
-              writeProgress("pa11y", "done", { found: pa11yViolations.length });
+              if (!emittedDone.has("pa11y")) {
+                writeProgress("pa11y", "done", { found: pa11yViolations.length });
+                emittedDone.add("pa11y");
+              }
               log.info(`pa11y: ${pa11yViolations.length} issue(s) found`);
             } else {
               log.info("pa11y: skipped (disabled)");
@@ -1248,18 +1264,21 @@ async function _runDomScannerInternal(args) {
 
             // Step 4: Merge results
             const axeViolationCount = result.violations?.length || 0;
-            writeProgress("merge", "running");
+            if (!emittedDone.has("merge")) writeProgress("merge", "running");
             const mergedViolations = mergeViolations(
               result.violations || [],
               cdpViolations,
               pa11yViolations,
             );
-            writeProgress("merge", "done", {
-              axe: axeViolationCount,
-              cdp: cdpViolations.length,
-              pa11y: pa11yViolations.length,
-              merged: mergedViolations.length,
-            });
+            if (!emittedDone.has("merge")) {
+              writeProgress("merge", "done", {
+                axe: axeViolationCount,
+                cdp: cdpViolations.length,
+                pa11y: pa11yViolations.length,
+                merged: mergedViolations.length,
+              });
+              emittedDone.add("merge");
+            }
             log.info(`Merged: ${mergedViolations.length} total unique violations (axe: ${axeViolationCount}, cdp: ${cdpViolations.length}, pa11y: ${pa11yViolations.length})`);
 
             // Screenshots for merged violations
