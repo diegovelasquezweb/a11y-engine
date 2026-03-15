@@ -1,6 +1,6 @@
 # Output Artifacts
 
-**Navigation**: [Home](../README.md) • [Architecture](architecture.md) • [CLI Handbook](cli-handbook.md) • [Output Artifacts](outputs.md)
+**Navigation**: [Home](../README.md) • [Architecture](architecture.md) • [CLI Handbook](cli-handbook.md) • [Output Artifacts](outputs.md) • [Engine Manifest](engine-manifest.md) • [Testing](testing.md)
 
 ---
 
@@ -33,8 +33,6 @@ All artifacts are written to `.audit/` relative to the package root (`SKILL_ROOT
 ├── checklist.html           # manual testing checklist (--with-reports)
 └── screenshots/             # element screenshots per violation
 ```
-
-> When integrating the engine as a dependency (e.g. in `a11y-scanner`), use `fs.realpathSync` on the symlink path to resolve the real `.audit/` location — pnpm uses a deep `.pnpm/` directory structure, not the `node_modules/@scope/pkg` symlink.
 
 ---
 

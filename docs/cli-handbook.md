@@ -1,6 +1,6 @@
 # CLI Handbook
 
-**Navigation**: [Home](../README.md) • [Architecture](architecture.md) • [CLI Handbook](cli-handbook.md) • [Output Artifacts](outputs.md)
+**Navigation**: [Home](../README.md) • [Architecture](architecture.md) • [CLI Handbook](cli-handbook.md) • [Output Artifacts](outputs.md) • [Engine Manifest](engine-manifest.md) • [Testing](testing.md)
 
 ---
 
@@ -62,7 +62,7 @@ Controls what gets scanned.
 | `--max-routes` | `<num>` | `10` | Maximum unique same-origin paths to discover and scan. |
 | `--crawl-depth` | `<num>` | `2` | How deep to follow links during BFS discovery (1-3). Has no effect when `--routes` is set. |
 | `--routes` | `<csv>` | — | Explicit paths to scan (e.g. `/,/about,/contact`). Overrides auto-discovery entirely. |
-| `--project-dir` | `<path>` | — | Path to the audited project source. Enables the source code pattern scanner and framework auto-detection from `package.json`. |
+| `--project-dir` | `<path>` | — | Path to the audited project source. Enables the source code pattern scanner and framework auto-detection from package.json. |
 
 **Route discovery logic**:
 1. If the target has a `sitemap.xml`, all listed URLs are used (up to `--max-routes`).

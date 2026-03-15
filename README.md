@@ -1,14 +1,14 @@
 # @diegovelasquezweb/a11y-engine
 
-WCAG 2.2 AA accessibility audit engine. Combines three scanning engines (axe-core, Chrome DevTools Protocol, and pa11y), merges and deduplicates findings, enriches results with fix intelligence, detects the site's tech stack from the live DOM, and generates structured reports.
+Accessibility automation engine for web applications. It orchestrates multi engine scanning, stack aware enrichment, and report generation for apps and services through a stable API.
 
 ## What it does
 
 | Capability | Description |
 | :--- | :--- |
-| **Multi-engine scanning** | Runs axe-core, CDP accessibility tree checks, and pa11y (HTML CodeSniffer) against each page, then merges and deduplicates findings across all three engines |
-| **Fix intelligence** | Enriches each finding with WCAG mapping, fix code snippets, framework-specific notes, effort estimates, and persona impact |
-| **Stack detection** | Detects framework and CMS from the live page DOM (globals, scripts, meta tags) and from project source when available |
+| **Multi engine scanning** | Runs axe-core, CDP accessibility tree checks, and pa11y HTML CodeSniffer against each page, then merges and deduplicates findings across all three engines |
+| **Stack detection** | Detects framework and CMS from runtime signals and from project source signals such as package.json and file structure |
+| **Fix intelligence** | Enriches each finding with WCAG mapping, fix code snippets, framework and CMS specific notes, UI library ownership hints, effort estimates, and persona impact |
 | **Report generation** | Produces HTML dashboard, PDF compliance report, manual testing checklist, and Markdown remediation guide |
 | **Source code scanning** | Static regex analysis of project source for accessibility patterns that runtime engines cannot detect |
 
@@ -22,13 +22,14 @@ npx playwright install chromium        # used by axe-core and CDP checks
 npx puppeteer browsers install chrome  # used by pa11y
 ```
 
-If Puppeteer Chrome is missing, pa11y fails silently and the scan continues with axe-core + CDP.
+## API Reference
 
-## Usage
+The API is organized in two groups:
 
-The engine works two ways: as a **programmatic API** for applications, and as a **CLI** for direct execution.
+- **Core API** builds and summarizes audit data.
+- **Output API** renders deliverables from that data.
 
-### Programmatic API
+### Core API
 
 ```ts
 import {
@@ -58,6 +59,30 @@ const payload = await runAudit({
 
 Progress steps emitted: `page`, `axe`, `cdp`, `pa11y`, `merge`, `intelligence`.
 
+**Options (`RunAuditOptions`)**
+
+| Option | Type | Description |
+| :--- | :--- | :--- |
+| `baseUrl` | `string` | Target URL to scan |
+| `maxRoutes` | `number` | Maximum routes to scan |
+| `crawlDepth` | `number` | Route discovery depth |
+| `routes` | `string` | Comma separated explicit routes |
+| `waitMs` | `number` | Post load wait before scanning |
+| `timeoutMs` | `number` | Per page timeout |
+| `headless` | `boolean` | Run browser headless or headed |
+| `waitUntil` | `string` | Playwright wait strategy |
+| `colorScheme` | `string` | Emulated color scheme |
+| `viewport` | `{ width: number; height: number }` | Emulated viewport |
+| `axeTags` | `string[]` | axe tag filters |
+| `onlyRule` | `string` | Run a single rule |
+| `excludeSelectors` | `string[]` | Exclude selectors from scan |
+| `ignoreFindings` | `string[]` | Drop findings by rule id |
+| `framework` | `string` | Force framework context |
+| `projectDir` | `string` | Project source path |
+| `skipPatterns` | `boolean` | Disable source pattern scan |
+| `screenshotsDir` | `string` | Output path for screenshots |
+| `onProgress` | `(step, status, extra?) => void` | Progress callback |
+
 #### getEnrichedFindings
 
 Normalizes findings, canonicalizes pa11y rules to axe equivalents, enriches with fix intelligence, infers effort, and sorts by severity.
@@ -68,7 +93,13 @@ const findings = getEnrichedFindings(payload, {
 });
 ```
 
-Returns `EnrichedFinding[]` with camelCase fields only.
+Returns a normalized `EnrichedFinding[]` payload ready for UI rendering and report generation.
+
+**Options (`EnrichmentOptions`)**
+
+| Option | Type | Description |
+| :--- | :--- | :--- |
+| `screenshotUrlBuilder` | `(rawPath: string) => string` | Transforms screenshot paths into app URLs |
 
 #### getAuditSummary
 
@@ -85,7 +116,9 @@ const summary = getAuditSummary(findings, payload);
 // summary.detectedStack -> { framework: "nextjs", cms: null, uiLibraries: [] }
 ```
 
-#### Report functions
+### Output API
+
+These functions render final artifacts from scan payload data.
 
 | Function | Returns | Description |
 | :--- | :--- | :--- |
@@ -95,42 +128,22 @@ const summary = getAuditSummary(findings, payload);
 | `getRemediationGuide(payload, options?)` | `{ markdown, contentType }` | Markdown remediation guide |
 | `getSourcePatterns(projectDir, options?)` | `{ findings, summary }` | Source code pattern analysis |
 
-### CLI
+**Output API options**
 
-```bash
-# Minimal scan
-npx a11y-audit --base-url https://example.com
+| Function | Options type | Supported options |
+| :--- | :--- | :--- |
+| `getPDFReport` | `ReportOptions` | `baseUrl?: string`, `target?: string` |
+| `getHTMLReport` | `HTMLReportOptions` | `baseUrl?: string`, `target?: string`, `screenshotsDir?: string` |
+| `getChecklist` | `Pick<ReportOptions, "baseUrl">` | `baseUrl?: string` |
+| `getRemediationGuide` | `RemediationOptions` | `baseUrl?: string`, `target?: string`, `patternFindings?: object \| null` |
+| `getSourcePatterns` | `SourcePatternOptions` | `framework?: string`, `onlyPattern?: string` |
 
-# Full audit with reports
-npx a11y-audit --base-url https://example.com --with-reports --output ./audit/report.html
+For the canonical type definitions, see `src/index.d.mts`.
 
-# Scan with source code intelligence
-npx a11y-audit --base-url http://localhost:3000 --project-dir . --with-reports --output ./audit/report.html
-```
+## Optional CLI
 
-See the [CLI Handbook](docs/cli-handbook.md) for the full flag reference.
-
-## Project structure
-
-```
-src/
-  index.mjs              Public API (8 exported functions)
-  index.d.mts            TypeScript declarations
-  cli/                   CLI adapter (calls public API)
-  core/                  Logger, utilities, asset loader
-  pipeline/              DOM scanner (axe + CDP + pa11y + merge)
-  enrichment/            Finding analyzer and fix intelligence
-  reports/               HTML, PDF, checklist, and markdown builders
-  source-patterns/       Static source code pattern scanner
-
-assets/
-  discovery/             Crawler config, stack detection rules
-  scanning/              CDP check definitions, pa11y config
-  remediation/           Fix intelligence, code patterns, guardrails
-  reporting/             Compliance config, WCAG reference, manual checks
-
-tests/                   Vitest suite (unit + integration)
-```
+If you need terminal execution, the package also exposes `a11y-audit`.
+See the [CLI Handbook](docs/cli-handbook.md) for command flags and examples.
 
 ## Documentation
 
@@ -139,7 +152,5 @@ tests/                   Vitest suite (unit + integration)
 | [Architecture](docs/architecture.md) | Multi-engine pipeline, merge logic, and execution model |
 | [CLI Handbook](docs/cli-handbook.md) | Full flag reference and usage examples |
 | [Output Artifacts](docs/outputs.md) | Schema and structure of every generated file |
-
-## License
-
-MIT
+| [Engine Manifest](docs/engine-manifest.md) | Current inventory of source modules, assets, and tests |
+| [Testing](docs/testing.md) | Test categories, scope, and execution commands |
