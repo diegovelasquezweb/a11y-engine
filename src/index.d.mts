@@ -263,6 +263,32 @@ export interface SeverityLevel {
   order: number;
 }
 
+export interface DocArticle {
+  id: string;
+  title: string;
+  icon?: string;
+  badge?: string;
+  summary: string;
+  body: string;
+}
+
+export interface DocGroup {
+  id: string;
+  label: string;
+  articles: DocArticle[];
+}
+
+export interface DocSection {
+  id: string;
+  heading: string;
+  articles?: DocArticle[];
+  groups?: DocGroup[];
+}
+
+export interface KnowledgeDocs {
+  sections: DocSection[];
+}
+
 export interface ConformanceLevelsResult {
   locale: string;
   version: string;
