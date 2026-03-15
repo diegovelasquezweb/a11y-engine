@@ -294,6 +294,14 @@ async function main() {
     if (resolvedFramework) analyzerArgs.push("--framework", resolvedFramework);
     await runScript("../enrichment/analyzer.mjs", analyzerArgs);
 
+    if (process.env.ANTHROPIC_API_KEY) {
+      await runScript("../ai/enrich.mjs", [], {
+        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+        ...(repoUrl ? { A11Y_REPO_URL: repoUrl } : {}),
+        ...(githubToken ? { GH_TOKEN: githubToken } : {}),
+      });
+    }
+
     if ((projectDir || repoUrl) && !skipPatterns) {
       const patternArgs = [];
       if (projectDir) {
