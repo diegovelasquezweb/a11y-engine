@@ -125,40 +125,6 @@ export default {
       docs: {
         sections: [
           {
-            id: "how-it-works",
-            heading: "How It Works",
-            articles: [
-              {
-                id: "load-render",
-                title: "Load & Render",
-                icon: "globe",
-                summary: "The scanner loads your URL in a real browser (Chromium) and waits for full render.",
-                body: "A headless Chromium instance navigates to the target URL, executes JavaScript, waits for network idle, and captures the fully rendered DOM. This ensures dynamic content (SPAs, lazy-loaded elements) is included in the analysis.",
-              },
-              {
-                id: "multi-engine-scan",
-                title: "Multi-Engine Scan",
-                icon: "cpu",
-                summary: "Multiple engines (axe-core, CDP, pa11y) run in parallel for broader coverage.",
-                body: "Each engine uses different detection techniques: axe-core runs DOM-based rule checks, CDP inspects accessibility tree properties via Chrome DevTools Protocol, and pa11y validates rendered HTML against WCAG criteria. Combined, they catch issues that any single engine would miss.",
-              },
-              {
-                id: "merge-deduplicate",
-                title: "Merge & Deduplicate",
-                icon: "git-merge",
-                summary: "Findings from all engines are normalized, deduplicated, and scored by severity.",
-                body: "Results are merged by selector + rule ID to eliminate duplicates. Each finding is mapped to its WCAG criterion, assigned a severity level (Critical/Serious/Moderate/Minor), and enriched with persona impact data showing which disability groups are affected.",
-              },
-              {
-                id: "ai-enrichment",
-                title: "AI Enrichment",
-                icon: "sparkles",
-                summary: "Each issue gets code fixes, MDN references, and framework-specific guidance.",
-                body: "The intelligence layer generates actionable fix descriptions, ready-to-use code snippets, links to relevant MDN documentation, and effort estimates. Quick Wins are identified as high-impact issues with low-effort fixes for immediate remediation.",
-              },
-            ],
-          },
-          {
             id: "understanding-wcag",
             heading: "Understanding WCAG",
             groups: [
@@ -221,6 +187,40 @@ export default {
                     body: "Adds stricter contrast (1.4.6 \u2014 7:1 ratio), sign language for audio (1.2.6), extended audio description (1.2.7), and reading level (3.1.5). Full AAA conformance is not recommended as a general policy because some criteria cannot be satisfied for all content types. Useful for targeted sections like education or government services.",
                   },
                 ],
+              },
+            ],
+          },
+          {
+            id: "how-it-works",
+            heading: "How It Works",
+            articles: [
+              {
+                id: "load-render",
+                title: "Load & Render",
+                icon: "globe",
+                summary: "The scanner loads your URL in a real browser (Chromium) and waits for full render.",
+                body: "A headless Chromium instance navigates to the target URL, executes JavaScript, waits for network idle, and captures the fully rendered DOM. This ensures dynamic content (SPAs, lazy-loaded elements) is included in the analysis.",
+              },
+              {
+                id: "multi-engine-scan",
+                title: "Multi-Engine Scan",
+                icon: "cpu",
+                summary: "Multiple engines (axe-core, CDP, pa11y) run in parallel for broader coverage.",
+                body: "Each engine uses different detection techniques: axe-core runs DOM-based rule checks, CDP inspects accessibility tree properties via Chrome DevTools Protocol, and pa11y validates rendered HTML against WCAG criteria. Combined, they catch issues that any single engine would miss.",
+              },
+              {
+                id: "merge-deduplicate",
+                title: "Merge & Deduplicate",
+                icon: "git-merge",
+                summary: "Findings from all engines are normalized, deduplicated, and scored by severity.",
+                body: "Results are merged by selector + rule ID to eliminate duplicates. Each finding is mapped to its WCAG criterion, assigned a severity level (Critical/Serious/Moderate/Minor), and enriched with persona impact data showing which disability groups are affected.",
+              },
+              {
+                id: "ai-enrichment",
+                title: "AI Enrichment",
+                icon: "sparkles",
+                summary: "Each issue gets code fixes, MDN references, and framework-specific guidance.",
+                body: "The intelligence layer generates actionable fix descriptions, ready-to-use code snippets, links to relevant MDN documentation, and effort estimates. Quick Wins are identified as high-impact issues with low-effort fixes for immediate remediation.",
               },
             ],
           },
