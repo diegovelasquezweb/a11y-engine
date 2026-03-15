@@ -37,6 +37,10 @@ import {
   getChecklist,
   getRemediationGuide,
   getSourcePatterns,
+  getScannerHelp,
+  getPersonaReference,
+  getUiHelp,
+  getKnowledge,
 } from "@diegovelasquezweb/a11y-engine";
 ```
 
@@ -112,6 +116,18 @@ These functions render final artifacts from scan payload data.
 | `getChecklist(options?)` | `{ html, contentType }` | Manual WCAG testing checklist |
 | `getRemediationGuide(payload, options?)` | `{ markdown, contentType }` | Markdown remediation guide |
 | `getSourcePatterns(projectDir, options?)` | `{ findings, summary }` | Source code pattern analysis |
+
+### Knowledge API
+
+These functions expose scanner help content, persona explanations, and UI copy
+so frontends or agents can render tooltips and guidance from engine-owned data.
+
+| Function | Returns | Description |
+| :--- | :--- | :--- |
+| `getScannerHelp(options?)` | `{ locale, version, title, engines, options }` | Scanner option and engine help metadata |
+| `getPersonaReference(options?)` | `{ locale, version, personas }` | Persona labels, descriptions, and mapping hints |
+| `getUiHelp(options?)` | `{ locale, version, tooltips, glossary }` | Shared tooltip copy and glossary entries |
+| `getKnowledge(options?)` | `{ locale, version, scanner, personas, tooltips, glossary }` | Full documentation pack for UI or agent flows |
 
 See [API Reference](docs/api-reference.md) for exact options and return types.
 

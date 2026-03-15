@@ -210,6 +210,83 @@ export interface SourcePatternOptions {
 }
 
 // ---------------------------------------------------------------------------
+// Knowledge APIs
+// ---------------------------------------------------------------------------
+
+export interface ScannerEngineHelp {
+  id: "axe" | "cdp" | "pa11y" | string;
+  label: string;
+  description: string;
+  defaultEnabled: boolean;
+}
+
+export interface ScannerOptionHelp {
+  id: string;
+  label: string;
+  description: string;
+  defaultValue: unknown;
+  type: string;
+  allowedValues?: unknown[];
+}
+
+export interface ScannerHelp {
+  locale: string;
+  version: string;
+  title: string;
+  engines: ScannerEngineHelp[];
+  options: ScannerOptionHelp[];
+}
+
+export interface PersonaReferenceItem {
+  id: string;
+  icon: string;
+  label: string;
+  description: string;
+  keywords: string[];
+  mappedRules: string[];
+}
+
+export interface PersonaReference {
+  locale: string;
+  version: string;
+  personas: PersonaReferenceItem[];
+}
+
+export interface UiTooltip {
+  title: string;
+  body: string;
+}
+
+export interface GlossaryEntry {
+  term: string;
+  definition: string;
+}
+
+export interface UiHelp {
+  locale: string;
+  version: string;
+  tooltips: Record<string, UiTooltip>;
+  glossary: GlossaryEntry[];
+}
+
+export interface EngineKnowledge {
+  locale: string;
+  version: string;
+  scanner: {
+    title: string;
+    engines: ScannerEngineHelp[];
+    options: ScannerOptionHelp[];
+  };
+  personas: PersonaReferenceItem[];
+  tooltips: Record<string, UiTooltip>;
+  glossary: GlossaryEntry[];
+}
+
+export interface KnowledgeOptions {
+  locale?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Engine selection
 // ---------------------------------------------------------------------------
 
@@ -293,3 +370,11 @@ export function getSourcePatterns(
   projectDir: string,
   options?: SourcePatternOptions
 ): Promise<SourcePatternResult>;
+
+export function getScannerHelp(options?: KnowledgeOptions): ScannerHelp;
+
+export function getPersonaReference(options?: KnowledgeOptions): PersonaReference;
+
+export function getUiHelp(options?: KnowledgeOptions): UiHelp;
+
+export function getKnowledge(options?: KnowledgeOptions): EngineKnowledge;

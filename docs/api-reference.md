@@ -102,6 +102,36 @@ Returns: `Promise<RemediationGuide>` (`{ markdown, contentType }`)
 
 Returns: `Promise<SourcePatternResult>`
 
+## Knowledge API
+
+### `getScannerHelp(options?)`
+
+- `options`: `KnowledgeOptions`
+  - `locale?: string`
+
+Returns: `ScannerHelp` (`{ locale, version, title, engines, options }`)
+
+### `getPersonaReference(options?)`
+
+- `options`: `KnowledgeOptions`
+  - `locale?: string`
+
+Returns: `PersonaReference` (`{ locale, version, personas }`)
+
+### `getUiHelp(options?)`
+
+- `options`: `KnowledgeOptions`
+  - `locale?: string`
+
+Returns: `UiHelp` (`{ locale, version, tooltips, glossary }`)
+
+### `getKnowledge(options?)`
+
+- `options`: `KnowledgeOptions`
+  - `locale?: string`
+
+Returns: `EngineKnowledge` (`{ locale, version, scanner, personas, tooltips, glossary }`)
+
 ---
 
 Canonical type source: `src/index.d.mts`

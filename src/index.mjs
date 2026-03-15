@@ -14,6 +14,7 @@ let _intelligence = null;
 let _pa11yConfig = null;
 let _complianceConfig = null;
 let _wcagReference = null;
+let _uxCopy = null;
 
 function getIntelligence() {
   if (!_intelligence) _intelligence = loadAssetJson(ASSET_PATHS.remediation.intelligence, "intelligence.json");
@@ -39,6 +40,22 @@ function getComplianceConfig() {
 function getWcagReference() {
   if (!_wcagReference) _wcagReference = loadAssetJson(ASSET_PATHS.reporting.wcagReference, "wcag-reference.json");
   return _wcagReference;
+}
+
+function getUxCopy() {
+  if (!_uxCopy) _uxCopy = loadAssetJson(ASSET_PATHS.knowledge.uxCopy, "ux-copy.json");
+  return _uxCopy;
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function resolveKnowledgeLocale(locale = "en") {
+  const payload = getUxCopy();
+  const locales = payload.locales || {};
+  if (locale && locales[locale]) return locale;
+  return "en";
 }
 
 // ---------------------------------------------------------------------------
@@ -418,6 +435,114 @@ export function getOverview(findings, payload = null) {
     targetUrl,
     detectedStack,
     totalFindings: findings.length,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge APIs
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns scanner-facing help metadata including engine descriptions,
+ * advanced option hints, and defaults.
+ *
+ * @param {{ locale?: string }} [options={}]
+ * @returns {{ locale: string, version: string, title: string, engines: object[], options: object[] }}
+ */
+export function getScannerHelp(options = {}) {
+  const locale = resolveKnowledgeLocale(options.locale || "en");
+  const payload = getUxCopy();
+  const scanner = payload.locales[locale]?.scanner || { title: "Scanner Help", engines: [], options: [] };
+
+  return {
+    locale,
+    version: payload.version || "1.0.0",
+    title: scanner.title,
+    engines: clone(scanner.engines || []),
+    options: clone(scanner.options || []),
+  };
+}
+
+/**
+ * Returns persona explanations with labels, descriptions, and the WCAG rule/
+ * keyword mappings used for impact grouping.
+ *
+ * @param {{ locale?: string }} [options={}]
+ * @returns {{ locale: string, version: string, personas: object[] }}
+ */
+export function getPersonaReference(options = {}) {
+  const locale = resolveKnowledgeLocale(options.locale || "en");
+  const payload = getUxCopy();
+  const wcagRef = getWcagReference();
+
+  const copyMap = payload.locales[locale]?.personas || {};
+  const personaConfig = wcagRef.personaConfig || {};
+  const personaMapping = wcagRef.personaMapping || {};
+
+  const personas = Object.keys(copyMap).map((id) => {
+    const copy = copyMap[id] || {};
+    const config = personaConfig[id] || {};
+    const mapping = personaMapping[id] || {};
+
+    return {
+      id,
+      icon: id,
+      label: copy.label || config.label || id,
+      description: copy.description || "",
+      keywords: Array.isArray(mapping.keywords) ? clone(mapping.keywords) : [],
+      mappedRules: Array.isArray(mapping.rules) ? clone(mapping.rules) : [],
+    };
+  });
+
+  return {
+    locale,
+    version: payload.version || "1.0.0",
+    personas,
+  };
+}
+
+/**
+ * Returns UI tooltip copy and glossary terms for scanner cards and labels.
+ *
+ * @param {{ locale?: string }} [options={}]
+ * @returns {{ locale: string, version: string, tooltips: Record<string, object>, glossary: object[] }}
+ */
+export function getUiHelp(options = {}) {
+  const locale = resolveKnowledgeLocale(options.locale || "en");
+  const payload = getUxCopy();
+  const localePayload = payload.locales[locale] || {};
+
+  return {
+    locale,
+    version: payload.version || "1.0.0",
+    tooltips: clone(localePayload.tooltips || {}),
+    glossary: clone(localePayload.glossary || []),
+  };
+}
+
+/**
+ * Returns the full documentation package that frontends or agents can render
+ * as help content next to findings and scores.
+ *
+ * @param {{ locale?: string }} [options={}]
+ * @returns {{ locale: string, version: string, scanner: object, personas: object[], tooltips: Record<string, object>, glossary: object[] }}
+ */
+export function getKnowledge(options = {}) {
+  const scanner = getScannerHelp(options);
+  const personas = getPersonaReference(options);
+  const ui = getUiHelp(options);
+
+  return {
+    locale: scanner.locale,
+    version: scanner.version,
+    scanner: {
+      title: scanner.title,
+      engines: scanner.engines,
+      options: scanner.options,
+    },
+    personas: personas.personas,
+    tooltips: ui.tooltips,
+    glossary: ui.glossary,
   };
 }
 

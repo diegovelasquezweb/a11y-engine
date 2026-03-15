@@ -17,6 +17,7 @@ import sourceBoundaries from "../../assets/remediation/source-boundaries.mjs";
 import complianceConfig from "../../assets/reporting/compliance-config.mjs";
 import manualChecks from "../../assets/reporting/manual-checks.mjs";
 import wcagReference from "../../assets/reporting/wcag-reference.mjs";
+import knowledgeUx from "../../assets/knowledge/ux-copy.mjs";
 
 /**
  * Pre-loaded asset map. Each value is the parsed JSON object, ready to use.
@@ -45,6 +46,9 @@ export const ASSETS = {
     complianceConfig,
     wcagReference,
     manualChecks,
+  },
+  knowledge: {
+    uxCopy: knowledgeUx,
   },
 };
 
@@ -77,6 +81,9 @@ export const ASSET_PATHS = {
     complianceConfig: "reporting.complianceConfig",
     wcagReference: "reporting.wcagReference",
     manualChecks: "reporting.manualChecks",
+  },
+  knowledge: {
+    uxCopy: "knowledge.uxCopy",
   },
 };
 
