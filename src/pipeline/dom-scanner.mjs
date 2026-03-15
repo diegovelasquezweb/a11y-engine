@@ -26,12 +26,12 @@ const STACK_DETECTION = loadAssetJson(
   "assets/discovery/stack-detection.json",
 );
 const CDP_CHECKS = loadAssetJson(
-  ASSET_PATHS.engine.cdpChecks,
-  "assets/engine/cdp-checks.json",
+  ASSET_PATHS.scanning.cdpChecks,
+  "assets/scanning/cdp-checks.json",
 );
 const PA11Y_CONFIG = loadAssetJson(
-  ASSET_PATHS.engine.pa11yConfig,
-  "assets/engine/pa11y-config.json",
+  ASSET_PATHS.scanning.pa11yConfig,
+  "assets/scanning/pa11y-config.json",
 );
 const AXE_TAGS = [
   "wcag2a",

@@ -7,8 +7,8 @@
 
 import crawlerConfig from "../../assets/discovery/crawler-config.mjs";
 import stackDetection from "../../assets/discovery/stack-detection.mjs";
-import cdpChecks from "../../assets/engine/cdp-checks.mjs";
-import pa11yConfig from "../../assets/engine/pa11y-config.mjs";
+import cdpChecks from "../../assets/scanning/cdp-checks.mjs";
+import pa11yConfig from "../../assets/scanning/pa11y-config.mjs";
 import axeCheckMaps from "../../assets/remediation/axe-check-maps.mjs";
 import codePatterns from "../../assets/remediation/code-patterns.mjs";
 import guardrails from "../../assets/remediation/guardrails.mjs";
@@ -25,6 +25,10 @@ export const ASSETS = {
   discovery: {
     crawlerConfig,
     stackDetection,
+  },
+  scanning: {
+    cdpChecks,
+    pa11yConfig,
   },
   engine: {
     cdpChecks,
@@ -54,9 +58,13 @@ export const ASSET_PATHS = {
     crawlerConfig: "discovery.crawlerConfig",
     stackDetection: "discovery.stackDetection",
   },
+  scanning: {
+    cdpChecks: "scanning.cdpChecks",
+    pa11yConfig: "scanning.pa11yConfig",
+  },
   engine: {
-    cdpChecks: "engine.cdpChecks",
-    pa11yConfig: "engine.pa11yConfig",
+    cdpChecks: "scanning.cdpChecks",
+    pa11yConfig: "scanning.pa11yConfig",
   },
   remediation: {
     intelligence: "remediation.intelligence",

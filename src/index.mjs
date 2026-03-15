@@ -23,7 +23,7 @@ function getIntelligence() {
 function getPa11yConfig() {
   if (!_pa11yConfig) {
     try {
-      _pa11yConfig = loadAssetJson(ASSET_PATHS.engine.pa11yConfig, "pa11y-config.json");
+      _pa11yConfig = loadAssetJson(ASSET_PATHS.scanning.pa11yConfig, "pa11y-config.json");
     } catch {
       _pa11yConfig = { equivalenceMap: {}, ignoreByPrinciple: [], impactMap: {} };
     }
