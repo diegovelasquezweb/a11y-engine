@@ -426,6 +426,10 @@ export function getAuditSummary(findings, payload = null) {
   };
 }
 
+// Friendly aliases (preferred for new integrations)
+export const getFindings = getEnrichedFindings;
+export const getOverview = getAuditSummary;
+
 // ---------------------------------------------------------------------------
 // Full audit pipeline
 // ---------------------------------------------------------------------------

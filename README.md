@@ -6,7 +6,7 @@ Accessibility automation engine for web applications. It orchestrates multi engi
 
 | Capability | Description |
 | :--- | :--- |
-| **Route discovery crawler** | Builds the scan route set using sitemap discovery first, then same origin BFS crawl with robots filtering, depth control, and max route limits |
+| **Route discovery crawler** | Builds the scan route set using sitemap discovery first, then a same origin multi level crawl with robots filtering, depth control, and max route limits |
 | **Multi engine scanning** | Runs axe-core, CDP accessibility tree checks, and pa11y HTML CodeSniffer against each page, then merges and deduplicates findings across all three engines |
 | **Stack detection** | Detects framework and CMS from runtime signals and from project source signals such as package.json and file structure |
 | **Fix intelligence** | Enriches each finding with WCAG mapping, fix code snippets, framework and CMS specific notes, UI library ownership hints, effort estimates, and persona impact |
@@ -30,8 +30,8 @@ npx puppeteer browsers install chrome  # used by pa11y
 ```ts
 import {
   runAudit,
-  getEnrichedFindings,
-  getAuditSummary,
+  getFindings,
+  getOverview,
   getPDFReport,
   getHTMLReport,
   getChecklist,
@@ -42,7 +42,7 @@ import {
 
 #### runAudit
 
-Runs the full scan pipeline: route discovery crawler, scan, merge, and analyze. Returns a payload ready for `getEnrichedFindings`.
+Runs the full scan pipeline: route discovery crawler, scan, merge, and analyze. Returns a payload ready for `getFindings`.
 
 ```ts
 const payload = await runAudit({
@@ -66,32 +66,42 @@ Progress steps emitted: `page`, `axe`, `cdp`, `pa11y`, `merge`, `intelligence`.
 | `skipPatterns` | Disable source pattern scanning |
 | `onProgress` | Progress callback for UI updates |
 
-For the full `RunAuditOptions` contract, see `src/index.d.mts`.
+See [API Reference](docs/api-reference.md) for the full `RunAuditOptions` contract.
 
-#### getEnrichedFindings
+#### getFindings
 
-Normalizes findings, canonicalizes pa11y rules to axe equivalents, enriches with fix intelligence, infers effort, and sorts by severity.
+Transforms raw scan findings into the final app-ready findings list.
+
+It does five things in order:
+
+1. normalizes finding fields
+2. maps pa11y rule ids to canonical axe-equivalent ids
+3. enriches findings with intelligence data
+4. infers effort level when missing
+5. sorts by severity
 
 ```ts
-const findings = getEnrichedFindings(payload, {
+const findings = getFindings(payload, {
   screenshotUrlBuilder: (path) => `/api/screenshot?path=${encodeURIComponent(path)}`,
 });
 ```
 
-Returns a normalized `EnrichedFinding[]` payload ready for UI rendering and report generation.
+Input: `ScanPayload` or `Finding[]`.
+
+Output: `EnrichedFinding[]` ready for UI rendering, filtering, and report generation.
 
 **Options (`EnrichmentOptions`)**
 
 | Option | Type | Description |
 | :--- | :--- | :--- |
-| `screenshotUrlBuilder` | `(rawPath: string) => string` | Transforms screenshot paths into app URLs |
+| `screenshotUrlBuilder` | `(rawPath: string) => string` | Rewrites internal screenshot paths into app URLs |
 
-#### getAuditSummary
+#### getOverview
 
 Computes severity totals, compliance score, WCAG pass/fail status, persona impact groups, quick wins, and detected stack.
 
 ```ts
-const summary = getAuditSummary(findings, payload);
+const summary = getOverview(findings, payload);
 // summary.score         -> 72
 // summary.label         -> "Good"
 // summary.wcagStatus    -> "Fail"
@@ -100,6 +110,11 @@ const summary = getAuditSummary(findings, payload);
 // summary.quickWins     -> [top 3 fixable Critical/Serious findings]
 // summary.detectedStack -> { framework: "nextjs", cms: null, uiLibraries: [] }
 ```
+
+Legacy names are still supported for compatibility:
+
+- `getEnrichedFindings` -> same as `getFindings`
+- `getAuditSummary` -> same as `getOverview`
 
 ### Output API
 
@@ -113,7 +128,7 @@ These functions render final artifacts from scan payload data.
 | `getRemediationGuide(payload, options?)` | `{ markdown, contentType }` | Markdown remediation guide |
 | `getSourcePatterns(projectDir, options?)` | `{ findings, summary }` | Source code pattern analysis |
 
-For exact options and return types, see `src/index.d.mts`.
+See [API Reference](docs/api-reference.md) for exact options and return types.
 
 ## Optional CLI
 
@@ -125,6 +140,7 @@ See the [CLI Handbook](docs/cli-handbook.md) for command flags and examples.
 | Resource | Description |
 | :--- | :--- |
 | [Architecture](docs/architecture.md) | Multi-engine pipeline, merge logic, and execution model |
+| [API Reference](docs/api-reference.md) | Function signatures, options, and return contracts |
 | [CLI Handbook](docs/cli-handbook.md) | Full flag reference and usage examples |
 | [Output Artifacts](docs/outputs.md) | Schema and structure of every generated file |
 | [Engine Manifest](docs/engine-manifest.md) | Current inventory of source modules, assets, and tests |

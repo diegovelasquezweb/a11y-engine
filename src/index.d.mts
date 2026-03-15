@@ -254,7 +254,17 @@ export function getEnrichedFindings(
   options?: EnrichmentOptions
 ): EnrichedFinding[];
 
+export function getFindings(
+  input: ScanPayload | Finding[] | Record<string, unknown>[],
+  options?: EnrichmentOptions
+): EnrichedFinding[];
+
 export function getAuditSummary(
+  findings: EnrichedFinding[],
+  payload?: ScanPayload | null
+): AuditSummary;
+
+export function getOverview(
   findings: EnrichedFinding[],
   payload?: ScanPayload | null
 ): AuditSummary;
