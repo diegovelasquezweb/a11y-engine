@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAuditSummary } from "../../src/index.mjs";
+import { getAuditSummary } from "../src/index.mjs";
 
 describe("getAuditSummary", () => {
   it("computes totals, wcag status and stack metadata", () => {
@@ -38,6 +38,14 @@ describe("getAuditSummary", () => {
 
     const summary = getAuditSummary(findings, { metadata: {} });
     expect(summary.quickWins).toHaveLength(3);
+  });
+
+  it("includes quickWins when fix_code is snake_case", () => {
+    const findings = [
+      { id: "1", severity: "Serious", fix_code: "<button aria-label='x'></button>", url: "https://example.com" },
+    ];
+    const summary = getAuditSummary(findings, { metadata: {} });
+    expect(summary.quickWins).toHaveLength(1);
   });
 
   it("handles missing payload metadata safely", () => {

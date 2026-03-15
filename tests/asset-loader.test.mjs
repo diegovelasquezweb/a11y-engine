@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ASSET_PATHS, loadAssetJson } from "../../src/core/asset-loader.mjs";
+import { ASSET_PATHS, loadAssetJson } from "../src/core/asset-loader.mjs";
 
 describe("asset loader", () => {
   it("loads all core asset groups", () => {

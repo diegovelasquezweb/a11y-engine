@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getEnrichedFindings } from "../../src/index.mjs";
+import { getEnrichedFindings } from "../src/index.mjs";
 
 function makeFinding(overrides = {}) {
   return {
@@ -32,6 +32,25 @@ describe("getEnrichedFindings", () => {
     });
 
     expect(out[0].screenshotPath).toBe("/api/screenshot?path=abc.png");
+  });
+
+  it("accepts full payload input shape", () => {
+    const payload = { findings: [makeFinding({ rule_id: "image-alt" })], metadata: { target_url: "https://example.com" } };
+    const out = getEnrichedFindings(payload);
+    expect(out).toHaveLength(1);
+    expect(out[0].ruleId).toBe("image-alt");
+  });
+
+  it("generates fallback id when id is null", () => {
+    const out = getEnrichedFindings([
+      makeFinding({ id: null, rule_id: "b" }),
+    ]);
+    expect(out[0].id).toMatch(/^A11Y-\d{3}$/);
+  });
+
+  it("preserves empty-string id values", () => {
+    const out = getEnrichedFindings([makeFinding({ id: "", rule_id: "a" })]);
+    expect(out[0].id).toBe("");
   });
 
   it("canonicalizes pa11y rules using equivalence map", () => {

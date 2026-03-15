@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSourcePatterns } from "../../src/index.mjs";
+import { getSourcePatterns } from "../src/index.mjs";
 
 describe("getSourcePatterns", () => {
   it("returns empty summary when onlyPattern does not exist", async () => {
