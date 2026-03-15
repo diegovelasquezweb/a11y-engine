@@ -107,15 +107,7 @@ export function buildIssueCard(finding) {
       </div>`
     : "";
 
-  const implNotesHtml = finding.fixDifficultyNotes
-    ? `<div class="mt-4 pt-3 border-t border-indigo-100/50">
-        <h4 class="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-          Implementation Notes
-        </h4>
-        <p class="text-[12px] text-amber-900/80 leading-relaxed bg-amber-50/60 border border-amber-100/60 rounded-lg p-3">${escapeHtml(finding.fixDifficultyNotes)}</p>
-      </div>`
-    : "";
+  const implNotesHtml = "";
 
   const problemPanelHtml = `
     <div class="grid grid-cols-1 gap-6">
