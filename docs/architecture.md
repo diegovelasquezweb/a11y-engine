@@ -72,7 +72,7 @@ remediation report   report        checklist
 
 ## Stage 1: DOM scanner
 
-**Script**: `scripts/engine/dom-scanner.mjs`
+**Module**: `src/pipeline/dom-scanner.mjs`
 
 Launches a Playwright-controlled Chromium browser, discovers routes, and runs three independent accessibility engines against each page. Results are merged and deduplicated before output.
 
@@ -152,7 +152,7 @@ After merging, element screenshots are captured for each violation. Non-visible 
 
 ### Optional: Source scanner
 
-**Script**: `scripts/engine/source-scanner.mjs` — runs when `--project-dir` is set and `--skip-patterns` is not.
+**Module**: `src/source-patterns/source-scanner.mjs` — runs when `--project-dir` is set and `--skip-patterns` is not.
 
 Performs static analysis of source files for accessibility issues no runtime engine can detect (e.g. focus outline suppression, missing alt text in templates). Uses regex patterns from `assets/remediation/code-patterns.json` scoped to framework-specific file boundaries from `assets/remediation/source-boundaries.json`.
 
@@ -160,7 +160,7 @@ Findings are classified as `confirmed` (pattern unambiguously matches) or `poten
 
 ## Stage 2: Analyzer
 
-**Script**: `scripts/engine/analyzer.mjs`
+**Module**: `src/enrichment/analyzer.mjs`
 
 Reads `a11y-scan-results.json` (which contains merged axe + CDP + pa11y results) and enriches each violation with:
 
@@ -177,47 +177,50 @@ Reads `a11y-scan-results.json` (which contains merged axe + CDP + pa11y results)
 
 All builders run in parallel when `--with-reports` is set. Each reads `a11y-findings.json` independently.
 
-| Builder | Script | Output | Audience |
+| Builder | Module | Output | Audience |
 | :--- | :--- | :--- | :--- |
-| Markdown | `reports/builders/md.mjs` | `remediation.md` | AI agents |
-| HTML | `reports/builders/html.mjs` | `report.html` | Developers |
-| PDF | `reports/builders/pdf.mjs` | `report.pdf` | Stakeholders |
-| Checklist | `reports/builders/checklist.mjs` | `checklist.html` | QA / Developers |
+| Markdown | `src/reports/md.mjs` | `remediation.md` | AI agents |
+| HTML | `src/reports/html.mjs` | `report.html` | Developers |
+| PDF | `src/reports/pdf.mjs` | `report.pdf` | Stakeholders |
+| Checklist | `src/reports/checklist.mjs` | `checklist.html` | QA / Developers |
 
 The `remediation.md` builder always runs (even without `--with-reports`) since it is the primary output for AI agent consumption.
 
-Renderers in `scripts/reports/renderers/` contain the actual rendering logic — builders are thin orchestrators that call renderers and write output files.
+Renderers in `src/reports/renderers/` contain the actual rendering logic — builders are thin orchestrators that call renderers and write output files.
 
 ## Assets and rule intelligence
 
-Assets are static JSON files bundled with the package under `assets/`. They are read at runtime by the analyzer and report builders.
+Assets are static ESM modules (`.mjs`) bundled with the package under `assets/`. They are imported statically by `src/core/asset-loader.mjs`, ensuring bundlers (Turbopack, Webpack) can trace them without runtime filesystem reads.
 
 | Asset | Purpose |
 | :--- | :--- |
-| `reporting/compliance-config.json` | Score weights, grade thresholds, legal regulation list |
-| `reporting/wcag-reference.json` | WCAG criterion map, persona config, persona-rule mapping |
-| `reporting/manual-checks.json` | 41 manual checks for the WCAG checklist |
-| `discovery/crawler-config.json` | BFS crawl defaults (timeouts, concurrency) |
-| `discovery/stack-detection.json` | Framework/CMS DOM fingerprints |
-| `remediation/intelligence.json` | Per-rule fix intelligence for 106 axe-core rules |
-| `remediation/code-patterns.json` | Source code pattern definitions |
-| `remediation/guardrails.json` | Agent fix scope guardrails |
-| `remediation/axe-check-maps.json` | axe check-to-rule mapping |
-| `remediation/source-boundaries.json` | Framework-specific source file locations |
+| `reporting/compliance-config.mjs` | Score weights, grade thresholds, legal regulation list |
+| `reporting/wcag-reference.mjs` | WCAG criterion map, persona config, persona-rule mapping |
+| `reporting/manual-checks.mjs` | 41 manual checks for the WCAG checklist |
+| `discovery/crawler-config.mjs` | BFS crawl defaults (timeouts, concurrency) |
+| `discovery/stack-detection.mjs` | Framework/CMS DOM fingerprints and detection rules |
+| `scanning/cdp-checks.mjs` | CDP accessibility tree check definitions |
+| `scanning/pa11y-config.mjs` | pa11y equivalence map, impact map, ignore list |
+| `remediation/intelligence.mjs` | Per-rule fix intelligence for 106 axe-core rules |
+| `remediation/code-patterns.mjs` | Source code pattern definitions |
+| `remediation/guardrails.mjs` | Agent fix scope guardrails |
+| `remediation/axe-check-maps.mjs` | axe check-to-rule mapping |
+| `remediation/source-boundaries.mjs` | Framework-specific source file locations |
 
 ## Programmatic API
 
-In addition to the CLI pipeline, the engine exports 7 functions via `scripts/index.mjs` for direct consumption by Node.js applications (e.g. `a11y-scanner`). These functions reuse the same internal renderers, assets, and enrichment logic as the CLI — no duplication.
+In addition to the CLI pipeline, the engine exports 8 functions via `src/index.mjs` for direct consumption by Node.js applications (e.g. `a11y-scanner`, `a11y` skill). These functions reuse the same internal renderers, assets, and enrichment logic as the CLI — no duplication.
 
 ```
-scripts/index.mjs (public API)
-  ├── getEnrichedFindings()   ← uses asset-loader, intelligence.json, pa11y-config.json
-  ├── getAuditSummary()       ← uses compliance-config.json, wcag-reference.json
+src/index.mjs (public API)
+  ├── runAudit()              ← orchestrates full scan pipeline (dom-scanner + analyzer)
+  ├── getEnrichedFindings()   ← uses asset-loader, intelligence, pa11y-config
+  ├── getAuditSummary()       ← uses compliance-config, wcag-reference
   ├── getPDFReport()          ← uses reports/renderers/pdf.mjs + Playwright
   ├── getHTMLReport()         ← uses reports/renderers/html.mjs + findings.mjs
   ├── getChecklist()          ← uses reports/renderers/html.mjs (manual checks)
   ├── getRemediationGuide()   ← uses reports/renderers/md.mjs
-  └── getSourcePatterns()     ← uses engine/source-scanner.mjs
+  └── getSourcePatterns()     ← uses source-patterns/source-scanner.mjs
 ```
 
 ### Key design decisions
@@ -229,7 +232,7 @@ scripts/index.mjs (public API)
 
 ## Execution model and timeouts
 
-`audit.mjs` spawns each stage as a child process via `node:child_process`. All child processes:
+`src/cli/audit.mjs` spawns each stage as a child process via `node:child_process`. All child processes:
 
 - Inherit the parent's environment
 - Run with `cwd` set to the package root (`SKILL_ROOT`)

@@ -5,38 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.2] — 2026-03-15
 
-### Added
+### Fixed
 
-- **Programmatic API** — 7 exported functions accessible via `import { ... } from "@diegovelasquezweb/a11y-engine"`:
-  - `getEnrichedFindings(input, options?)` — normalizes raw findings, canonicalizes pa11y rules, enriches with fix intelligence, infers effort, sorts by severity. Accepts a full scan payload or a raw findings array. Supports `screenshotUrlBuilder` callback for consumer-specific screenshot URLs.
-  - `getAuditSummary(findings, payload?)` — computes severity totals, compliance score, grade label, WCAG pass/fail status, persona impact groups, quick wins, target URL, and detected stack from metadata.
-  - `getPDFReport(payload, options?)` — generates a formal A4 PDF compliance report via Playwright. Returns `{ buffer, contentType }`.
-  - `getChecklist(options?)` — generates a standalone manual accessibility testing checklist as HTML. Returns `{ html, contentType }`.
-  - `getHTMLReport(payload, options?)` — generates an interactive HTML audit dashboard with severity filters and fix guidance. Supports embedded base64 screenshots via `screenshotsDir`. Returns `{ html, contentType }`.
-  - `getRemediationGuide(payload, options?)` — generates a Markdown remediation guide optimized for AI agents. Supports optional `patternFindings` from source scanner. Returns `{ markdown, contentType }`.
-  - `getSourcePatterns(projectDir, options?)` — scans project source code for accessibility patterns not detectable by axe-core. Returns `{ findings, summary }`.
-- **TypeScript type declarations** shipped with the package (`scripts/index.d.mts`):
-  - `Finding` — raw finding with all snake_case fields
-  - `EnrichedFinding` — extends Finding with camelCase aliases and enriched fields
-  - `AuditSummary` — full audit summary including totals, score, personas, quick wins, detected stack
-  - `SeverityTotals`, `PersonaGroup`, `DetectedStack`, `ComplianceScore`
-  - `ScanPayload`, `EnrichmentOptions`, `ReportOptions`
-  - `PDFReport`, `HTMLReport`, `ChecklistReport`, `RemediationGuide`
-  - `SourcePatternFinding`, `SourcePatternResult`, `SourcePatternOptions`
-- `exports` and `main` fields in `package.json` pointing to `scripts/index.mjs`
-- `--axe-tags` CLI flag passthrough from `audit.mjs` to `dom-scanner.mjs`
-- `resolveScanDirs` exported from `source-scanner.mjs` for programmatic use
+- Broken relative imports in `src/reports/` after architecture migration — report builders were resolving `../../core/` and `../renderers/` instead of `../core/` and `./renderers/`
+
+---
+
+## [0.4.1] — 2026-03-15
+
+### Fixed
+
+- Asset loader imports updated to match flattened `assets/` structure (removed `generated/` and `source/` subdirectories)
+
+---
+
+## [0.4.0] — 2026-03-15
 
 ### Changed
 
-- `getEnrichedFindings` always creates camelCase aliases (`fixDescription`, `fixCode`, `screenshotPath`, `wcagCriterionId`, `impactedUsers`, etc.) regardless of whether the finding already has fix data — fixes bug where camelCase fields were `undefined` when snake_case data existed
-- `getEnrichedFindings` infers `effort` field after intelligence enrichment: findings with `fixCode` default to `"low"`, others to `"high"` — unless an explicit effort value already exists
-- `getEnrichedFindings` normalizes raw findings internally — consumers no longer need to pre-process the findings array
-- `getEnrichedFindings` sorts findings by severity (Critical > Serious > Moderate > Minor) then by ID
-- `getAuditSummary` now includes `quickWins` (top 3 Critical/Serious findings with fix code), `targetUrl` (extracted from metadata with fallbacks), and `detectedStack` (framework/CMS/libraries from project context)
-- CLI (`audit.mjs`) continues to work standalone — the programmatic API is additive
+- **Architecture migration**: all source code moved from `scripts/` to `src/` with domain-based modules:
+  - `src/cli/` — CLI adapter
+  - `src/core/` — utilities, asset loader, toolchain
+  - `src/pipeline/` — DOM scanner (axe + CDP + pa11y + merge)
+  - `src/enrichment/` — finding analyzer
+  - `src/reports/` — report builders and renderers
+  - `src/source-patterns/` — source code pattern scanner
+  - `src/index.mjs` — public API entry point
+  - `src/index.d.mts` — TypeScript declarations
+- Assets simplified to single `.mjs` modules under `assets/` (no more `source/` + `generated/` duplication)
+- `assets/engine/` renamed to `assets/scanning/` for semantic clarity
+- Package entrypoints updated: `main`, `types`, `bin`, `exports` all point to `src/`
+- CLI now invocable via `pnpm exec a11y-audit` (uses package `bin` field instead of internal paths)
+
+### Added
+
+- Vitest regression suite: 8 test files, 26 tests covering asset loading, enrichment, summary, report APIs, source patterns, and `runAudit` integration with mocked modules
+
+---
+
+## [0.3.1] — 2026-03-15
+
+### Changed
+
+- Assets converted to ESM modules with static imports — eliminates runtime `fs.readFileSync` and resolves Turbopack/Next.js chunk resolution failures
+- `asset-loader.mjs` now uses `import` statements instead of filesystem reads
+
+---
+
+## [0.3.0] — 2026-03-15
+
+### Added
+
+- **DOM-based stack detection** — detects framework (Next.js, Nuxt, Gatsby, Angular, Svelte, Astro, Remix, Vue, React), CMS (WordPress, Shopify, Drupal, Wix, Squarespace, Webflow, Joomla, Magento), and UI libraries (Bootstrap, Material UI, jQuery, Foundation) from the live page using window globals, script sources, meta tags, and DOM selectors
+- `runAudit()` — new programmatic API function that orchestrates the full scan pipeline with `onProgress` callback support
+- `detectProjectContextFromDom(page)` — runtime stack detection via `page.evaluate()`
+
+### Changed
+
+- Stack detection now merges repo-based detection (when `projectDir` is available) with DOM-based detection — repo takes priority, DOM fills gaps
+- `detectProjectContext()` no longer falls back to `process.cwd()` without explicit `projectDir` — prevents false detection of the scanner/host app as the audited site
+- `getAuditSummary` includes `cms` field in `detectedStack`
+- UI library detection requires at least 2 signals or 1 strong signal (global/scriptSrc/meta) to avoid false positives
+
+---
+
+## [0.2.0] — 2026-03-14
+
+### Added
+
+- **Programmatic API** — 8 exported functions accessible via `import { ... } from "@diegovelasquezweb/a11y-engine"`:
+  - `runAudit(options)` — runs the full scan pipeline programmatically with progress callback
+  - `getEnrichedFindings(input, options?)` — normalizes, canonicalizes, enriches, and sorts findings
+  - `getAuditSummary(findings, payload?)` — computes totals, score, personas, quick wins, detected stack
+  - `getPDFReport(payload, options?)` — PDF compliance report
+  - `getHTMLReport(payload, options?)` — interactive HTML dashboard
+  - `getChecklist(options?)` — manual testing checklist
+  - `getRemediationGuide(payload, options?)` — Markdown remediation guide
+  - `getSourcePatterns(projectDir, options?)` — source code pattern analysis
+- **TypeScript type declarations** shipped with the package (`src/index.d.mts`)
+
+### Changed
+
+- `getEnrichedFindings` always creates camelCase aliases regardless of existing fix data
+- `getEnrichedFindings` infers `effort` after enrichment: findings with `fixCode` default to `"low"`, others to `"high"`
+- `getAuditSummary` includes `quickWins`, `targetUrl`, and `detectedStack`
 
 ---
 

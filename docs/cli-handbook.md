@@ -24,10 +24,10 @@
 npx a11y-audit --base-url <url> [options]
 ```
 
-Or if installed locally:
+Or via pnpm in a project that depends on the engine:
 
 ```bash
-node node_modules/@diegovelasquezweb/a11y-engine/scripts/audit.mjs --base-url <url> [options]
+pnpm exec a11y-audit --base-url <url> [options]
 ```
 
 The only required flag is `--base-url`. All other flags are optional.

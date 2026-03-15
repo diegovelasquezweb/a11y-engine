@@ -40,7 +40,7 @@ All artifacts are written to `.audit/` relative to the package root (`SKILL_ROOT
 
 ## progress.json
 
-Real-time scan progress written by `scripts/engine/dom-scanner.mjs` as each engine runs. Used by integrations for live progress UI.
+Real-time scan progress written by `src/pipeline/dom-scanner.mjs` as each engine runs. Used by integrations for live progress UI.
 
 ```json
 {
@@ -73,7 +73,7 @@ Real-time scan progress written by `scripts/engine/dom-scanner.mjs` as each engi
 
 ## a11y-scan-results.json
 
-Merged results from all three engines (axe-core + CDP + pa11y) per route. Written by `scripts/engine/dom-scanner.mjs`.
+Merged results from all three engines (axe-core + CDP + pa11y) per route. Written by `src/pipeline/dom-scanner.mjs`.
 
 ```json
 {
@@ -100,7 +100,7 @@ This file is consumed by `analyzer.mjs` and also used by `--affected-only` to de
 
 ## a11y-findings.json
 
-The primary enriched data artifact. Written by `scripts/engine/analyzer.mjs`. This is the file consumed by all report builders.
+The primary enriched data artifact. Written by `src/enrichment/analyzer.mjs`. This is the file consumed by all report builders.
 
 ### Top-level structure
 
@@ -311,7 +311,7 @@ if (fs.existsSync(progressPath)) {
 ### Parsing stdout markers
 
 ```bash
-OUTPUT=$(node scripts/audit.mjs --base-url https://example.com --with-reports --output ./audit/report.html)
+OUTPUT=$(npx a11y-audit --base-url https://example.com --with-reports --output ./audit/report.html)
 REMEDIATION_PATH=$(echo "$OUTPUT" | grep REMEDIATION_PATH | cut -d= -f2)
 REPORT_PATH=$(echo "$OUTPUT" | grep REPORT_PATH | cut -d= -f2)
 ```
