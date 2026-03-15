@@ -564,7 +564,7 @@ ${rows.join("\n")}
   const sourceBoundariesSection = buildSourceBoundariesSection(framework);
 
   return (
-      `# Accessibility Remediation Guide — WCAG 2.2 AA
+      `# Accessibility Remediation Guide — WCAG 2.2
 > **Base URL:** ${args.baseUrl || "N/A"}
 
 | Severity | Count |

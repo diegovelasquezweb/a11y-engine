@@ -1029,7 +1029,7 @@ export async function getHTMLReport(payload, options = {}) {
       </div>
       <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
         <div class="text-3xl font-black ${wcagStatus === 'Pass' ? 'text-emerald-600' : 'text-rose-600'}">${wcagStatus}</div>
-        <div class="text-xs font-bold text-slate-500 uppercase">WCAG 2.2 AA</div>
+        <div class="text-xs font-bold text-slate-500 uppercase">WCAG 2.2</div>
       </div>
       <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
         <div class="text-3xl font-black">${Object.keys(pageGroups).length}</div>

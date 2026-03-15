@@ -751,7 +751,7 @@ function computeTestingMethodology(payload) {
       "pa11y (HTML CodeSniffer via Puppeteer)",
       "Playwright + Chromium",
     ],
-    compliance_target: "WCAG 2.2 AA",
+    compliance_target: "WCAG 2.2",
     pages_scanned: scanned,
     pages_errored: errored,
     framework_detected: payload.projectContext?.framework || "Not detected",
