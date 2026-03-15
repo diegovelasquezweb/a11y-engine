@@ -1,6 +1,6 @@
-// ---------------------------------------------------------------------------
-// Core types
-// ---------------------------------------------------------------------------
+
+
+
 
 export interface Finding {
   id: string;
@@ -135,9 +135,9 @@ export interface AuditSummary {
   totalFindings: number;
 }
 
-// ---------------------------------------------------------------------------
-// Report types
-// ---------------------------------------------------------------------------
+
+
+
 
 export interface ScanPayload {
   findings: Finding[] | Record<string, unknown>[];
@@ -209,9 +209,9 @@ export interface SourcePatternOptions {
   onlyPattern?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Knowledge APIs
-// ---------------------------------------------------------------------------
+
+
+
 
 export interface ScannerEngineHelp {
   id: "axe" | "cdp" | "pa11y" | string;
@@ -222,25 +222,53 @@ export interface ScannerEngineHelp {
   defaultEnabled: boolean;
 }
 
-export interface EnumOptionValue {
-  value: string;
-  label: string;
-  description?: string;
-}
-
 export interface ScannerOptionHelp {
   id: string;
   label: string;
   description: string;
   defaultValue: unknown;
   type: string;
-  allowedValues?: unknown[] | EnumOptionValue[];
+  allowedValues?: unknown[];
+}
+
+export interface GlossaryEntry {
+  term: string;
+  definition: string;
+}
+
+export interface ConceptEntry {
+  title: string;
+  body: string;
+  context?: string;
+}
+
+export interface PersonaReferenceItem {
+  id: string;
+  icon: string;
+  label: string;
+  description: string;
+  keywords: string[];
+  mappedRules: string[];
+}
+
+export interface PersonaReference {
+  locale: string;
+  version: string;
+  personas: PersonaReferenceItem[];
+}
+
+export interface ScannerHelp {
+  locale: string;
+  version: string;
+  title: string;
+  engines: ScannerEngineHelp[];
+  options: ScannerOptionHelp[];
 }
 
 export interface ConformanceLevel {
   id: "A" | "AA" | "AAA";
   label: string;
-  badge: string;
+  tag: string;
   description: string;
   shortDescription: string;
   hint: string;
@@ -267,7 +295,7 @@ export interface DocArticle {
   id: string;
   title: string;
   icon?: string;
-  badge?: string;
+  tag?: string;
   summary: string;
   body: string;
 }
@@ -335,9 +363,9 @@ export interface KnowledgeOptions {
   locale?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Engine selection
-// ---------------------------------------------------------------------------
+
+
+
 
 export interface EngineSelection {
   axe?: boolean;
@@ -345,9 +373,9 @@ export interface EngineSelection {
   pa11y?: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Audit options
-// ---------------------------------------------------------------------------
+
+
+
 
 export interface RunAuditOptions {
   baseUrl: string;
@@ -372,17 +400,17 @@ export interface RunAuditOptions {
   onProgress?: (step: string, status: string, extra?: Record<string, unknown>) => void;
 }
 
-// ---------------------------------------------------------------------------
-// Enrichment options
-// ---------------------------------------------------------------------------
+
+
+
 
 export interface EnrichmentOptions {
   screenshotUrlBuilder?: (rawPath: string) => string;
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
+
+
+
 
 export function runAudit(options: RunAuditOptions): Promise<ScanPayload>;
 
