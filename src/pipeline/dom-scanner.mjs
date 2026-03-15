@@ -63,6 +63,7 @@ Options:
   --crawl-depth <number>      How deep to follow links during discovery (1-3, default: 2)
   --wait-until <value>        Page load strategy: domcontentloaded|load|networkidle (default: domcontentloaded)
   --viewport <WxH>            Viewport dimensions as WIDTHxHEIGHT (e.g., 375x812)
+  --engines <csv>             Engines to run: axe,cdp,pa11y (default: all)
   -h, --help                  Show this help
 `);
 }
@@ -95,6 +96,7 @@ function parseArgs(argv) {
     crawlDepth: DEFAULTS.crawlDepth,
     viewport: null,
     axeTags: null,
+    engines: { axe: true, cdp: true, pa11y: true },
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -121,6 +123,10 @@ function parseArgs(argv) {
     if (key === "--color-scheme") args.colorScheme = value;
     if (key === "--screenshots-dir") args.screenshotsDir = value;
     if (key === "--axe-tags") args.axeTags = value.split(",").map((s) => s.trim());
+    if (key === "--engines") {
+      const active = value.split(",").map((s) => s.trim().toLowerCase());
+      args.engines = { axe: active.includes("axe"), cdp: active.includes("cdp"), pa11y: active.includes("pa11y") };
+    }
     if (key === "--viewport") {
       const [w, h] = value.split("x").map(Number);
       if (w && h) args.viewport = { width: w, height: h };
@@ -945,6 +951,11 @@ export async function runDomScanner(options = {}, callbacks = {}) {
     viewport: options.viewport || null,
     axeTags: options.axeTags || null,
     projectDir: options.projectDir || null,
+    engines: {
+      axe: options.engines?.axe !== false,
+      cdp: options.engines?.cdp !== false,
+      pa11y: options.engines?.pa11y !== false,
+    },
   };
 
   if (!args.baseUrl) throw new Error("Missing required option: baseUrl");
@@ -1151,36 +1162,57 @@ async function _runDomScannerInternal(args) {
 
             writeProgress("page", "done");
 
-            // Step 1: axe-core
-            writeProgress("axe", "running");
-            const result = await analyzeRoute(
-              tabPage,
-              targetUrl,
-              args.waitMs,
-              args.excludeSelectors,
-              args.onlyRule,
-              args.timeoutMs,
-              2,
-              args.waitUntil,
-              args.axeTags,
-            );
-            const axeViolationCount = result.violations?.length || 0;
-            writeProgress("axe", "done", { found: axeViolationCount });
-            log.info(`axe-core: ${axeViolationCount} violation(s) found`);
+            let result = { url: targetUrl, violations: [], incomplete: [], passes: [], metadata: {} };
+            let cdpViolations = [];
+            let pa11yViolations = [];
 
-            // Step 2: CDP checks
-            writeProgress("cdp", "running");
-            const cdpViolations = await runCdpChecks(tabPage);
-            writeProgress("cdp", "done", { found: cdpViolations.length });
-            log.info(`CDP checks: ${cdpViolations.length} issue(s) found`);
+            // Step 1: axe-core (conditional)
+            if (args.engines.axe) {
+              writeProgress("axe", "running");
+              result = await analyzeRoute(
+                tabPage,
+                targetUrl,
+                args.waitMs,
+                args.excludeSelectors,
+                args.onlyRule,
+                args.timeoutMs,
+                2,
+                args.waitUntil,
+                args.axeTags,
+              );
+              const axeViolationCount = result.violations?.length || 0;
+              writeProgress("axe", "done", { found: axeViolationCount });
+              log.info(`axe-core: ${axeViolationCount} violation(s) found`);
+            } else {
+              // Navigate for CDP/pa11y even if axe is off
+              await tabPage.goto(targetUrl, { waitUntil: args.waitUntil, timeout: args.timeoutMs });
+              await tabPage.waitForLoadState("networkidle", { timeout: args.waitMs }).catch(() => {});
+              result.metadata = await tabPage.evaluate(() => ({ title: document.title }));
+              log.info("axe-core: skipped (disabled)");
+            }
 
-            // Step 3: pa11y
-            writeProgress("pa11y", "running");
-            const pa11yViolations = await runPa11yChecks(targetUrl, args.axeTags);
-            writeProgress("pa11y", "done", { found: pa11yViolations.length });
-            log.info(`pa11y: ${pa11yViolations.length} issue(s) found`);
+            // Step 2: CDP checks (conditional)
+            if (args.engines.cdp) {
+              writeProgress("cdp", "running");
+              cdpViolations = await runCdpChecks(tabPage);
+              writeProgress("cdp", "done", { found: cdpViolations.length });
+              log.info(`CDP checks: ${cdpViolations.length} issue(s) found`);
+            } else {
+              log.info("CDP checks: skipped (disabled)");
+            }
+
+            // Step 3: pa11y (conditional)
+            if (args.engines.pa11y) {
+              writeProgress("pa11y", "running");
+              pa11yViolations = await runPa11yChecks(targetUrl, args.axeTags);
+              writeProgress("pa11y", "done", { found: pa11yViolations.length });
+              log.info(`pa11y: ${pa11yViolations.length} issue(s) found`);
+            } else {
+              log.info("pa11y: skipped (disabled)");
+            }
 
             // Step 4: Merge results
+            const axeViolationCount = result.violations?.length || 0;
             writeProgress("merge", "running");
             const mergedViolations = mergeViolations(
               result.violations || [],
@@ -1220,6 +1252,7 @@ async function _runDomScannerInternal(args) {
     generated_at: new Date().toISOString(),
     base_url: baseUrl,
     onlyRule: args.onlyRule || null,
+    engines: args.engines,
     projectContext,
     routes: results,
   };

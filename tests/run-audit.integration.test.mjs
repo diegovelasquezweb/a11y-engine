@@ -50,7 +50,9 @@ describe("runAudit integration (mocked modules)", () => {
 
     const result = await runAudit(options);
 
-    expect(result).toEqual(analyzedPayload);
+    // analyzedPayload gets engines attached to metadata by runAudit
+    expect(result.findings).toEqual(analyzedPayload.findings);
+    expect(result.metadata.engines).toEqual({ axe: true, cdp: true, pa11y: true });
     expect(mocks.runDomScanner).toHaveBeenCalledTimes(1);
     expect(mocks.runDomScanner).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -60,6 +62,7 @@ describe("runAudit integration (mocked modules)", () => {
         timeoutMs: 3000,
         headless: true,
         projectDir: "/tmp/project",
+        engines: { axe: true, cdp: true, pa11y: true },
       }),
       { onProgress },
     );
@@ -75,6 +78,69 @@ describe("runAudit integration (mocked modules)", () => {
       ["intelligence", "running"],
       ["intelligence", "done"],
     ]);
+  });
+
+  it("passes normalized engines to runDomScanner (all enabled by default)", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({ findings: [], metadata: {} });
+
+    await runAudit({ baseUrl: "https://example.com", skipPatterns: true });
+
+    expect(mocks.runDomScanner).toHaveBeenCalledWith(
+      expect.objectContaining({
+        engines: { axe: true, cdp: true, pa11y: true },
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("passes selective engines when only axe is enabled", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({ findings: [], metadata: {} });
+
+    await runAudit({
+      baseUrl: "https://example.com",
+      skipPatterns: true,
+      engines: { axe: true, cdp: false, pa11y: false },
+    });
+
+    expect(mocks.runDomScanner).toHaveBeenCalledWith(
+      expect.objectContaining({
+        engines: { axe: true, cdp: false, pa11y: false },
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("passes selective engines when cdp and pa11y are enabled but axe is disabled", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({ findings: [], metadata: {} });
+
+    await runAudit({
+      baseUrl: "https://example.com",
+      skipPatterns: true,
+      engines: { axe: false, cdp: true, pa11y: true },
+    });
+
+    expect(mocks.runDomScanner).toHaveBeenCalledWith(
+      expect.objectContaining({
+        engines: { axe: false, cdp: true, pa11y: true },
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("attaches engines to metadata in output payload", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({ findings: [], metadata: {} });
+
+    const result = await runAudit({
+      baseUrl: "https://example.com",
+      skipPatterns: true,
+      engines: { axe: true, cdp: false, pa11y: true },
+    });
+
+    expect(result.metadata.engines).toEqual({ axe: true, cdp: false, pa11y: true });
   });
 
   it("returns expected payload shape when analyzer output includes incomplete findings", async () => {

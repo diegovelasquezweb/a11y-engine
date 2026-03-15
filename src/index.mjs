@@ -447,6 +447,7 @@ export function getOverview(findings, payload = null) {
  *   framework?: string,
  *   projectDir?: string,
  *   skipPatterns?: boolean,
+ *   engines?: { axe?: boolean, cdp?: boolean, pa11y?: boolean },
  *   onProgress?: (step: string, status: string, extra?: object) => void,
  * }} options
  * @returns {Promise<{ findings: object[], metadata: object, incomplete_findings?: object[] }>}
@@ -459,7 +460,14 @@ export async function runAudit(options) {
 
   const onProgress = options.onProgress || null;
 
-  // Step 1: DOM scan (axe + CDP + pa11y)
+  // Normalize engines — default all enabled
+  const engines = {
+    axe: options.engines?.axe !== false,
+    cdp: options.engines?.cdp !== false,
+    pa11y: options.engines?.pa11y !== false,
+  };
+
+  // Step 1: DOM scan (selected engines)
   if (onProgress) onProgress("page", "running");
 
   const scanPayload = await runDomScanner(
@@ -479,6 +487,7 @@ export async function runAudit(options) {
       excludeSelectors: options.excludeSelectors,
       screenshotsDir: options.screenshotsDir,
       projectDir: options.projectDir,
+      engines,
     },
     { onProgress },
   );
@@ -530,6 +539,10 @@ export async function runAudit(options) {
   }
 
   if (onProgress) onProgress("intelligence", "done");
+
+  // Attach active engines to metadata so consumers know which ran
+  findingsPayload.metadata = findingsPayload.metadata || {};
+  findingsPayload.metadata.engines = engines;
 
   return findingsPayload;
 }

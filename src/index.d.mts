@@ -210,6 +210,16 @@ export interface SourcePatternOptions {
 }
 
 // ---------------------------------------------------------------------------
+// Engine selection
+// ---------------------------------------------------------------------------
+
+export interface EngineSelection {
+  axe?: boolean;
+  cdp?: boolean;
+  pa11y?: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Audit options
 // ---------------------------------------------------------------------------
 
@@ -232,6 +242,7 @@ export interface RunAuditOptions {
   projectDir?: string;
   skipPatterns?: boolean;
   screenshotsDir?: string;
+  engines?: EngineSelection;
   onProgress?: (step: string, status: string, extra?: Record<string, unknown>) => void;
 }
 

@@ -46,6 +46,7 @@ Execution & Emulation:
   --skip-reports          Omit HTML and PDF report generation (default).
   --skip-patterns         Skip source code pattern scanning even if --project-dir is set.
   --affected-only         Re-scan only routes that had violations in the previous scan (faster re-audits).
+  --engines <csv>         Comma-separated engines to run: axe,cdp,pa11y (default: all).
   --wait-ms <num>         Time to wait after page load (default: 2000).
   --timeout-ms <num>      Network timeout (default: 30000).
   -h, --help              Show this help.
@@ -154,6 +155,7 @@ async function main() {
   const colorScheme = getArgValue("color-scheme");
   const target = getArgValue("target");
   const headless = !argv.includes("--headed");
+  const enginesArg = getArgValue("engines");
 
   const onlyRule = getArgValue("only-rule");
   const skipReports = argv.includes("--skip-reports") || !argv.includes("--with-reports");
@@ -257,6 +259,7 @@ async function main() {
       scanArgs.push("--viewport", `${viewport.width}x${viewport.height}`);
     }
     if (axeTags) scanArgs.push("--axe-tags", axeTags);
+    if (enginesArg) scanArgs.push("--engines", enginesArg);
 
     await runScript("../pipeline/dom-scanner.mjs", scanArgs, childEnv);
 
