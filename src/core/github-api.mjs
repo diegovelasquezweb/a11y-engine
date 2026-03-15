@@ -104,8 +104,87 @@ export async function fetchRepoFile(repoUrl, filePath, token) {
   return null;
 }
 
+const SKIP_DIRS = new Set([
+  "node_modules", ".git", "dist", "build", ".next", ".nuxt",
+  "coverage", ".cache", "out", ".turbo", ".vercel", ".netlify",
+  "public", "static", "wp-includes", "wp-admin",
+]);
+
+// Common source root directories to walk when the Trees API is truncated.
+const FALLBACK_SOURCE_DIRS = [
+  "src", "app", "pages", "components", "lib", "utils", "hooks",
+];
+
+/**
+ * Filters a flat list of tree items to only matching files.
+ * @param {Array<{type: string, path: string}>} tree
+ * @param {Set<string>} extSet
+ * @returns {string[]}
+ */
+function filterTree(tree, extSet) {
+  return tree
+    .filter((item) => {
+      if (item.type !== "blob") return false;
+      const parts = item.path.split("/");
+      if (parts.some((p) => SKIP_DIRS.has(p) || p.startsWith("."))) return false;
+      const ext = item.path.slice(item.path.lastIndexOf(".")).toLowerCase();
+      return extSet.has(ext);
+    })
+    .map((item) => item.path);
+}
+
+/**
+ * Recursively lists files in a directory using the GitHub Contents API.
+ * Used as fallback when the Trees API returns a truncated response.
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} branch
+ * @param {string} dir
+ * @param {Set<string>} extSet
+ * @param {Record<string, string>} headers
+ * @param {number} depth
+ * @returns {Promise<string[]>}
+ */
+async function walkContentsApi(owner, repo, branch, dir, extSet, headers, depth = 0) {
+  if (depth > 6) return [];
+
+  try {
+    const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${dir}?ref=${branch}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) return [];
+
+    const items = await res.json();
+    if (!Array.isArray(items)) return [];
+
+    const files = [];
+    const subdirPromises = [];
+
+    for (const item of items) {
+      if (item.type === "file") {
+        const ext = item.path.slice(item.path.lastIndexOf(".")).toLowerCase();
+        if (extSet.has(ext)) files.push(item.path);
+      } else if (item.type === "dir") {
+        const name = item.name;
+        if (!SKIP_DIRS.has(name) && !name.startsWith(".")) {
+          subdirPromises.push(
+            walkContentsApi(owner, repo, branch, item.path, extSet, headers, depth + 1)
+          );
+        }
+      }
+    }
+
+    const nested = await Promise.all(subdirPromises);
+    return [...files, ...nested.flat()];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Lists files in a repository directory using the GitHub Trees API.
+ * Falls back to the Contents API for each common source directory if
+ * the Trees API response is truncated (large monorepos).
  * Returns file paths matching the given extensions.
  *
  * @param {string} repoUrl
@@ -118,32 +197,29 @@ export async function listRepoFiles(repoUrl, extensions, token) {
   if (!parsed) return [];
 
   const { owner, repo, branch } = parsed;
+  const extSet = new Set(extensions.map((e) => e.toLowerCase()));
+  const headers = authHeaders(token);
 
   try {
     const url = `${GITHUB_API}/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
-    const res = await fetch(url, { headers: authHeaders(token) });
+    const res = await fetch(url, { headers });
     if (!res.ok) return [];
 
-    const { tree } = await res.json();
-    if (!Array.isArray(tree)) return [];
+    const data = await res.json();
+    if (!Array.isArray(data.tree)) return [];
 
-    const extSet = new Set(extensions.map((e) => e.toLowerCase()));
-    const skipDirs = new Set([
-      "node_modules", ".git", "dist", "build", ".next", ".nuxt",
-      "coverage", ".cache", "out", ".turbo", ".vercel", ".netlify",
-      "public", "static", "wp-includes", "wp-admin",
-    ]);
+    if (!data.truncated) {
+      return filterTree(data.tree, extSet);
+    }
 
-    return tree
-      .filter((item) => {
-        if (item.type !== "blob") return false;
-        const path = item.path;
-        const parts = path.split("/");
-        if (parts.some((p) => skipDirs.has(p) || p.startsWith("."))) return false;
-        const ext = path.slice(path.lastIndexOf(".")).toLowerCase();
-        return extSet.has(ext);
-      })
-      .map((item) => item.path);
+    // Trees API truncated — fall back to Contents API for common source dirs
+    const results = await Promise.all(
+      FALLBACK_SOURCE_DIRS.map((dir) =>
+        walkContentsApi(owner, repo, branch, dir, extSet, headers)
+      )
+    );
+
+    return [...new Set(results.flat())];
   } catch {
     return [];
   }

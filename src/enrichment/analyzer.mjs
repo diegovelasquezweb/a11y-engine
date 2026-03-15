@@ -175,9 +175,9 @@ function resolveCmsNotesKey(framework) {
 function filterNotes(notes, framework) {
   if (!notes || typeof notes !== "object") return null;
   const intelKey = resolveFrameworkNotesKey(framework);
-  if (intelKey && notes[intelKey]) return { [intelKey]: notes[intelKey] };
+  if (intelKey && notes[intelKey]) return notes[intelKey];
   const cmsKey = resolveCmsNotesKey(framework);
-  if (cmsKey && notes[cmsKey]) return { [cmsKey]: notes[cmsKey] };
+  if (cmsKey && notes[cmsKey]) return notes[cmsKey];
   return null;
 }
 
