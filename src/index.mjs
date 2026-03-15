@@ -14,7 +14,7 @@ let _intelligence = null;
 let _pa11yConfig = null;
 let _complianceConfig = null;
 let _wcagReference = null;
-let _uxCopy = null;
+let _knowledge = null;
 
 function getIntelligence() {
   if (!_intelligence) _intelligence = loadAssetJson(ASSET_PATHS.remediation.intelligence, "intelligence.json");
@@ -42,9 +42,9 @@ function getWcagReference() {
   return _wcagReference;
 }
 
-function getUxCopy() {
-  if (!_uxCopy) _uxCopy = loadAssetJson(ASSET_PATHS.knowledge.uxCopy, "ux-copy.json");
-  return _uxCopy;
+function getKnowledgeData() {
+  if (!_knowledge) _knowledge = loadAssetJson(ASSET_PATHS.knowledge.knowledge, "knowledge.json");
+  return _knowledge;
 }
 
 function clone(value) {
@@ -52,7 +52,7 @@ function clone(value) {
 }
 
 function resolveKnowledgeLocale(locale = "en") {
-  const payload = getUxCopy();
+  const payload = getKnowledgeData();
   const locales = payload.locales || {};
   if (locale && locales[locale]) return locale;
   return "en";
@@ -451,7 +451,7 @@ export function getOverview(findings, payload = null) {
  */
 export function getScannerHelp(options = {}) {
   const locale = resolveKnowledgeLocale(options.locale || "en");
-  const payload = getUxCopy();
+  const payload = getKnowledgeData();
   const scanner = payload.locales[locale]?.scanner || { title: "Scanner Help", engines: [], options: [] };
 
   return {
@@ -472,7 +472,7 @@ export function getScannerHelp(options = {}) {
  */
 export function getPersonaReference(options = {}) {
   const locale = resolveKnowledgeLocale(options.locale || "en");
-  const payload = getUxCopy();
+  const payload = getKnowledgeData();
   const wcagRef = getWcagReference();
 
   const copyMap = payload.locales[locale]?.personas || {};
@@ -509,7 +509,7 @@ export function getPersonaReference(options = {}) {
  */
 export function getUiHelp(options = {}) {
   const locale = resolveKnowledgeLocale(options.locale || "en");
-  const payload = getUxCopy();
+  const payload = getKnowledgeData();
   const localePayload = payload.locales[locale] || {};
 
   return {
@@ -532,7 +532,7 @@ export function getKnowledge(options = {}) {
   const personas = getPersonaReference(options);
   const ui = getUiHelp(options);
 
-  const payload = getUxCopy();
+  const payload = getKnowledgeData();
   const docs = clone(payload.locales[scanner.locale]?.docs ?? { sections: [] });
 
   return {
