@@ -744,6 +744,14 @@ function computeTestingMethodology(payload) {
   const routes = payload.routes || [];
   const scanned = routes.filter((r) => !r.error).length;
   const errored = routes.filter((r) => r.error).length;
+  const tags = payload.axeTags || [];
+  const conformanceLevel = tags.includes("wcag2aaa")
+    ? "AAA"
+    : tags.includes("wcag2aa") || tags.includes("wcag21aa") || tags.includes("wcag22aa")
+      ? "AA"
+      : tags.includes("wcag2a") || tags.includes("wcag21a") || tags.includes("wcag22a")
+        ? "A"
+        : null;
   return {
     automated_tools: [
       "axe-core (via @axe-core/playwright)",
@@ -752,6 +760,9 @@ function computeTestingMethodology(payload) {
       "Playwright + Chromium",
     ],
     compliance_target: "WCAG 2.2",
+    conformance_level: conformanceLevel,
+    best_practices: tags.includes("best-practice"),
+    axe_tags: tags.length > 0 ? tags : null,
     pages_scanned: scanned,
     pages_errored: errored,
     framework_detected: payload.projectContext?.framework || "Not detected",

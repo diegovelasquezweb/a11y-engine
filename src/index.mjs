@@ -660,14 +660,17 @@ export async function runAudit(options) {
   // Fetch remote package.json via GitHub API if repoUrl is provided
   let remotePackageJson = null;
   if (options.repoUrl && !options.projectDir) {
+    if (onProgress) onProgress("repo", "running");
     try {
       const { fetchPackageJson } = await import("./core/github-api.mjs");
       remotePackageJson = await fetchPackageJson(options.repoUrl, options.githubToken);
       if (remotePackageJson) {
-        console.info("[a11y-engine] Fetched package.json from GitHub repo");
+        if (onProgress) onProgress("repo", "done", { packageJson: true });
+      } else {
+        if (onProgress) onProgress("repo", "skipped", { reason: "Could not read package.json" });
       }
     } catch (err) {
-      console.warn(`[a11y-engine] Could not fetch package.json from repo (non-fatal): ${err.message}`);
+      if (onProgress) onProgress("repo", "skipped", { reason: err.message });
     }
   }
 
@@ -708,6 +711,7 @@ export async function runAudit(options) {
   // Step 3: Source patterns (optional) — works with local projectDir or remote repoUrl
   const hasSourceContext = (options.projectDir || options.repoUrl) && !options.skipPatterns;
   if (hasSourceContext) {
+    if (onProgress) onProgress("patterns", "running");
     try {
       const { patterns } = loadAssetJson(ASSET_PATHS.remediation.codePatterns, "code-patterns.json");
 
@@ -741,21 +745,26 @@ export async function runAudit(options) {
         }
       }
 
+      const confirmed = allPatternFindings.filter((f) => f.status === "confirmed").length;
+      const potential = allPatternFindings.filter((f) => f.status === "potential").length;
+
       if (allPatternFindings.length > 0) {
         findingsPayload.patternFindings = {
           generated_at: new Date().toISOString(),
           project_dir: options.projectDir || options.repoUrl,
           findings: allPatternFindings,
-          summary: {
-            total: allPatternFindings.length,
-            confirmed: allPatternFindings.filter((f) => f.status === "confirmed").length,
-            potential: allPatternFindings.filter((f) => f.status === "potential").length,
-          },
+          summary: { total: allPatternFindings.length, confirmed, potential },
         };
       }
+
+      if (onProgress) onProgress("patterns", "done", {
+        total: allPatternFindings.length,
+        confirmed,
+        potential,
+      });
     } catch (err) {
-      // Non-fatal: source scanning is optional
       const msg = err instanceof Error ? err.message : String(err);
+      if (onProgress) onProgress("patterns", "skipped", { reason: msg });
       console.warn(`Source pattern scan failed (non-fatal): ${msg}`);
     }
   }
@@ -765,6 +774,9 @@ export async function runAudit(options) {
   // Step 4: AI enrichment (optional) — requires ANTHROPIC_API_KEY
   const aiOptions = options.ai || {};
   const aiEnabled = aiOptions.enabled !== false && !!aiOptions.apiKey;
+  if (!aiEnabled && onProgress && options.ai !== undefined) {
+    onProgress("ai", "skipped", { reason: "No API key configured" });
+  }
   if (aiEnabled) {
     try {
       if (onProgress) onProgress("ai", "running");

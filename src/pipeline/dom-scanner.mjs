@@ -1288,6 +1288,7 @@ async function _runDomScannerInternal(args) {
     base_url: baseUrl,
     onlyRule: args.onlyRule || null,
     engines: args.engines,
+    axeTags: args.axeTags || null,
     projectContext,
     routes: results,
   };
