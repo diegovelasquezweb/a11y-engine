@@ -100,7 +100,7 @@ export function buildIssueCard(finding) {
         <div class="space-y-2">
           ${stackNotes.map(({ key, note, style }) => `
           <div class="flex gap-2 items-start">
-            <span class="flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border ${style} uppercase tracking-wider mt-0.5">${escapeHtml(key)}</span>
+            <span class="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border ${style} uppercase tracking-wider mt-0.5">${escapeHtml(key)}</span>
             <p class="text-[12px] text-slate-600 leading-relaxed">${escapeHtml(note)}</p>
           </div>`).join("")}
         </div>
@@ -135,7 +135,7 @@ export function buildIssueCard(finding) {
     </div>`;
 
   const fixPanelHtml = `
-    <div class="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100/80 rounded-xl p-5 relative overflow-hidden shadow-sm">
+    <div class="bg-linear-to-br from-indigo-50 to-white border border-indigo-100/80 rounded-xl p-5 relative overflow-hidden shadow-sm">
       <div class="absolute top-0 right-0 p-4 opacity-[0.03] transform translate-x-4 -translate-y-4 pointer-events-none">
         <svg class="w-32 h-32 text-indigo-900" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
       </div>
@@ -188,7 +188,7 @@ export function buildIssueCard(finding) {
           Visual Evidence
         </h4>
         <div class="bg-slate-50/50 p-2 rounded-xl border border-slate-200/60 inline-block shadow-sm">
-          <img src="${escapeHtml(finding.screenshotPath)}" alt="Screenshot of ${escapeHtml(finding.title)}" class="rounded-lg border border-slate-200 shadow-sm max-h-[360px] w-auto object-contain bg-white" loading="lazy">
+          <img src="${escapeHtml(finding.screenshotPath)}" alt="Screenshot of ${escapeHtml(finding.title)}" class="rounded-lg border border-slate-200 shadow-sm max-h-90 w-auto object-contain bg-white" loading="lazy">
         </div>
       </div>`
     : "";
@@ -251,7 +251,7 @@ export function buildIssueCard(finding) {
   return `
 <article class="issue-card bg-white/90 backdrop-blur-xl rounded-2xl border ${borderClass} shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 mb-8 overflow-hidden group" data-severity="${finding.severity}" data-rule-id="${escapeHtml(finding.ruleId)}" data-wcag="${escapeHtml(finding.wcag)}" data-collapsed="true" id="${escapeHtml(finding.id)}">
   <button
-    class="card-header w-full text-left p-5 md:p-6 bg-gradient-to-r from-white to-slate-50/80 cursor-pointer select-none relative focus:outline-none focus:ring-4 focus:ring-indigo-500/20"
+    class="card-header w-full text-left p-5 md:p-6 bg-linear-to-r from-white to-slate-50/80 cursor-pointer select-none relative focus:outline-none focus:ring-4 focus:ring-indigo-500/20"
     onclick="toggleCard(this)"
     aria-expanded="false"
     aria-controls="body-${escapeHtml(finding.id)}"
@@ -270,15 +270,15 @@ export function buildIssueCard(finding) {
         <div class="flex flex-wrap gap-x-4 gap-y-2 text-[13px] text-slate-600 font-medium">
           <div class="flex items-center gap-1.5 bg-slate-50/50 px-2 py-1 rounded-md border border-slate-100">
             <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-            <span class="truncate max-w-[200px] md:max-w-md transition-colors searchable-field issue-url">${escapeHtml(finding.url)}</span>
+            <span class="truncate max-w-50 md:max-w-md transition-colors searchable-field issue-url">${escapeHtml(finding.url)}</span>
           </div>
           <div class="flex items-center gap-1.5 min-w-0 bg-slate-50/50 px-2 py-1 rounded-md border border-slate-100">
-            <svg class="w-3.5 h-3.5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+            <svg class="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
             <code class="text-[12px] text-slate-800 font-mono truncate min-w-0 flex-1 searchable-field issue-selector">${escapeHtml(finding.selector)}</code>
           </div>
         </div>
       </div>
-      <div class="bg-white p-1.5 rounded-full border border-slate-200 shadow-sm group-hover:bg-slate-50 transition-colors mt-1 flex-shrink-0">
+      <div class="bg-white p-1.5 rounded-full border border-slate-200 shadow-sm group-hover:bg-slate-50 transition-colors mt-1 shrink-0">
         <svg class="card-chevron w-5 h-5 text-slate-500 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
       </div>
     </div>
@@ -323,7 +323,7 @@ export function buildManualCheckCard(check) {
 
   const conditionalNote = check.conditional
     ? `<div class="mb-5 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-        <svg class="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <svg class="w-4 h-4 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
         <p class="text-[12px] text-amber-800 font-medium leading-relaxed">${escapeHtml(check.conditional)}</p>
       </div>`
     : "";
@@ -346,7 +346,7 @@ export function buildManualCheckCard(check) {
 
   return `
 <article class="manual-card bg-white/90 backdrop-blur-xl rounded-2xl border border-amber-200 hover:border-amber-300 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 mb-4 overflow-hidden group" id="${id}" data-criterion="${escapeHtml(check.criterion)}" data-level="${escapeHtml(check.level)}" data-state="" data-collapsed="true">
-  <div class="manual-header flex items-stretch bg-gradient-to-r from-amber-50/60 to-white">
+  <div class="manual-header flex items-stretch bg-linear-to-r from-amber-50/60 to-white">
     <button
       class="card-header flex-1 text-left p-5 md:p-6 cursor-pointer select-none relative focus:outline-none focus:ring-4 focus:ring-amber-500/20"
       onclick="toggleCard(this)"
@@ -362,12 +362,12 @@ export function buildManualCheckCard(check) {
           </div>
           <h3 class="text-base font-extrabold text-slate-900 group-hover:text-amber-900 transition-colors">${escapeHtml(check.title)}</h3>
         </div>
-        <div class="bg-white p-1.5 rounded-full border border-amber-200 shadow-sm group-hover:bg-amber-50 transition-colors flex-shrink-0">
+        <div class="bg-white p-1.5 rounded-full border border-amber-200 shadow-sm group-hover:bg-amber-50 transition-colors shrink-0">
           <svg class="card-chevron w-5 h-5 text-amber-500 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
         </div>
       </div>
     </button>
-    <div class="flex items-center gap-2 px-4 border-l border-amber-100 flex-shrink-0">
+    <div class="flex items-center gap-2 px-4 border-l border-amber-100 shrink-0">
       <button class="manual-verified-btn px-3 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 transition-colors whitespace-nowrap" onclick="setManualState('${escapeHtml(check.criterion)}', 'verified')">✓ Verified</button>
       <button class="manual-na-btn px-3 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:border-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors whitespace-nowrap" onclick="setManualState('${escapeHtml(check.criterion)}', 'na')">N/A</button>
     </div>
