@@ -16,9 +16,12 @@ This document is the current technical inventory of the engine package.
 | `src/core/utils.mjs` | Logging, JSON I/O, shared helpers |
 | `src/core/asset-loader.mjs` | Centralized asset map and loader |
 | `src/core/toolchain.mjs` | Environment/toolchain checks |
+| `src/core/github-api.mjs` | GitHub API client — `fetchPackageJson`, `fetchRepoFile`, `listRepoFiles`, `parseRepoUrl`. Used for remote repo scanning and AI source file fetching. |
 | `src/pipeline/dom-scanner.mjs` | Runtime scan stage (axe/CDP/pa11y + merge) |
 | `src/enrichment/analyzer.mjs` | Finding enrichment and metadata synthesis |
-| `src/source-patterns/source-scanner.mjs` | Static source-pattern scanner |
+| `src/ai/claude.mjs` | Claude AI client — calls the Anthropic API to enrich findings with context-aware fix suggestions. Accepts custom system prompt via `options.systemPrompt`. |
+| `src/ai/enrich.mjs` | CLI AI enrichment subprocess — reads `a11y-findings.json`, calls `enrichWithAI()`, writes enriched findings back. Activated by `ANTHROPIC_API_KEY` env var. |
+| `src/source-patterns/source-scanner.mjs` | Source code pattern scanner — works with local `--project-dir` or remote `--repo-url` via GitHub API |
 | `src/reports/html.mjs` | HTML report builder |
 | `src/reports/pdf.mjs` | PDF report builder |
 | `src/reports/md.mjs` | Markdown remediation builder |

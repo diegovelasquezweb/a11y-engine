@@ -152,8 +152,22 @@ A single finding can match multiple personas. The persona configuration (`person
 The compliance score is computed from severity totals using weights defined in `assets/reporting/compliance-config.mjs`:
 
 1. **Severity totals** — counts findings by `Critical`, `Serious`, `Moderate`, `Minor` (excluding AAA and Best Practice findings).
-2. **Score** — starts at 100, deducts weighted points per finding.
-3. **Label** — maps score ranges to grades (`Excellent`, `Good Compliance`, `Needs Improvement`, `Poor`, `Critical`).
+2. **Score** — starts at 100, deducts weighted points per finding:
+   - Critical: −15 per finding
+   - Serious: −5 per finding
+   - Moderate: −2 per finding
+   - Minor: −0.5 per finding
+   - Score is clamped to 0–100 and rounded to nearest integer.
+3. **Label** — maps score ranges to grades:
+
+   | Score | Label |
+   | :--- | :--- |
+   | 90 – 100 | `Excellent` |
+   | 75 – 89 | `Good` |
+   | 55 – 74 | `Fair` |
+   | 35 – 54 | `Poor` |
+   | 0 – 34 | `Critical` |
+
 4. **WCAG status** — `Pass` (no findings), `Conditional Pass` (only Moderate/Minor), or `Fail` (any Critical/Serious).
 
 The `overallAssessment` in metadata follows the same logic for the formal compliance verdict.
@@ -187,14 +201,54 @@ The source scanner (`src/source-patterns/source-scanner.mjs`) detects accessibil
 
 5. Output includes a summary with `total`, `confirmed`, and `potential` counts.
 
+### Remote scanning via GitHub API
+
+When `--repo-url` (CLI) or `options.repoUrl` (programmatic API) is provided instead of `--project-dir`, the source scanner uses the GitHub API — no `git clone` required:
+
+1. `listRepoFiles()` fetches the repo file tree using the GitHub Trees API. Falls back to the Contents API for truncated responses (large repos).
+2. Files matching each pattern's `globs` are fetched individually via `raw.githubusercontent.com`.
+3. The same regex and context rejection logic runs against the fetched content.
+4. Results are identical to local scanning.
+
+A GitHub token (`--github-token` or `GH_TOKEN` env var) increases the API rate limit from 60 to 5,000 req/hour and enables private repo access.
+
 ### Integration with the audit pipeline
 
-When `runAudit` is called with `projectDir` and without `skipPatterns`:
+When `runAudit` is called with `projectDir` or `repoUrl` and without `skipPatterns`:
 
-1. The analyzer runs first to detect the framework.
-2. Source patterns run after enrichment.
-3. Pattern findings are attached to the payload as `patternFindings` with their own `generated_at`, `project_dir`, `findings`, and `summary`.
-4. The remediation guide (`getRemediationGuide`) renders pattern findings in a dedicated section.
+1. The engine fetches `package.json` from the repo (remote) or reads it from disk (local) to detect the framework before the analyzer runs.
+2. The analyzer runs with the detected framework context.
+3. Source patterns run after enrichment.
+4. Pattern findings are attached to the payload as `patternFindings` with their own `generated_at`, `project_dir`, `findings`, and `summary`.
+5. The remediation guide (`getRemediationGuide`) renders pattern findings in a dedicated section.
+
+### pa11y ruleId normalization
+
+pa11y reports violations using dotted WCAG criterion codes (e.g. `WCAG2AA.Principle1.Guideline1_4.1_4_3.G18.Fail`). The engine normalizes these in two places:
+
+1. **Equivalence mapping** (`assets/scanning/pa11y-config.mjs`, `equivalenceMap`) — known pa11y codes are mapped to their axe-core equivalent rule ID (e.g. `Principle1.Guideline1_4.1_4_3.G145` → `color-contrast`). These findings are merged and deduplicated with axe findings.
+
+2. **Fallback normalization** (`src/pipeline/dom-scanner.mjs`) — pa11y codes without an axe equivalent are shortened to their last segment (e.g. `WCAG2AAA.Principle1.Guideline1_4.1_4_6.G17` → `pa11y-g17`). This produces a readable rule ID without the full dotted path.
+
+## AI Enrichment
+
+After the analyzer step, the engine optionally runs Claude-powered enrichment on Critical and Serious findings (up to 20 per scan).
+
+### How it works
+
+1. `src/ai/enrich.mjs` reads `a11y-findings.json`, identifies Critical and Serious findings, and sends them to `enrichWithAI()`.
+2. `src/ai/claude.mjs` calls the Anthropic API with a system prompt instructing Claude to generate specific, production-quality fix suggestions using the actual violation data (selector, colors, ratio, etc.).
+3. When a repo URL is available (`A11Y_REPO_URL` env var), Claude also receives relevant source files fetched via the GitHub API. File selection is scored by how well each file path matches terms extracted from the finding's selector and title.
+4. Claude returns a JSON array of improvements. Each improvement contains a `fixDescription` and `fixCode` specific to the finding's context.
+5. The engine stores Claude's output in separate fields (`ai_fix_description`, `ai_fix_code`, `ai_fix_code_lang`) — the original engine fixes are preserved unchanged. Improved findings are flagged with `aiEnhanced: true`.
+
+### Activation
+
+AI enrichment runs automatically when `ANTHROPIC_API_KEY` is present in the environment. It is non-fatal — if the API call fails, the pipeline continues with unenriched findings.
+
+### Custom system prompt
+
+The default system prompt instructs Claude to go beyond the generic fix: explain why the issue matters for users, reference the specific selector and violation data, and provide a more complete code example than the engine's default. The prompt can be overridden per-scan via the `AI_SYSTEM_PROMPT` env var or `options.ai.systemPrompt` in the programmatic API.
 
 ## Assets Reference
 

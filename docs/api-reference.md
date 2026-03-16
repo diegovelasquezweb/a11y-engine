@@ -35,7 +35,7 @@ Runs route discovery, runtime scan, merge, analyzer enrichment, and optional AI 
 | `skipPatterns` | `boolean` |
 | `screenshotsDir` | `string` |
 | `engines` | `{ axe?: boolean; cdp?: boolean; pa11y?: boolean }` |
-| `ai` | `{ enabled?: boolean; apiKey?: string; githubToken?: string; model?: string }` |
+| `ai` | `{ enabled?: boolean; apiKey?: string; githubToken?: string; model?: string; systemPrompt?: string }` — `systemPrompt` overrides the default Claude prompt when set |
 | `onProgress` | `(step: string, status: string, extra?: Record<string, unknown>) => void` |
 
 Progress steps emitted via `onProgress`:
@@ -53,6 +53,8 @@ Progress steps emitted via `onProgress`:
 | `ai` | When AI enrichment is configured |
 
 Returns: `Promise<ScanPayload>`
+
+> **`ai_enriched_findings` fast path**: When AI enrichment runs, the engine appends `ai_enriched_findings` to the payload. `getFindings()` checks for this field first — if present, it returns the already-enriched findings directly without re-normalizing the raw `findings` array.
 
 ### `getFindings(input, options?)`
 

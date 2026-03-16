@@ -10,9 +10,12 @@
 - [Prerequisites](#prerequisites)
 - [Flag groups](#flag-groups)
   - [Targeting & scope](#targeting--scope)
+  - [Repository & remote scanning](#repository--remote-scanning)
+  - [AI enrichment](#ai-enrichment)
   - [Audit intelligence](#audit-intelligence)
   - [Execution & emulation](#execution--emulation)
   - [Output generation](#output-generation)
+- [Environment variables](#environment-variables)
 - [Examples](#examples)
 - [Exit codes](#exit-codes)
 
@@ -62,12 +65,47 @@ Controls what gets scanned.
 | `--max-routes` | `<num>` | `10` | Maximum unique same-origin paths to discover and scan. |
 | `--crawl-depth` | `<num>` | `2` | How deep to follow links during BFS discovery (1-3). Has no effect when `--routes` is set. |
 | `--routes` | `<csv>` | — | Explicit paths to scan (e.g. `/,/about,/contact`). Overrides auto-discovery entirely. |
-| `--project-dir` | `<path>` | — | Path to the audited project source. Enables the source code pattern scanner and framework auto-detection from package.json. |
+| `--project-dir` | `<path>` | — | Path to the audited project source on disk. Enables source code pattern scanning and framework auto-detection from the local `package.json`. |
 
 **Route discovery logic**:
 1. If the target has a `sitemap.xml`, all listed URLs are used (up to `--max-routes`).
 2. Otherwise, BFS crawl from `--base-url`, following same-origin `<a href>` links.
 3. `--routes` always takes precedence over both.
+
+---
+
+### Repository & remote scanning
+
+Enables source code analysis via the GitHub API — no `git clone` required.
+
+| Flag | Argument | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--repo-url` | `<url>` | — | GitHub repository URL (e.g. `https://github.com/owner/repo`). Fetches `package.json` for framework detection and runs source code pattern scanning against the repo via the GitHub API. Mutually exclusive with `--project-dir` for remote usage. |
+| `--github-token` | `<token>` | — | GitHub personal access token. Increases the GitHub API rate limit from 60 to 5,000 req/hour. Required for private repositories. Falls back to `GH_TOKEN` env var if not provided. |
+
+When `--repo-url` is provided:
+1. The engine fetches `package.json` via `raw.githubusercontent.com` to detect the project framework.
+2. Source code patterns are run against the repo file tree using the GitHub Trees API and Contents API, with no local filesystem access.
+3. The detected framework is passed to the analyzer for framework-specific fix notes.
+
+---
+
+### AI enrichment
+
+Controls Claude-powered fix suggestion enrichment. Requires `ANTHROPIC_API_KEY` to be set.
+
+| Flag | Argument | Default | Description |
+| :--- | :--- | :--- | :--- |
+| *(no flag)* | — | — | AI enrichment is activated automatically when `ANTHROPIC_API_KEY` env var is present. There is no `--ai-enabled` flag — set or unset the env var to control it. |
+
+AI enrichment runs after the analyzer step and enriches Critical and Serious findings (up to 20 per scan) with:
+- A specific fix description referencing the actual selector, colors, and violation data
+- A production-quality code snippet in the correct framework syntax
+- Context-aware suggestions when repo source files are available via `--repo-url`
+
+Original engine fixes are always preserved. AI output is stored in separate fields (`ai_fix_description`, `ai_fix_code`). Enriched findings are flagged with `aiEnhanced: true`.
+
+The system prompt is customizable via `AI_SYSTEM_PROMPT` env var.
 
 ---
 
@@ -117,6 +155,16 @@ Controls what artifacts are written.
 
 ---
 
+## Environment variables
+
+| Variable | Description |
+| :--- | :--- |
+| `ANTHROPIC_API_KEY` | Enables Claude AI enrichment. Set to a valid Anthropic API key. When absent, AI enrichment is silently skipped. |
+| `AI_SYSTEM_PROMPT` | Custom system prompt for Claude. Overrides the default prompt for the entire scan. Useful for domain-specific fix guidance or custom output formats. |
+| `GH_TOKEN` | GitHub personal access token. Used by the AI enrichment step when fetching source files from the repo. Equivalent to `--github-token` but read from the environment. |
+
+---
+
 ## Examples
 
 ### Minimal scan
@@ -135,7 +183,7 @@ a11y-audit \
   --output ./audit/report.html
 ```
 
-### Include source code intelligence
+### Include source code intelligence (local)
 
 ```bash
 a11y-audit \
@@ -143,6 +191,32 @@ a11y-audit \
   --project-dir . \
   --with-reports \
   --output ./audit/report.html
+```
+
+### Scan with remote GitHub repository (no clone)
+
+```bash
+a11y-audit \
+  --base-url https://example.com \
+  --repo-url https://github.com/owner/repo \
+  --github-token ghp_...
+```
+
+### Scan with AI enrichment
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-... a11y-audit \
+  --base-url https://example.com \
+  --repo-url https://github.com/owner/repo \
+  --github-token ghp_...
+```
+
+### Scan with custom AI system prompt
+
+```bash
+AI_SYSTEM_PROMPT="You are an expert in Vue.js accessibility. Focus on component-level fixes." \
+ANTHROPIC_API_KEY=sk-ant-... \
+a11y-audit --base-url https://example.com --repo-url https://github.com/owner/repo
 ```
 
 ### Focused re-audit — single rule, single route

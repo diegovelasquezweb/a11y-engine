@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] — 2026-03-16
+
+### Changed
+
+- **Smarter AI source file selection** — `fetchSourceFilesForFindings` now scores candidate files by how many terms extracted from the finding's selector, class names, IDs, and title match the file path. Files most relevant to the specific failing element are fetched first instead of picking the first 3 files by extension.
+- Extracted `extractSearchTermsFromFinding()` and `scoreFilePath()` helpers for reusable relevance scoring logic.
+
+---
+
+## [0.8.1] — 2026-03-16
+
+### Added
+
+- **Custom AI system prompt** — `enrichWithAI()` now accepts `options.systemPrompt` to override the default Claude system prompt at runtime.
+- `enrich.mjs` reads `AI_SYSTEM_PROMPT` env var and passes it to `enrichWithAI()` — enabling per-scan prompt customization without code changes.
+- `audit.mjs` forwards `AI_SYSTEM_PROMPT` env var to the `enrich.mjs` child process.
+
+---
+
+## [0.8.0] — 2026-03-16
+
+### Changed
+
+- **AI enrichment no longer overwrites original fix** — `enrich.mjs` now preserves the original `fix_description`/`fix_code` from the engine and stores Claude's output in separate fields: `ai_fix_description`, `ai_fix_code`, `ai_fix_code_lang`. Findings improved by AI are flagged with `aiEnhanced: true`.
+- **AI system prompt rewritten** — Claude is now explicitly instructed to go beyond the generic fix: explain why the issue matters for real users, what specifically to look for in the codebase, and provide a production-quality code example different from the existing one.
+- Default AI model updated to `claude-haiku-4-5-20251001`.
+
+---
+
+## [0.7.9] — 2026-03-16
+
+### Added
+
+- **AI enrichment CLI step** — `audit.mjs` now runs `src/ai/enrich.mjs` after the analyzer step when `ANTHROPIC_API_KEY` env var is present. Non-fatal: if AI fails, the pipeline continues with unenriched findings.
+- `src/ai/enrich.mjs` — new CLI script that reads `a11y-findings.json`, calls `enrichWithAI()`, and writes enriched findings back. Reads `A11Y_REPO_URL` and `GH_TOKEN` env vars for repo-aware enrichment.
+- `src/ai/claude.mjs` — Claude AI enrichment module. Enriches Critical and Serious findings with context-aware fix descriptions and code snippets. Uses `claude-haiku-4-5-20251001` by default. Fetches source files from the GitHub repo when `repoUrl` is available.
+
+---
+
+## [0.7.8] — 2026-03-16
+
+### Fixed
+
+- **pa11y ruleId normalization** — pa11y violation IDs (e.g. `WCAG2AAA.Principle1.Guideline1_4.1_4_6.G17`) are now normalized to a short, readable form (e.g. `pa11y-g17`) by taking only the last segment of the dotted code. Previously the full dotted path was used, producing unreadable badges like `Pa11y Wcag2aaa Principle1 Guideline1 4 1 4 6 G17`.
+
+---
+
+## [0.7.7] — 2026-03-15
+
+### Added
+
+- **`--repo-url` and `--github-token` CLI flags** — `audit.mjs` now accepts `--repo-url <github-url>` and `--github-token <token>`. When a repo URL is provided, the engine fetches `package.json` via the GitHub API to detect the project framework before running the analyzer, and passes the detected framework to both the analyzer and the source pattern scanner. No `git clone` required.
+- `source-scanner.mjs` CLI now accepts `--repo-url` and `--github-token`. When `--repo-url` is provided (without `--project-dir`), it runs `scanPatternRemote()` against the GitHub API instead of the local filesystem.
+- `detectProjectContext()` is now called in `audit.mjs` when a remote repo is provided, enabling framework-aware fix suggestions without a local clone.
+
+### Changed
+
+- `source-scanner.mjs`: `--project-dir` is no longer required when `--repo-url` is provided. `main()` is now async to support remote API calls.
+- `audit.mjs`: pattern scanning is now triggered when either `--project-dir` or `--repo-url` is provided.
+
+---
+
+## [0.7.6] — 2026-03-15
+
+### Changed
+
+- HTML report renderer: updated Tailwind class syntax (`flex-shrink-0` → `shrink-0`, `bg-gradient-to-br` → `bg-linear-to-br`, `max-h-[360px]` → `max-h-90`).
+
+---
+
 ## [0.4.2] — 2026-03-15
 
 ### Fixed

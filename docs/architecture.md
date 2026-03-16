@@ -33,12 +33,21 @@ flowchart TD
 
     M --> R[a11y-scan-results.json]
     R --> AN[Analyzer]
-    AN --> F[a11y-findings.json]
 
-    F --> MD[remediation.md]
-    F --> HTML[report.html]
-    F --> PDF[report.pdf]
-    F --> CHK[checklist.html]
+    REPO[GitHub Repo] -->|fetchPackageJson| AN
+    REPO -->|scanPatternRemote| PAT[a11y-pattern-findings.json]
+
+    AN --> F[a11y-findings.json]
+    F --> AI{ANTHROPIC_API_KEY?}
+    AI -->|yes| CL[Claude AI enrichment]
+    AI -->|no| SKIP[skip]
+    CL --> F2[a11y-findings.json enriched]
+    SKIP --> F2
+
+    F2 --> MD[remediation.md]
+    F2 --> HTML[report.html]
+    F2 --> PDF[report.pdf]
+    F2 --> CHK[checklist.html]
 ```
 
 ## Execution Modes
@@ -75,7 +84,10 @@ flowchart LR
 | :--- | :--- |
 | `src/pipeline/dom-scanner.mjs` | Route discovery, engine execution (axe/CDP/pa11y), merge/dedup, progress updates, screenshots |
 | `src/enrichment/analyzer.mjs` | Rule enrichment, selector strategy, ownership hints, recommendations, scoring metadata |
-| `src/source-patterns/source-scanner.mjs` | Static source pattern detection for issues runtime engines cannot see |
+| `src/ai/enrich.mjs` | CLI subprocess that runs AI enrichment after the analyzer. Reads `ANTHROPIC_API_KEY` and `AI_SYSTEM_PROMPT` env vars. Non-fatal. |
+| `src/ai/claude.mjs` | Anthropic API client. Sends Critical/Serious findings to Claude and parses improved fix suggestions. Supports custom system prompt and repo source file context. |
+| `src/core/github-api.mjs` | GitHub API client. Provides `fetchPackageJson`, `fetchRepoFile`, `listRepoFiles`, and `parseRepoUrl`. Used for remote repo scanning and AI source file fetching without cloning. |
+| `src/source-patterns/source-scanner.mjs` | Source code pattern scanner. Works against local `--project-dir` or remote `--repo-url` via the GitHub API. |
 | `src/reports/*.mjs` | Report builders for markdown/html/pdf/checklist |
 | `src/reports/renderers/*.mjs` | Shared rendering and normalization helpers |
 | `src/core/asset-loader.mjs` | Centralized access to bundled assets |

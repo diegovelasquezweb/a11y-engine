@@ -10,6 +10,7 @@
 - [progress.json](#progressjson)
 - [a11y-scan-results.json](#a11y-scan-resultsjson)
 - [a11y-findings.json](#a11y-findingsjson)
+- [a11y-pattern-findings.json](#a11y-pattern-findingsjson)
 - [remediation.md](#remediationmd)
 - [report.html](#reporthtml)
 - [report.pdf](#reportpdf)
@@ -90,7 +91,7 @@ Merged results from all three engines (axe-core + CDP + pa11y) per route. Writte
 }
 ```
 
-Each violation in the `violations` array includes a `source` field indicating which engine produced it (`undefined` for axe-core, `"cdp"` for CDP checks, `"pa11y"` for pa11y).
+Each violation in the `violations` array includes a `source` field: `"cdp"` for CDP checks, `"pa11y"` for pa11y, and absent (field not set) for axe-core violations.
 
 This file is consumed by `analyzer.mjs` and also used by `--affected-only` to determine which routes to re-scan on subsequent runs.
 
@@ -176,10 +177,68 @@ The primary enriched data artifact. Written by `src/enrichment/analyzer.mjs`. Th
 | `verification_command_fallback` | `string\|null` | Fallback verify command |
 | `pages_affected` | `number\|null` | Number of pages with this violation |
 | `affected_urls` | `string[]\|null` | All URLs where this violation appears |
+| `aiEnhanced` | `boolean` | `true` when Claude improved the fix for this finding. Only present on AI-enriched findings. |
+| `ai_fix_description` | `string\|null` | Claude-generated fix description. More specific than `fix_description` — references the actual selector, colors, and violation data. Only present when `aiEnhanced` is `true`. |
+| `ai_fix_code` | `string\|null` | Claude-generated code snippet in the correct framework syntax. Separate from the engine's `fix_code`. Only present when `aiEnhanced` is `true`. |
+| `ai_fix_code_lang` | `string\|null` | Language of `ai_fix_code` (e.g. `jsx`, `tsx`, `vue`, `css`). Only present when `aiEnhanced` is `true`. |
+
+> **Note on `ownership_status`**: Values are `"primary"` (issue is in the project's source), `"outside_primary_source"` (issue is in a third-party component), or `"unknown"`. These are different from the pattern finding `status` field which uses `"confirmed"` and `"potential"`.
+
+### Top-level payload keys (after AI enrichment)
+
+When AI enrichment runs, the engine appends `ai_enriched_findings` to the payload root. `getFindings()` uses this as a fast path — if present, it returns `ai_enriched_findings` directly without re-normalizing the raw `findings` array.
+
+```json
+{
+  "metadata": { ... },
+  "findings": [ ... ],
+  "ai_enriched_findings": [ ... ],
+  "incomplete_findings": [ ... ]
+}
+```
 
 ### `incomplete_findings`
 
 Violations that axe-core flagged as "needs review" (not confirmed pass or fail). Included for manual verification but not counted in the compliance score.
+
+---
+
+## a11y-pattern-findings.json
+
+Source code pattern scan results. Written by `src/source-patterns/source-scanner.mjs` when `--project-dir` or `--repo-url` is provided (and `--skip-patterns` is not set).
+
+```json
+{
+  "generated_at": "2026-03-16T00:00:00.000Z",
+  "project_dir": "https://github.com/owner/repo",
+  "findings": [ ... ],
+  "summary": {
+    "total": 5,
+    "confirmed": 3,
+    "potential": 2
+  }
+}
+```
+
+### Per-finding fields
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `string` | Deterministic finding ID |
+| `pattern_id` | `string` | Pattern definition ID (e.g. `placeholder-only-label`) |
+| `title` | `string` | Pattern title |
+| `severity` | `string` | `Critical`, `Serious`, `Moderate`, or `Minor` |
+| `wcag` | `string` | WCAG success criterion string |
+| `wcag_criterion` | `string` | WCAG criterion ID |
+| `wcag_level` | `string` | `A`, `AA`, or `AAA` |
+| `type` | `string` | Pattern type (`structural`, `css`, etc.) |
+| `fix_description` | `string\|null` | How to fix this pattern |
+| `status` | `string` | `confirmed` (regex match without reject context) or `potential` (match with uncertainty) |
+| `file` | `string` | File path within the repo (e.g. `src/components/Button.tsx`) |
+| `line` | `number` | Line number of the match |
+| `match` | `string` | The matched line content |
+| `context` | `string` | 7-line code context window around the match |
+| `source` | `string` | Always `"code-pattern"` |
 
 ---
 

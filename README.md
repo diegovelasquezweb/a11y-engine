@@ -50,7 +50,7 @@ import {
 
 #### runAudit
 
-Runs the full scan pipeline: route discovery, scan, merge, analyze, and optional AI enrichment. Returns a payload ready for `getFindings`.
+Runs the full scan pipeline: route discovery, scan, merge, analyze, AI enrichment (when configured), and optional source pattern scanning. Returns a payload ready for `getFindings`.
 
 ```ts
 const payload = await runAudit({
@@ -58,6 +58,14 @@ const payload = await runAudit({
   maxRoutes: 5,
   axeTags: ["wcag2a", "wcag2aa", "best-practice"],
   engines: { axe: true, cdp: true, pa11y: true },
+  repoUrl: "https://github.com/owner/repo", // optional — enables source pattern scan and stack detection from package.json
+  githubToken: process.env.GH_TOKEN,        // optional — for private repos and higher GitHub API rate limits
+  ai: {
+    enabled: true,
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    githubToken: process.env.GH_TOKEN,
+    systemPrompt: "Custom prompt...",        // optional — overrides default Claude system prompt
+  },
   onProgress: (step, status, extra) => console.log(`${step}: ${status}`, extra),
 });
 ```
@@ -125,10 +133,39 @@ These functions expose scanner help content, persona explanations, conformance l
 
 See [API Reference](docs/api-reference.md) for exact options and return types.
 
-## Optional CLI
+## CLI
 
-If you need terminal execution, the package also exposes `a11y-audit`.
-See the [CLI Handbook](docs/cli-handbook.md) for command flags and examples.
+The package exposes an `a11y-audit` binary for terminal execution.
+
+```bash
+# Basic scan
+pnpm exec a11y-audit --base-url https://example.com
+
+# With source code pattern scanning via GitHub API (no clone)
+pnpm exec a11y-audit --base-url https://example.com \
+  --repo-url https://github.com/owner/repo \
+  --github-token ghp_...
+
+# With AI enrichment (set ANTHROPIC_API_KEY env var)
+ANTHROPIC_API_KEY=sk-ant-... pnpm exec a11y-audit --base-url https://example.com
+
+# With custom AI system prompt
+AI_SYSTEM_PROMPT="You are..." ANTHROPIC_API_KEY=sk-ant-... pnpm exec a11y-audit --base-url https://example.com
+```
+
+See the [CLI Handbook](docs/cli-handbook.md) for all flags and examples.
+
+## AI enrichment
+
+When `ANTHROPIC_API_KEY` is set, the engine runs a post-scan enrichment step that sends Critical and Serious findings to Claude. Claude generates:
+
+- A specific fix description referencing the actual selector, colors, and violation data
+- A production-quality code snippet in the correct framework syntax
+- Context-aware suggestions when repo source files are available
+
+AI output is stored in separate fields (`ai_fix_description`, `ai_fix_code`) — the original engine fixes are always preserved. Findings improved by AI are flagged with `aiEnhanced: true`.
+
+The system prompt is fully customizable via `options.ai.systemPrompt` (programmatic API) or the `AI_SYSTEM_PROMPT` env var (CLI).
 
 ## Documentation
 
