@@ -185,6 +185,9 @@ The primary enriched data artifact. Written by `src/enrichment/analyzer.mjs`. Th
 | `verification_command_fallback` | `string\|null` | Fallback verify command |
 | `pages_affected` | `number\|null` | Number of pages with this violation |
 | `affected_urls` | `string[]\|null` | All URLs where this violation appears |
+| `pm_summary` | `string\|null` | One-line business impact for PM audience. Populated from the intelligence database for all findings. |
+| `pm_impact` | `string\|null` | Business/legal/UX consequences for non-technical stakeholders. |
+| `pm_effort` | `string\|null` | Effort classification: `quick-win`, `medium`, or `strategic`. |
 | `aiEnhanced` | `boolean` | `true` when Claude improved the fix for this finding. Only present on AI-enriched findings. |
 | `ai_fix_description` | `string\|null` | Claude-generated fix description. More specific than `fix_description` — references the actual selector, colors, and violation data. Only present when `aiEnhanced` is `true`. |
 | `ai_fix_code` | `string\|null` | Claude-generated code snippet in the correct framework syntax. Separate from the engine's `fix_code`. Only present when `aiEnhanced` is `true`. |

@@ -24,6 +24,7 @@
 - [Constants](#constants)
   - [VIEWPORT_PRESETS](#viewport_presets)
   - [DEFAULT_AI_SYSTEM_PROMPT](#default_ai_system_prompt)
+  - [PM_AI_SYSTEM_PROMPT](#pm_ai_system_prompt)
 
 ---
 
@@ -52,6 +53,7 @@ import {
   getKnowledge,
   VIEWPORT_PRESETS,
   DEFAULT_AI_SYSTEM_PROMPT,
+  PM_AI_SYSTEM_PROMPT,
 } from "@diegovelasquezweb/a11y-engine";
 ```
 
@@ -121,6 +123,7 @@ Returns a `ScanPayload` object consumed by all other functions.
 | `ai.githubToken` | `string` | — | GitHub PAT | Used to fetch source files from the repo for AI context |
 | `ai.model` | `string` | `"claude-haiku-4-5-20251001"` | Anthropic model ID | Claude model to use |
 | `ai.systemPrompt` | `string` | Built-in prompt | — | Overrides the default Claude system prompt for the entire scan |
+| `ai.audience` | `string` | `"dev"` | `"dev"` \| `"pm"` | Controls the AI enrichment tone. `"dev"` generates code-level fixes; `"pm"` generates business impact summaries |
 | `clearCache` | `boolean` | `false` | — | Clear browser cache before each page navigation via CDP `Network.clearBrowserCache`. Ensures fresh results on repeated scans of the same domain |
 | `serverMode` | `boolean` | `false` | — | Enable server/EC2/Docker Chrome launch flags: `--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`, `--no-zygote`, `--disable-accelerated-2d-canvas`. Use in CI, Docker, or EC2 environments |
 | `onProgress` | `function` | — | — | Callback fired at each pipeline step |
@@ -327,6 +330,11 @@ Returns: `EnrichedFinding[]`
   falsePositiveRisk: string | null,      // "low" | "medium" | "high"
   guardrails: object | null,             // Guardrail metadata from the engine
   checkData: object | null,              // Raw check data from the engine
+
+  // PM audience fields (always present from intelligence DB)
+  pmSummary: string | null,              // One-line business impact for PMs
+  pmImpact: string | null,              // Business/legal/UX consequences
+  pmEffort: string | null,              // "quick-win" | "medium" | "strategic"
 
   // AI enrichment (only when ai.enabled ran)
   aiEnhanced?: boolean,                  // true when AI enriched this finding
@@ -665,6 +673,18 @@ await runAudit({
     systemPrompt: DEFAULT_AI_SYSTEM_PROMPT + "\n\nFocus on Vue 3 Composition API patterns.",
   },
 });
+```
+
+Type: `string`
+
+---
+
+### `PM_AI_SYSTEM_PROMPT`
+
+The system prompt used for PM-audience AI enrichment. Instructs Claude to generate business-oriented summaries instead of developer-focused fixes. Used automatically when `ai.audience` is `"pm"`.
+
+```ts
+import { PM_AI_SYSTEM_PROMPT } from "@diegovelasquezweb/a11y-engine";
 ```
 
 Type: `string`

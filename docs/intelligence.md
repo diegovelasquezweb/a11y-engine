@@ -68,6 +68,9 @@ Each rule entry can include:
 | `cms_notes` | CMS-specific fix guidance |
 | `preferred_relationship_checks` | axe check IDs to prioritize for relationship hints |
 | `guardrails` / `guardrails_overrides` | Must/must-not/verify constraints for automated fixes |
+| `pm.summary` | One-line business impact for PM audience (e.g. "Buttons without labels block screen reader users from key actions") |
+| `pm.impact` | Business/legal/UX consequences for non-technical stakeholders |
+| `pm.effort` | Effort classification: `quick-win`, `medium`, or `strategic` |
 
 When a framework is detected (e.g. `nextjs`), only the relevant framework notes are included in the output. React-based frameworks (`nextjs`, `gatsby`) resolve to `react` notes.
 
@@ -249,6 +252,16 @@ AI enrichment runs automatically when `ANTHROPIC_API_KEY` is present in the envi
 ### Custom system prompt
 
 The default system prompt instructs Claude to go beyond the generic fix: explain why the issue matters for users, reference the specific selector and violation data, and provide a more complete code example than the engine's default. The prompt can be overridden per-scan via the `AI_SYSTEM_PROMPT` env var or `options.ai.systemPrompt` in the programmatic API.
+
+### PM audience mode
+
+When `ai.audience` is set to `"pm"`, the AI enrichment uses a PM-specific system prompt that generates business-oriented guidance instead of developer-focused fixes. The PM prompt instructs Claude to produce:
+
+- `pmSummary` — one-line business impact in plain language
+- `pmImpact` — 2-3 sentences on legal/compliance/UX consequences
+- `pmEffort` — `quick-win`, `medium`, or `strategic` with time estimate
+
+These AI-generated PM fields override the static PM fields from the intelligence database for Critical and Serious findings, similar to how `fixDescription` overrides the static fix for dev audience.
 
 ## Assets Reference
 
