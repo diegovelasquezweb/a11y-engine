@@ -15,6 +15,7 @@ Accessibility automation engine for web applications. It orchestrates multi engi
 | **AI enrichment** | Optional Claude-powered analysis that adds contextual fix suggestions based on detected stack, repo structure, and finding patterns |
 | **Report generation** | Produces HTML dashboard, PDF compliance report, manual testing checklist, and Markdown remediation guide |
 | **Source code scanning** | Static regex analysis of project source for accessibility patterns that runtime engines cannot detect. Works with local paths or remote GitHub repos |
+| **Knowledge API** | Exposes WCAG conformance levels, severity definitions, persona profiles, glossary, scanner help, and documentation so frontends and agents can render guidance from engine-owned data |
 
 ## Installation
 
