@@ -14,7 +14,7 @@ Accessibility automation engine for web applications. It orchestrates multi engi
 | **Fix intelligence** | Enriches each finding with WCAG mapping, fix code snippets, framework and CMS specific notes, UI library ownership hints, effort estimates, and persona impact |
 | **AI enrichment** | Optional Claude-powered analysis that adds contextual fix suggestions based on detected stack, repo structure, and finding patterns |
 | **Report generation** | Produces HTML dashboard, PDF compliance report, manual testing checklist, and Markdown remediation guide |
-| **Source code scanning** | Static regex analysis of project source for accessibility patterns that runtime engines cannot detect — works with local paths or remote GitHub repos |
+| **Source code scanning** | Static regex analysis of project source for accessibility patterns that runtime engines cannot detect. Works with local paths or remote GitHub repos |
 
 ## Installation
 
@@ -60,13 +60,13 @@ const payload = await runAudit({
   maxRoutes: 5,
   axeTags: ["wcag2a", "wcag2aa", "best-practice"],
   engines: { axe: true, cdp: true, pa11y: true },
-  repoUrl: "https://github.com/owner/repo", // optional — enables source pattern scan and stack detection from package.json
-  githubToken: process.env.GH_TOKEN,        // optional — for private repos and higher GitHub API rate limits
+  repoUrl: "https://github.com/owner/repo", // optional, enables source pattern scan and stack detection
+  githubToken: process.env.GH_TOKEN,        // optional, required for private repos
   ai: {
     enabled: true,
     apiKey: process.env.ANTHROPIC_API_KEY,
     githubToken: process.env.GH_TOKEN,
-    systemPrompt: "Custom prompt...",        // optional — overrides default Claude system prompt
+    systemPrompt: "Custom prompt...",        // optional, overrides default Claude system prompt
   },
   onProgress: (step, status, extra) => console.log(`${step}: ${status}`, extra),
 });
@@ -147,7 +147,7 @@ When `ANTHROPIC_API_KEY` is set, the engine runs a post-scan enrichment step tha
 - A production-quality code snippet in the correct framework syntax
 - Context-aware suggestions when repo source files are available
 
-AI output is stored in separate fields (`ai_fix_description`, `ai_fix_code`) — the original engine fixes are always preserved. Findings improved by AI are flagged with `aiEnhanced: true`.
+AI output is stored in separate fields (`ai_fix_description`, `ai_fix_code`). The original engine fixes are always preserved. Findings improved by AI are flagged with `aiEnhanced: true`.
 
 The system prompt is fully customizable via `options.ai.systemPrompt` (programmatic API) or the `AI_SYSTEM_PROMPT` env var (CLI).
 
