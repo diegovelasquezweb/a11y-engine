@@ -136,18 +136,6 @@ See [API Reference](docs/api-reference.md) for the full `EngineKnowledge` shape.
 
 The package exposes an `a11y-audit` binary for terminal execution. See the [CLI Handbook](docs/cli-handbook.md) for all flags, env vars, and examples.
 
-## AI enrichment
-
-When `ANTHROPIC_API_KEY` is set, the engine runs a post-scan enrichment step that sends Critical and Serious findings to Claude. Claude generates:
-
-- A specific fix description referencing the actual selector, colors, and violation data
-- A production-quality code snippet in the correct framework syntax
-- Context-aware suggestions when repo source files are available
-
-AI output is stored in separate fields (`ai_fix_description`, `ai_fix_code`). The original engine fixes are always preserved. Findings improved by AI are flagged with `aiEnhanced: true`.
-
-The system prompt is fully customizable via `options.ai.systemPrompt` (programmatic API) or the `AI_SYSTEM_PROMPT` env var (CLI).
-
 ## Documentation
 
 | Resource | Description |
