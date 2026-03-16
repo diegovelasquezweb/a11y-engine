@@ -434,7 +434,7 @@ export function getOverview(findings, payload = null) {
  * @param {{ locale?: string }} [options={}]
  * @returns {{ locale: string, version: string, title: string, engines: object[], options: object[] }}
  */
-export function getScannerHelp(options = {}) {
+function getScannerHelp(options = {}) {
   const locale = resolveKnowledgeLocale(options.locale || "en");
   const payload = getKnowledgeData();
   const scanner = payload.locales[locale]?.scanner || { title: "Scanner Help", engines: [], options: [] };
@@ -455,7 +455,7 @@ export function getScannerHelp(options = {}) {
  * @param {{ locale?: string }} [options={}]
  * @returns {{ locale: string, version: string, personas: object[] }}
  */
-export function getPersonaReference(options = {}) {
+function getPersonaReference(options = {}) {
   const locale = resolveKnowledgeLocale(options.locale || "en");
   const payload = getKnowledgeData();
   const wcagRef = getWcagReference();
@@ -492,7 +492,7 @@ export function getPersonaReference(options = {}) {
  * @param {{ locale?: string }} [options={}]
  * @returns {{ locale: string, version: string, tooltips: Record<string, object>, glossary: object[] }}
  */
-export function getUiHelp(options = {}) {
+function getConceptsAndGlossary(options = {}) {
   const locale = resolveKnowledgeLocale(options.locale || "en");
   const payload = getKnowledgeData();
   const localePayload = payload.locales[locale] || {};
@@ -518,7 +518,7 @@ export function getUiHelp(options = {}) {
  * @param {{ locale?: string }} [options={}]
  * @returns {{ locale: string, version: string, conformanceLevels: object[] }}
  */
-export function getConformanceLevels(options = {}) {
+function getConformanceLevels(options = {}) {
   const locale = resolveKnowledgeLocale(options.locale || "en");
   const payload = getKnowledgeData();
   const levels = payload.locales[locale]?.conformanceLevels || [];
@@ -535,7 +535,7 @@ export function getConformanceLevels(options = {}) {
  * @param {{ locale?: string }} [options={}]
  * @returns {{ locale: string, version: string, wcagPrinciples: object[] }}
  */
-export function getWcagPrinciples(options = {}) {
+function getWcagPrinciples(options = {}) {
   const locale = resolveKnowledgeLocale(options.locale || "en");
   const payload = getKnowledgeData();
   const principles = payload.locales[locale]?.wcagPrinciples || [];
@@ -552,7 +552,7 @@ export function getWcagPrinciples(options = {}) {
  * @param {{ locale?: string }} [options={}]
  * @returns {{ locale: string, version: string, severityLevels: object[] }}
  */
-export function getSeverityLevels(options = {}) {
+function getSeverityLevels(options = {}) {
   const locale = resolveKnowledgeLocale(options.locale || "en");
   const payload = getKnowledgeData();
   const levels = payload.locales[locale]?.severityLevels || [];
@@ -573,7 +573,7 @@ export const VIEWPORT_PRESETS = [
 export function getKnowledge(options = {}) {
   const scanner = getScannerHelp(options);
   const personas = getPersonaReference(options);
-  const ui = getUiHelp(options);
+  const ui = getConceptsAndGlossary(options);
   const conformance = getConformanceLevels(options);
   const principles = getWcagPrinciples(options);
   const severity = getSeverityLevels(options);

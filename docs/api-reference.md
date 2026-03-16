@@ -353,95 +353,28 @@ Returns: `Promise<SourcePatternResult>`
 
 ## Knowledge API
 
-These functions expose engine-owned content for UIs and agents to render. All accept an optional `{ locale?: string }` option (default: `"en"`).
-
 ### `getKnowledge(options?)`
 
-Returns the full knowledge pack — combines all knowledge functions into one call. Useful for pre-loading UI help content.
+Returns all accessibility knowledge in a single call. Accepts an optional `{ locale?: string }` option (default: `"en"`).
 
 ```ts
 import { getKnowledge } from "@diegovelasquezweb/a11y-engine";
 
 const knowledge = getKnowledge({ locale: "en" });
-
-// knowledge.scanner         → scan options help and engine descriptions
-// knowledge.personas        → persona labels, icons, descriptions
-// knowledge.concepts        → UI concept definitions
-// knowledge.glossary        → accessibility glossary
-// knowledge.conformanceLevels → WCAG A/AA/AAA definitions with axe tags
-// knowledge.wcagPrinciples  → the 4 WCAG principles
-// knowledge.severityLevels  → Critical/Serious/Moderate/Minor definitions
 ```
 
-Returns: `EngineKnowledge`
+**Returns:** `EngineKnowledge`
 
----
-
-### `getScannerHelp(options?)`
-
-Returns scan option descriptions, allowed values, and engine metadata — used to render Advanced Settings UI.
-
-```ts
-const help = getScannerHelp();
-// help.engines → [{ id: "axe", label: "axe-core", description: "..." }, ...]
-// help.options → [{ id: "maxRoutes", label: "Max Routes", type: "number", ... }, ...]
-```
-
----
-
-### `getPersonaReference(options?)`
-
-Returns persona labels, descriptions, and disability group definitions.
-
-```ts
-const ref = getPersonaReference();
-// ref.personas → [{ id: "screenReader", label: "Screen Readers", icon: "...", description: "..." }, ...]
-```
-
----
-
-### `getUiHelp(options?)`
-
-Returns shared concept definitions and a glossary of accessibility terms.
-
-```ts
-const ui = getUiHelp();
-// ui.concepts  → { wcag: "...", aria: "...", ... }
-// ui.glossary  → [{ term: "ARIA", definition: "..." }, ...]
-```
-
----
-
-### `getConformanceLevels(options?)`
-
-Returns WCAG conformance level definitions with their corresponding axe-core tag sets.
-
-```ts
-const { conformanceLevels } = getConformanceLevels();
-// conformanceLevels[0] → { id: "AA", label: "WCAG 2.2 AA", axeTags: ["wcag2a", "wcag2aa", ...] }
-```
-
----
-
-### `getWcagPrinciples(options?)`
-
-Returns the four WCAG principles (Perceivable, Operable, Understandable, Robust) with criterion prefix patterns.
-
-```ts
-const { wcagPrinciples } = getWcagPrinciples();
-// wcagPrinciples[0] → { id: "perceivable", label: "Perceivable", prefix: "1.", description: "..." }
-```
-
----
-
-### `getSeverityLevels(options?)`
-
-Returns severity level definitions with labels, descriptions, and ordering.
-
-```ts
-const { severityLevels } = getSeverityLevels();
-// severityLevels[0] → { id: "Critical", label: "Critical", order: 0, description: "..." }
-```
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `scanner` | `{ title, engines, options }` | Scan option descriptions, allowed values, and engine metadata |
+| `personas` | `PersonaReferenceItem[]` | Persona labels, icons, descriptions, and mapped rules |
+| `concepts` | `Record<string, ConceptEntry>` | Concept definitions with title, body, and context |
+| `glossary` | `GlossaryEntry[]` | Accessibility term definitions |
+| `docs` | `KnowledgeDocs` | Documentation articles organized by section and group |
+| `conformanceLevels` | `ConformanceLevel[]` | WCAG A/AA/AAA definitions with axe-core tag mappings |
+| `wcagPrinciples` | `WcagPrinciple[]` | The four WCAG principles with criterion prefix patterns |
+| `severityLevels` | `SeverityLevel[]` | Critical/Serious/Moderate/Minor definitions with ordering |
 
 ---
 

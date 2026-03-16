@@ -41,12 +41,6 @@ import {
   getChecklist,
   getRemediationGuide,
   getSourcePatterns,
-  getScannerHelp,
-  getPersonaReference,
-  getUiHelp,
-  getConformanceLevels,
-  getWcagPrinciples,
-  getSeverityLevels,
   getKnowledge,
 } from "@diegovelasquezweb/a11y-engine";
 ```
@@ -122,19 +116,21 @@ These functions render final artifacts from scan payload data.
 
 ### Knowledge API
 
-These functions expose scanner help content, persona explanations, conformance levels, and UI copy so frontends or agents can render guidance from engine-owned data.
+Returns all accessibility knowledge in a single call: scanner help, persona profiles, concepts, glossary, documentation, conformance levels, WCAG principles, and severity definitions.
 
-| Function | Returns | Description |
-| :--- | :--- | :--- |
-| `getScannerHelp(options?)` | `{ locale, version, title, engines, options }` | Scanner option and engine help metadata |
-| `getPersonaReference(options?)` | `{ locale, version, personas }` | Persona labels, descriptions, and mapping hints |
-| `getUiHelp(options?)` | `{ locale, version, concepts, glossary }` | Shared concept definitions and glossary entries |
-| `getConformanceLevels(options?)` | `{ locale, version, conformanceLevels }` | WCAG conformance level definitions with axe tag mappings |
-| `getWcagPrinciples(options?)` | `{ locale, version, wcagPrinciples }` | The four WCAG principles with criterion prefix patterns |
-| `getSeverityLevels(options?)` | `{ locale, version, severityLevels }` | Severity level definitions with labels and ordering |
-| `getKnowledge(options?)` | Full knowledge pack | Combines all knowledge APIs into a single response for UI or agent flows |
+```ts
+const knowledge = getKnowledge({ locale: "en" });
+// knowledge.scanner          → engine and option descriptions
+// knowledge.personas         → persona labels and descriptions
+// knowledge.concepts         → concept definitions
+// knowledge.glossary         → accessibility glossary
+// knowledge.docs             → documentation articles
+// knowledge.conformanceLevels → A/AA/AAA with axe tag mappings
+// knowledge.wcagPrinciples   → the four WCAG principles
+// knowledge.severityLevels   → Critical/Serious/Moderate/Minor definitions
+```
 
-See [API Reference](docs/api-reference.md) for exact options and return types.
+See [API Reference](docs/api-reference.md) for the full `EngineKnowledge` shape.
 
 ## CLI
 

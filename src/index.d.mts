@@ -449,18 +449,6 @@ export function getSourcePatterns(
   options?: SourcePatternOptions
 ): Promise<SourcePatternResult>;
 
-export function getScannerHelp(options?: KnowledgeOptions): ScannerHelp;
-
-export function getPersonaReference(options?: KnowledgeOptions): PersonaReference;
-
-export function getUiHelp(options?: KnowledgeOptions): UiHelp;
-
-export function getConformanceLevels(options?: KnowledgeOptions): ConformanceLevelsResult;
-
-export function getWcagPrinciples(options?: KnowledgeOptions): WcagPrinciplesResult;
-
-export function getSeverityLevels(options?: KnowledgeOptions): SeverityLevelsResult;
-
 export function getKnowledge(options?: KnowledgeOptions): EngineKnowledge;
 
 export const DEFAULT_AI_SYSTEM_PROMPT: string;
