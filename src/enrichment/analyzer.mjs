@@ -547,6 +547,7 @@ export function classifyFindingOwnership({
  * @returns {boolean}
  */
 function isFalsePositive(finding) {
+  if (finding.needs_verification) return false;
   const htmls = finding.evidence.map((e) => e.html || "").join(" ");
   if (finding.rule_id === "color-contrast") {
     if (/background(?:-image)?\s*:\s*(?:linear|radial|conic)-gradient/i.test(htmls)) return true;
