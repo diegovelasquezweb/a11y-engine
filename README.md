@@ -1,4 +1,4 @@
-# @diegovelasquezweb/a11y-engine
+# a11y Engine
 
 [![npm](https://img.shields.io/npm/v/@diegovelasquezweb/a11y-engine)](https://www.npmjs.com/package/@diegovelasquezweb/a11y-engine)
 
