@@ -236,7 +236,7 @@ async function fetchSourceFilesForFindings(findings, repoUrl, githubToken) {
       try {
         const content = await fetchRepoFile(repoUrl, filePath, githubToken);
         if (content) sourceFiles[filePath] = content;
-      } catch { /* non-fatal */ }
+      } catch { }
     }
   }
 

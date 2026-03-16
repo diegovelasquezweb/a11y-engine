@@ -7,9 +7,7 @@
 import { ASSET_PATHS, loadAssetJson } from "./core/asset-loader.mjs";
 export { DEFAULT_AI_SYSTEM_PROMPT } from "./ai/claude.mjs";
 
-// ---------------------------------------------------------------------------
 // Lazy-loaded asset cache
-// ---------------------------------------------------------------------------
 
 let _intelligence = null;
 let _pa11yConfig = null;
@@ -59,9 +57,7 @@ function resolveKnowledgeLocale(locale = "en") {
   return "en";
 }
 
-// ---------------------------------------------------------------------------
 // Pa11y rule canonicalization (internal)
-// ---------------------------------------------------------------------------
 
 function normalizePa11yToken(value) {
   return value
@@ -98,9 +94,7 @@ function mapPa11yRuleToCanonical(ruleId, sourceRuleId = null, checkData = null) 
   return ruleId;
 }
 
-// ---------------------------------------------------------------------------
 // Raw finding normalization (internal)
-// ---------------------------------------------------------------------------
 
 const SEVERITY_ORDER = { Critical: 1, Serious: 2, Moderate: 3, Minor: 4 };
 
@@ -170,9 +164,7 @@ function normalizeSingleFinding(item, index, screenshotUrlBuilder) {
   };
 }
 
-// ---------------------------------------------------------------------------
 // Finding enrichment
-// ---------------------------------------------------------------------------
 
 /**
  * Normalizes and enriches raw findings with intelligence data.
@@ -189,19 +181,16 @@ export function getFindings(input, options = {}) {
   const { screenshotUrlBuilder = null } = options;
   const rules = getIntelligence().rules || {};
 
-  // If AI enrichment ran, return those findings directly (already normalized + enriched)
   if (input?.ai_enriched_findings?.length > 0 && !screenshotUrlBuilder) {
     return input.ai_enriched_findings;
   }
 
   const rawFindings = input?.findings || [];
 
-  // Normalize raw findings
   const normalized = rawFindings.map((item, index) =>
     normalizeSingleFinding(item, index, screenshotUrlBuilder)
   );
 
-  // Enrich with intelligence and output camelCase-only findings
   const enriched = normalized.map((finding) => {
     const canonical = mapPa11yRuleToCanonical(
       finding.rule_id,
@@ -209,7 +198,6 @@ export function getFindings(input, options = {}) {
       finding.check_data,
     );
 
-    // Build camelCase-only enriched finding
     const enrichedFinding = {
       id: finding.id,
       ruleId: canonical,
@@ -281,7 +269,6 @@ export function getFindings(input, options = {}) {
     return enrichedFinding;
   });
 
-  // Sort by severity then by ID
   enriched.sort((a, b) => {
     const sa = SEVERITY_ORDER[a.severity] ?? 99;
     const sb = SEVERITY_ORDER[b.severity] ?? 99;
@@ -292,9 +279,7 @@ export function getFindings(input, options = {}) {
   return enriched;
 }
 
-// ---------------------------------------------------------------------------
 // Score computation (internal)
-// ---------------------------------------------------------------------------
 
 function getComplianceScore(totals) {
   const config = getComplianceConfig();
@@ -325,9 +310,7 @@ function getComplianceScore(totals) {
   return { score, label, wcagStatus };
 }
 
-// ---------------------------------------------------------------------------
 // Persona grouping (internal)
-// ---------------------------------------------------------------------------
 
 function getPersonaGroups(findings) {
   const ref = getWcagReference();
@@ -384,9 +367,7 @@ function getPersonaGroups(findings) {
   return groups;
 }
 
-// ---------------------------------------------------------------------------
 // Audit summary
-// ---------------------------------------------------------------------------
 
 /**
  * Computes a complete audit summary from enriched findings: severity totals,
@@ -444,9 +425,7 @@ export function getOverview(findings, payload = null) {
   };
 }
 
-// ---------------------------------------------------------------------------
 // Knowledge APIs
-// ---------------------------------------------------------------------------
 
 /**
  * Returns scanner-facing help metadata including engine descriptions,
@@ -619,9 +598,7 @@ export function getKnowledge(options = {}) {
   };
 }
 
-// ---------------------------------------------------------------------------
 // Full audit pipeline
-// ---------------------------------------------------------------------------
 
 /**
  * Runs a complete accessibility audit: crawl + scan (axe + CDP + pa11y) + analyze.
@@ -826,9 +803,7 @@ export async function runAudit(options) {
   return findingsPayload;
 }
 
-// ---------------------------------------------------------------------------
 // Report generation
-// ---------------------------------------------------------------------------
 
 import {
   normalizeFindings as normalizeForReports,
@@ -1011,9 +986,7 @@ export async function getChecklist(options = {}) {
   };
 }
 
-// ---------------------------------------------------------------------------
 // HTML Report
-// ---------------------------------------------------------------------------
 
 /**
  * Generates an interactive HTML audit dashboard from raw scan findings.
@@ -1143,9 +1116,7 @@ export async function getHTMLReport(payload, options = {}) {
   };
 }
 
-// ---------------------------------------------------------------------------
 // Remediation Guide (Markdown)
-// ---------------------------------------------------------------------------
 
 /**
  * Generates a Markdown remediation guide from raw scan findings.
@@ -1171,9 +1142,7 @@ export async function getRemediationGuide(payload, options = {}) {
   };
 }
 
-// ---------------------------------------------------------------------------
 // Source Pattern Scanner
-// ---------------------------------------------------------------------------
 
 /**
  * Scans a project's source code for accessibility patterns not detectable by axe-core.

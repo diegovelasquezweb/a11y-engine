@@ -74,6 +74,6 @@ async function main() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main().catch((err) => {
     log.warn(`AI enrichment failed (non-fatal): ${err.message}`);
-    process.exit(0); // non-fatal — never block the pipeline
+    process.exit(0);
   });
 }
