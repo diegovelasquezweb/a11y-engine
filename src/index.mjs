@@ -5,7 +5,7 @@
  */
 
 import { ASSET_PATHS, loadAssetJson } from "./core/asset-loader.mjs";
-export { DEFAULT_AI_SYSTEM_PROMPT } from "./ai/claude.mjs";
+export { DEFAULT_AI_SYSTEM_PROMPT, PM_AI_SYSTEM_PROMPT } from "./ai/claude.mjs";
 
 // Lazy-loaded asset cache
 
@@ -162,6 +162,9 @@ function normalizeSingleFinding(item, index, screenshotUrlBuilder) {
     pages_affected: typeof item.pages_affected === "number" ? item.pages_affected : null,
     affected_urls: Array.isArray(item.affected_urls) ? item.affected_urls : null,
     needs_verification: Boolean(item.needs_verification),
+    pm_summary: strOrNull(item.pm_summary),
+    pm_impact: strOrNull(item.pm_impact),
+    pm_effort: strOrNull(item.pm_effort),
   };
 }
 
@@ -249,6 +252,9 @@ export function getFindings(input, options = {}) {
       pagesAffected: finding.pages_affected,
       affectedUrls: finding.affected_urls,
       needsVerification: finding.needs_verification,
+      pmSummary: finding.pm_summary ?? null,
+      pmImpact: finding.pm_impact ?? null,
+      pmEffort: finding.pm_effort ?? null,
     };
 
     // Enrich from intelligence if no fix data exists yet
@@ -795,6 +801,7 @@ export async function runAudit(options) {
           apiKey: aiOptions.apiKey,
           githubToken: aiOptions.githubToken || options.githubToken,
           model: aiOptions.model,
+          audience: aiOptions.audience || "dev",
         }
       );
 

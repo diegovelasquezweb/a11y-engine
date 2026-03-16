@@ -930,6 +930,9 @@ function buildFindings(inputPayload, cliArgs) {
           needs_verification: !!v._fromIncomplete,
           verification_command: `pnpm a11y --base-url ${route.url} --routes ${route.path} --only-rule ${v.id} --max-routes 1`,
           verification_command_fallback: `node scripts/audit.mjs --base-url ${route.url} --routes ${route.path} --only-rule ${v.id} --max-routes 1`,
+          pm_summary: ruleInfo.pm?.summary ?? null,
+          pm_impact: ruleInfo.pm?.impact ?? null,
+          pm_effort: ruleInfo.pm?.effort ?? null,
         });
       }
     }

@@ -52,6 +52,9 @@ export interface Finding {
   pages_affected?: number | null;
   affected_urls?: string[] | null;
   needs_verification?: boolean;
+  pm_summary: string | null;
+  pm_impact: string | null;
+  pm_effort: string | null;
 }
 
 export interface EnrichedFinding {
@@ -104,6 +107,9 @@ export interface EnrichedFinding {
   pagesAffected: number | null;
   affectedUrls: string[] | null;
   needsVerification?: boolean;
+  pmSummary: string | null;
+  pmImpact: string | null;
+  pmEffort: string | null;
 }
 
 export interface SeverityTotals {
@@ -504,6 +510,7 @@ export function getSourcePatterns(
 export function getKnowledge(options?: KnowledgeOptions): EngineKnowledge;
 
 export const DEFAULT_AI_SYSTEM_PROMPT: string;
+export const PM_AI_SYSTEM_PROMPT: string;
 
 export interface ViewportPreset {
   label: string;
@@ -519,4 +526,5 @@ export interface AiOptions {
   githubToken?: string;
   model?: string;
   systemPrompt?: string;
+  audience?: "pm" | "dev";
 }

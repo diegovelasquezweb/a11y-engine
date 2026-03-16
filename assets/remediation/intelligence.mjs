@@ -1,1 +1,4818 @@
-export default {"rules":{"accesskeys":{"category":"keyboard","fix":{"description":"Ensure every accesskey attribute value is unique across the page. Duplicate accesskey values create unpredictable keyboard shortcuts — only one element will receive activation, and which one varies by browser.","code":"<!-- Each accesskey must be unique: -->\n<button accesskey=\"s\">Save</button>\n<button accesskey=\"d\">Delete</button>\n<a href=\"/help\" accesskey=\"h\">Help</a>\n\n<!-- Avoid duplicates: -->\n<!-- <button accesskey=\"s\">Save</button> -->\n<!-- <button accesskey=\"s\">Submit</button> — CONFLICT -->"},"false_positive_risk":"low","framework_notes":{"react":"In React, accessKey is a camelCase JSX prop: <button accessKey='s'>. Track assigned keys in a constants file to prevent duplicates across components. Consider avoiding accesskey entirely — it conflicts with browser and screen reader shortcuts on most platforms.","vue":"In Vue, use accesskey as a plain HTML attribute: <button accesskey='s'>. Maintain a centralized mapping of assigned keys to avoid collisions when multiple components declare accesskeys independently.","angular":"In Angular, bind with [attr.accesskey]='key' or use the plain accesskey attribute. Centralize key assignments in a service or constants file to prevent conflicts between lazy-loaded feature modules.","svelte":"In Svelte, use accesskey as a standard HTML attribute: <button accesskey='s'>. Svelte does not transform or validate accesskeys — maintain a centralized key mapping to prevent duplicates across components.","astro":"In .astro files, use the standard HTML accesskey attribute. Since Astro assembles pages from multiple components, track accesskey assignments in a shared constants file to prevent cross-component duplicates."},"fix_difficulty_notes":"The simplest fix is to remove duplicate accesskey values and assign unique keys. However, accesskey has fundamental usability problems: key combinations vary by OS and browser (Alt+key on Windows, Ctrl+Opt+key on macOS), and they frequently conflict with assistive technology shortcuts. Many accessibility experts recommend avoiding accesskey altogether in favor of skip links and landmark navigation.","related_rules":[{"id":"bypass","reason":"Skip links and landmark navigation are the recommended keyboard shortcut alternatives to accesskey — evaluate both together."}]},"area-alt":{"category":"text-alternatives","fix":{"description":"Add a descriptive alt attribute to every <area> element inside the image map, describing the clickable region's destination or function. Without it, screen readers announce the raw href or nothing at all.","code":"<img src=\"floor-plan.png\" alt=\"Office floor plan\" usemap=\"#office-map\">\n<map name=\"office-map\">\n  <area shape=\"rect\" coords=\"0,0,100,100\" href=\"/room-a\" alt=\"Conference Room A\">\n  <area shape=\"circle\" coords=\"200,200,50\" href=\"/room-b\" alt=\"Break Room B\">\n  <area shape=\"poly\" coords=\"300,0,400,100,350,200\" href=\"/room-c\" alt=\"Open Workspace C\">\n</map>"},"false_positive_risk":"low","framework_notes":{"react":"Image maps are rarely used in React apps. If you must use one, pass alt as a prop on each <area> element. Consider replacing the image map with individual clickable components positioned via CSS Grid — this is more maintainable and accessible.","vue":"In Vue, bind alt directly on <area> elements inside <map>. Prefer replacing image maps with positioned <button> or <a> elements overlaid on an image via CSS — image maps are fragile on responsive layouts.","angular":"In Angular, use [attr.alt]='areaLabel' on each <area> element. Image maps do not resize with responsive layouts — consider replacing with an SVG-based interactive graphic using role='img' and embedded links.","svelte":"In Svelte, <area> elements work as standard HTML. Add alt text directly: <area alt='Section description'>. Svelte's compiler warns about missing alt on <img> but not on <area> — validate manually.","astro":"In .astro files, <area> elements render as standard HTML. Add alt text directly. Image maps are rarely used in modern Astro projects — consider replacing with CSS/SVG-based interactive regions."},"fix_difficulty_notes":"Image maps are a legacy HTML pattern that does not scale well to responsive layouts — coordinates are pixel-based and break on different viewport sizes. The best long-term fix is to replace the image map with an SVG graphic containing <a> elements, or positioned HTML elements over a background image. If you must keep the image map, ensure every <area> has a descriptive alt attribute.","related_rules":[{"id":"image-alt","reason":"The parent <img> of the image map also needs alt text — fix both together."},{"id":"server-side-image-map","reason":"If replacing with a client-side image map, ensure every <area> has alt text."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm link purpose remains clear out of context and in the accessibility tree."]}},"aria-allowed-attr":{"category":"aria","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Remove or replace ARIA attributes that are not supported by the element's role. Each ARIA role defines a specific set of allowed states and properties — using unsupported attributes causes unpredictable screen reader behavior.","code":"<!-- aria-checked is NOT allowed on role='textbox' -->\n<!-- Before: -->\n<div role=\"textbox\" aria-checked=\"true\" contenteditable=\"true\">Text</div>\n<!-- After: remove the unsupported attribute -->\n<div role=\"textbox\" contenteditable=\"true\">Text</div>\n\n<!-- aria-expanded IS allowed on role='button' -->\n<button aria-expanded=\"false\" aria-controls=\"menu-list\">Menu</button>"},"false_positive_risk":"low","framework_notes":{"react":"Use eslint-plugin-jsx-a11y with the role-supports-aria-props rule to catch unsupported ARIA attributes at build time. When spreading props onto elements (e.g., {...rest}), unsupported ARIA attributes from parent components can leak through — filter them explicitly.","vue":"In Vue, ARIA attributes pass through to the DOM without validation. Use eslint-plugin-vuejs-accessibility to flag unsupported role/attribute combinations in templates. When using v-bind='$attrs', unwanted ARIA attributes from parent components can propagate.","angular":"In Angular, no built-in validation catches unsupported ARIA attribute/role combinations. Enable @angular-eslint rules for ARIA validation. When using @HostBinding for ARIA attributes, verify the host element's role supports each bound attribute.","svelte":"Svelte passes ARIA attributes directly to the DOM. Verify that the ARIA attribute is valid for the element's role. Use eslint-plugin-svelte with the a11y rules enabled to catch invalid ARIA attribute pairings at lint time.","astro":"In .astro files, ARIA attributes are passed through to the static HTML output. For ARIA attributes on elements inside framework islands, each framework's rules apply. Validate the rendered HTML output with axe."},"fix_difficulty_notes":"The fix is straightforward — remove the unsupported attribute or switch to a role that supports it. The WAI-ARIA spec (https://www.w3.org/TR/wai-aria/#role_definitions) lists 'Supported States and Properties' for each role. The most common violation: aria-expanded on an element whose role does not support it (e.g., role='textbox'). If the attribute conveys meaningful state, the role is likely wrong — not the attribute.","related_rules":[{"id":"aria-prohibited-attr","reason":"Both rules enforce correct ARIA attribute usage per role — fix them together to avoid repeated passes."},{"id":"aria-required-attr","reason":"After removing unsupported attributes, verify the required attributes for the role are still present."},{"id":"aria-roles","reason":"An invalid role makes all attribute checks unreliable — fix the role first."},{"id":"aria-conditional-attr","reason":"aria-allowed-attr checks which attributes a role supports; aria-conditional-attr checks whether the attribute value is semantically valid for that role — fix both in one pass."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-allowed-role":{"category":"aria","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Remove or change the role attribute so it is appropriate for the element. Certain HTML elements restrict which ARIA roles can be applied — for example, <input type='text'> cannot have role='button'. Use a native element that matches the desired role instead.","code":"<!-- Invalid: role='button' on a text input -->\n<!-- <input type=\"text\" role=\"button\"> -->\n\n<!-- Valid: use a <button> for button semantics -->\n<button type=\"button\">Click me</button>\n\n<!-- Valid: role='search' on a <form> is allowed -->\n<form role=\"search\">\n  <label for=\"q\">Search</label>\n  <input type=\"search\" id=\"q\">\n</form>\n\n<!-- Valid: role='presentation' on a layout <table> -->\n<table role=\"presentation\">\n  <tr><td>Layout content</td></tr>\n</table>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, component abstractions may apply roles dynamically via props spread. Audit the rendered DOM to confirm the role is valid for the host element. Libraries like Radix UI choose host elements that match the ARIA role — prefer them over manually assigning roles to arbitrary elements.","vue":"In Vue, dynamic :role bindings may produce invalid pairings at runtime. Ensure computed role values match the host element type. Use browser DevTools to inspect the rendered element and confirm the role is allowed.","angular":"In Angular, avoid [attr.role] bindings that assign roles incompatible with the host element. Angular CDK components select the correct host element for the given role — use them instead of manually overriding roles on arbitrary elements.","svelte":"Svelte does not validate ARIA roles at compile time. Use eslint-plugin-svelte with a11y rules to catch invalid role/element pairings. The role must be appropriate for the host HTML element — e.g., role='button' on a <div> is valid but role='button' on an <a> is not.","astro":"In .astro templates, roles are rendered as-is to static HTML. Astro does not validate ARIA semantics — use axe-core or similar tools to verify role/element compatibility in the build output."},"fix_difficulty_notes":"The ARIA in HTML specification (https://www.w3.org/TR/html-aria/) defines which roles are allowed on each HTML element. The most common violation is adding a role that conflicts with the element's implicit semantics — for example, role='heading' on a <button>. The fix is usually to change the element to one that naturally supports the desired role, rather than forcing a role onto an incompatible element.","related_rules":[{"id":"aria-roles","reason":"aria-roles validates the role value itself; aria-allowed-role validates whether that role is appropriate for the host element."},{"id":"aria-required-attr","reason":"After ensuring the role is allowed, verify all required ARIA attributes for that role are present."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-braille-equivalent":{"category":"aria","fix":{"description":"Add a non-braille equivalent alongside each braille ARIA attribute: pair aria-braillelabel with aria-label, aria-labelledby, or visible text content, and pair aria-brailleroledescription with aria-roledescription. Braille attributes are supplements, not replacements.","code":"<!-- Before: braille label without a non-braille equivalent -->\n<button aria-braillelabel=\"Sv\">Save</button>\n<!-- This is actually valid because the button has visible text 'Save' -->\n\n<!-- Invalid: aria-brailleroledescription without aria-roledescription -->\n<div role=\"region\" aria-brailleroledescription=\"rgn\">...</div>\n<!-- After: add the non-braille equivalent -->\n<div role=\"region\" aria-roledescription=\"content region\" aria-brailleroledescription=\"rgn\">...</div>"},"false_positive_risk":"low","framework_notes":{"react":"Braille ARIA attributes (ariaBraillelabel, ariaBrailleroledescription) are niche — only use them when you have confirmed braille display users need abbreviated labels. Always ensure the non-braille equivalent (aria-label or aria-roledescription) is set first.","vue":"In Vue, use aria-braillelabel and aria-brailleroledescription as standard HTML attributes. They are only useful for braille display optimization — do not add them unless you have a specific braille user need and the non-braille equivalent is already in place.","angular":"In Angular, bind [attr.aria-braillelabel] and [attr.aria-brailleroledescription] only when a non-braille equivalent is already present. These attributes are specialized for braille display users and are rarely needed in typical applications.","svelte":"Svelte passes aria-brailleroledescription and aria-braillelabel to the DOM as-is. Ensure a non-braille equivalent (aria-roledescription or aria-label) is always present alongside the braille variant.","astro":"In .astro files, braille ARIA attributes are passed through to static HTML. This is a rare rule — it only applies to elements that specifically target braille display users."},"fix_difficulty_notes":"This rule is rarely triggered because aria-braillelabel and aria-brailleroledescription are specialized attributes used almost exclusively by applications targeting braille display users. The fix is simple: ensure a non-braille accessible name or role description exists alongside the braille variant. If you did not intentionally add braille attributes, they may have been introduced by a third-party library — check your dependencies.","related_rules":[{"id":"aria-roledescription","reason":"aria-brailleroledescription must be paired with aria-roledescription — fix both together to ensure the non-braille equivalent is present."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-command-name":{"category":"aria","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Give every element with role='button', role='link', or role='menuitem' an accessible name via visible text content, aria-label, or aria-labelledby.","code":"<!-- ARIA button with visible text -->\n<div role=\"button\" tabindex=\"0\">Save changes</div>\n\n<!-- ARIA link with aria-label (icon-only) -->\n<span role=\"link\" tabindex=\"0\" aria-label=\"View documentation\">\n  <svg aria-hidden=\"true\">...</svg>\n</span>\n\n<!-- ARIA menuitem with text content -->\n<li role=\"menuitem\">Copy to clipboard</li>"},"false_positive_risk":"low","framework_notes":{"react":"In React, custom button components using role='button' instead of native <button> must expose an aria-label prop. Prefer native <button> elements — they have implicit roles and built-in keyboard support. For menu items in Radix UI or Headless UI, ensure the MenuItem component receives text content or an aria-label.","vue":"In Vue, custom interactive components with ARIA roles must pass accessible names to the root element. Use native <button> and <a> elements whenever possible — they provide implicit accessible names from text content.","angular":"In Angular, components using role='button' should accept an ariaLabel input and bind it with [attr.aria-label]. Prefer native HTML elements — Angular CDK's CdkButton directive adds keyboard support to native buttons without requiring custom ARIA roles.","svelte":"Svelte renders ARIA roles and names as standard HTML attributes. For elements with role='button', role='link', or role='menuitem', ensure an accessible name via aria-label or visible text content.","astro":"In .astro files, ARIA command roles render to static HTML. Ensure every element with a command role has visible text or aria-label. For interactive elements inside framework islands, the island framework's rules apply."},"fix_difficulty_notes":"The most common cause is icon-only buttons or links built with ARIA roles instead of native elements. The simplest fix is to add aria-label. The best fix is to replace the ARIA role with a native element (<button>, <a>) which receives its accessible name from text content automatically. For menu items, the text content of the <li> or <div role='menuitem'> serves as the accessible name.","related_rules":[{"id":"button-name","reason":"button-name covers native <button> elements — fix all button naming violations together."},{"id":"link-name","reason":"link-name covers native <a> elements — fix all interactive element naming together."},{"id":"aria-tooltip-name","reason":"Tooltip triggers often lack accessible names — fix both to ensure the trigger and tooltip are consistently named."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-conditional-attr":{"category":"aria","fix":{"description":"Replace mismatched ARIA state attributes with the correct attribute for the element's role. For example, replace aria-checked on a role='option' element with aria-selected, and set aria-expanded to true only when the controlled content is actually visible.","code":"<!-- Before: aria-selected on role='checkbox' (should be aria-checked) -->\n<div role=\"checkbox\" aria-selected=\"true\" tabindex=\"0\">Accept terms</div>\n<!-- After: use the correct attribute for the role -->\n<div role=\"checkbox\" aria-checked=\"true\" tabindex=\"0\">Accept terms</div>\n\n<!-- Before: aria-checked on role='option' (should be aria-selected) -->\n<li role=\"option\" aria-checked=\"true\">Item 1</li>\n<!-- After: -->\n<li role=\"option\" aria-selected=\"true\">Item 1</li>"},"false_positive_risk":"low","framework_notes":{"react":"In React, custom selectable list components often misuse aria-checked on role='option' elements — use aria-selected instead. For toggle buttons, use role='switch' with aria-checked, not role='button' with aria-pressed mixed with aria-checked.","vue":"In Vue, custom dropdown or listbox components may apply aria-checked to options — replace with aria-selected. Use the WAI-ARIA authoring practices as a reference for correct attribute/role pairings.","angular":"In Angular CDK, ListKeyManager-based components should use aria-selected on role='option' items. Custom implementations sometimes incorrectly mix aria-checked with listbox roles — consult the ARIA spec for the correct attribute per role.","svelte":"Svelte passes all ARIA attributes to the DOM without validation. Ensure conditional ARIA attributes (aria-checked, aria-selected, aria-expanded, aria-pressed) are only used on elements with the correct role.","astro":"In .astro files, ARIA attributes are rendered to static HTML. Conditional attributes like aria-expanded must match the element's role — validate against the WAI-ARIA spec."},"fix_difficulty_notes":"This rule catches mismatches between ARIA attributes and role semantics — the attribute exists in ARIA but is not valid for the specific role. The fix requires consulting the WAI-ARIA spec to find the correct attribute for the element's role. Common mismatches: aria-checked on role='option' (use aria-selected), aria-pressed on role='switch' (use aria-checked), aria-expanded on role='checkbox' (not supported).","related_rules":[{"id":"aria-allowed-attr","reason":"aria-conditional-attr checks semantic validity of attribute values; aria-allowed-attr checks whether the attribute itself is permitted on the role — fix both in one pass."},{"id":"aria-valid-attr-value","reason":"After fixing the attribute choice, verify the value is a valid token."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-deprecated-role":{"category":"aria","fix":{"description":"Replace deprecated ARIA roles with their modern equivalents. Deprecated roles may be ignored by assistive technologies or produce unexpected behavior.","code":"<!-- Before: deprecated role='directory' -->\n<ul role=\"directory\">...</ul>\n<!-- After: use role='list' or remove the redundant role -->\n<ul>...</ul>\n\n<!-- Before: deprecated role='doc-biblioentry' used outside DPUB context -->\n<li role=\"doc-biblioentry\">...</li>\n<!-- After: use standard roles -->\n<li role=\"listitem\">...</li>"},"false_positive_risk":"low","framework_notes":{"react":"In React, deprecated roles are passed as string props without any compile-time warning. Add eslint-plugin-jsx-a11y to catch deprecated role values. When upgrading component libraries, check changelogs for ARIA role changes — deprecated roles may have been valid in older ARIA specs.","vue":"In Vue, deprecated roles pass through to the DOM without validation. Use eslint-plugin-vuejs-accessibility to detect deprecated values in templates.","angular":"In Angular, no built-in validation catches deprecated ARIA roles. Enable @angular-eslint ARIA rules to flag deprecated role values at compile time.","svelte":"Svelte does not warn about deprecated ARIA roles at compile time. Roles like 'directory', 'doc-biblioentry', and 'doc-endnote' are deprecated — replace with current equivalents from the ARIA 1.2 spec.","astro":"In .astro files, deprecated roles render to static HTML without warnings. Use axe-core or eslint-plugin-jsx-a11y (for JSX islands) to catch deprecated roles in the build output."},"fix_difficulty_notes":"The most commonly deprecated role is 'directory' (deprecated in ARIA 1.2, replaced by 'list'). Other deprecated roles include certain DPUB-ARIA roles when used outside digital publishing contexts. The fix is usually straightforward: replace the deprecated role with its modern equivalent or remove it if the native HTML element provides the correct semantics implicitly.","related_rules":[{"id":"aria-roles","reason":"Both rules validate role attribute values — fix all role violations together."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-dialog-name":{"category":"aria","preferred_relationship_checks":["aria-labelledby","aria-label"],"managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Ensure every element with role='dialog' or role='alertdialog' has an accessible name via aria-label or aria-labelledby pointing to a visible heading inside the dialog.","code":"<!-- Using aria-labelledby (preferred — references visible heading): -->\n<div role=\"dialog\" aria-labelledby=\"dialog-title\" aria-modal=\"true\">\n  <h2 id=\"dialog-title\">Confirm deletion</h2>\n  <p>Are you sure you want to delete this item?</p>\n  <button>Cancel</button>\n  <button>Delete</button>\n</div>\n\n<!-- Using aria-label (when no visible heading exists): -->\n<div role=\"alertdialog\" aria-label=\"Session expiring\" aria-modal=\"true\">\n  <p>Your session will expire in 2 minutes.</p>\n  <button>Extend session</button>\n</div>"},"false_positive_risk":"low","framework_notes":{"react":"In React, modal libraries (Radix Dialog, Headless UI Dialog, React Aria) require a Title or aria-label prop and wire it to aria-labelledby automatically. If building a custom dialog, ensure the aria-labelledby value matches the id of the heading rendered inside the portal.","vue":"In Vue, Headless UI and PrimeVue dialogs accept a title slot that auto-generates the aria-labelledby association. For custom dialogs using Teleport, verify the aria-labelledby id resolves correctly in the teleported DOM context.","angular":"Angular CDK Dialog and Angular Material MatDialog accept an aria-label or ariaLabelledBy config option. Always provide one. For custom dialogs, bind [attr.aria-labelledby]='titleId' on the role='dialog' element.","svelte":"In Svelte, custom dialog components must include aria-label or aria-labelledby on the element with role='dialog'. Libraries like Svelte Headless UI and Melt UI handle this automatically when a title prop is provided.","astro":"In .astro files, dialog elements need aria-label or aria-labelledby. For modal islands using React/Vue/Svelte, the framework's dialog component rules apply within the island."},"fix_difficulty_notes":"The preferred approach is aria-labelledby pointing to a visible heading inside the dialog — this keeps the accessible name synchronized with what sighted users see. Use aria-label only when the dialog has no visible title. For alertdialog, also add aria-describedby pointing to the message body so screen readers announce both the title and the alert content.","related_rules":[{"id":"aria-required-attr","reason":"Dialogs require aria-modal and aria-labelledby as required attributes — verify both are present when fixing dialog naming."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-hidden-body":{"category":"aria","fix":{"description":"Remove aria-hidden='true' from the <body> element. Setting aria-hidden on the document body hides the entire page from assistive technologies, making it completely inaccessible.","code":"<!-- Before: entire page hidden from AT -->\n<body aria-hidden=\"true\">\n  ...\n</body>\n\n<!-- After: remove aria-hidden from body -->\n<body>\n  ...\n</body>"},"false_positive_risk":"low","framework_notes":{"react":"This typically occurs when a modal library applies aria-hidden='true' to the body (or the React root) and fails to remove it when the modal closes. Libraries like React Modal (react-modal) manage this automatically via the appElement prop — ensure it is set correctly. If using a custom modal, clean up aria-hidden in the modal's unmount/close lifecycle.","vue":"In Vue, this can happen when a dialog plugin sets aria-hidden='true' on document.body during open and fails to remove it on close (e.g., due to an error during the close transition). Always use a finally block or watch handler to guarantee cleanup.","angular":"In Angular, Angular CDK Dialog and Material Dialog manage aria-hidden on sibling elements, not on <body> itself. If you see aria-hidden on <body>, a third-party library or custom modal implementation is likely the cause — trace it via DOM mutation breakpoints in DevTools.","svelte":"Svelte apps render inside the <body> — never set aria-hidden='true' on <body> or the root container. If hiding content during modal display, apply aria-hidden to a specific wrapper, not the body.","astro":"Astro renders full HTML pages — never set aria-hidden='true' on <body>. For modals that need to hide background content, apply aria-hidden to the main content wrapper, not the body element."},"fix_difficulty_notes":"This is almost always a bug, not an intentional design choice. The most common cause: a modal dialog sets aria-hidden='true' on the body or app root during open, and the cleanup code fails to run (due to an error, race condition, or missing unmount handler). The fix is to ensure the modal's close/destroy logic always removes aria-hidden from the body. Use the inert attribute (now widely supported) as a modern alternative to aria-hidden for hiding background content behind modals.","related_rules":[{"id":"aria-hidden-focus","reason":"Both involve aria-hidden misuse — if aria-hidden is on the body, all focusable elements are affected."},{"id":"hidden-content","reason":"Revealing hidden content (hidden-content) may affect body-level aria-hidden state — verify both together."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-hidden-focus":{"category":"aria","fix":{"description":"Remove aria-hidden=\"true\" from elements that can receive focus, or exclude them from the tab order.","code":"<!-- Option 1: Remove aria-hidden -->\n<button>Visible button</button>\n<!-- Option 2: Keep hidden but remove from tab order -->\n<span aria-hidden=\"true\" tabindex=\"-1\">Decorative text</span>"},"false_positive_risk":"low","framework_notes":{"react":"In React portals (modals, dialogs, tooltips), aria-hidden='true' is commonly applied to the app root during open state. Ensure portals render outside the aria-hidden subtree (e.g., appended to <body>). Libraries like Radix UI handle this correctly via the inert attribute and portal rendering.","vue":"In Vue with Teleport, the teleported content renders outside the component's DOM subtree — verify the Teleport target element (e.g., #teleport-target or body) is not inside an aria-hidden container.","angular":"Angular CDK Overlay (used by Material dialogs and menus) renders at the body level, outside aria-hidden scopes. Verify that aria-hidden is applied to the correct host element — not to a container that includes the CDK overlay outlet.","svelte":"Svelte does not have a built-in portal mechanism. Libraries like svelte-portal or the Svelte <svelte:body> target render content at the body level. Ensure modal/dialog content rendered through portals is outside any aria-hidden='true' ancestor.","astro":"Astro islands hydrate independently — applying aria-hidden='true' to a parent in the base layout will hide all islands within it. For modals, render the dialog island at the body level using a framework portal inside the island component."},"cms_notes":{"shopify":"Shopify themes commonly set aria-hidden='true' on the page content when a drawer menu or cart drawer opens. Ensure the drawer itself is not nested inside the aria-hidden container. Dawn's implementation uses a separate <aside> for drawers outside the main content wrapper.","wordpress":"WordPress lightbox and modal plugins often apply aria-hidden='true' to #page or .site but may leave focusable elements inside. Verify the plugin's implementation removes focus from hidden content or uses the inert attribute.","drupal":"Drupal's off-canvas dialog (used in Layout Builder) applies aria-hidden='true' to the main content. The dialog renders via Drupal.dialog() outside the hidden container. Custom modules using dialog should follow the same pattern via Drupal.behaviors."},"fix_difficulty_notes":"Setting aria-hidden='true' on a parent hides all its descendants from AT but does not remove their keyboard focusability. Interactive children (buttons, links, inputs) inside an aria-hidden container will still receive Tab focus, creating 'ghost focus'. Apply tabindex='-1' to each interactive descendant, or restructure so no focusable elements exist inside the aria-hidden container.","related_rules":[{"id":"scrollable-region-focusable","reason":"Both affect keyboard focus — audit all focusability violations together to avoid conflicts."},{"id":"aria-hidden-body","reason":"Both involve aria-hidden misuse — if aria-hidden is on the body, all focusable elements are affected."},{"id":"hidden-content","reason":"Revealing hidden content (hidden-content) can expose focusable elements that need aria-hidden-focus review."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-input-field-name":{"category":"aria","preferred_relationship_checks":["aria-labelledby","label","aria-label"],"fix":{"description":"Add an accessible name to ARIA input fields (role='textbox', role='searchbox', role='spinbutton', role='slider', role='combobox') via aria-label or aria-labelledby.","code":"<!-- ARIA textbox with aria-labelledby: -->\n<span id=\"search-label\">Search</span>\n<div role=\"textbox\" contenteditable=\"true\"\n  aria-labelledby=\"search-label\"\n  aria-multiline=\"false\">\n</div>\n\n<!-- Prefer native input (simpler, better AT support): -->\n<label for=\"search\">Search</label>\n<input type=\"search\" id=\"search\">"},"false_positive_risk":"low","framework_notes":{"react":"Rich text editors (Draft.js, Slate, Quill) use contenteditable divs with role='textbox'. Ensure the editor component exposes an aria-label prop and applies it to the root contenteditable element. For standard inputs, always use <label htmlFor='id'>.","vue":"WYSIWYG editor components (Tiptap, Quill) wrap role='textbox' elements. Pass aria-label via the component's label prop. For standard inputs, use <label :for='id'>.","angular":"Angular CDK or ProseMirror-based editors use contenteditable with ARIA roles. Bind [attr.aria-label]='editorLabel' on the root element. For standard inputs, use mat-label or <label [for]='id'>.","svelte":"In Svelte, custom input components (combobox, searchbox, spinbutton) must expose an accessible name via aria-label or aria-labelledby. Verify that wrapper components pass through ARIA naming attributes to the underlying input.","astro":"In .astro files, ARIA input field roles are rendered to static HTML. For custom input components inside framework islands, ensure the island component exposes aria-label or aria-labelledby."},"fix_difficulty_notes":"The best fix is almost always to replace the ARIA input with a native HTML input — native elements have implicit roles, built-in keyboard support, and do not require manual ARIA attribute management. Use ARIA input roles only when a native equivalent is technically impossible (e.g., a rich text editor with contenteditable).","related_rules":[{"id":"label","reason":"If a native input can replace the ARIA input, the standard label association pattern resolves both."},{"id":"aria-toggle-field-name","reason":"Fix all ARIA field naming violations together — they share the same accessible name patterns."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-meter-name":{"category":"aria","fix":{"description":"Add an accessible name to every element with role='meter' via aria-label, aria-labelledby, or the title attribute. Without a name, screen readers announce the value but not what is being measured.","code":"<!-- Using aria-label -->\n<div role=\"meter\" aria-valuenow=\"75\" aria-valuemin=\"0\" aria-valuemax=\"100\"\n  aria-label=\"Battery level\">\n  75%\n</div>\n\n<!-- Using aria-labelledby -->\n<span id=\"disk-label\">Disk usage</span>\n<div role=\"meter\" aria-valuenow=\"42\" aria-valuemin=\"0\" aria-valuemax=\"100\"\n  aria-labelledby=\"disk-label\">\n  42%\n</div>"},"false_positive_risk":"low","framework_notes":{"react":"In React, custom meter components should accept an aria-label or label prop and apply it to the element with role='meter'. Prefer the native <meter> element when possible — it has implicit semantics and is styled via ::-webkit-meter-bar pseudo-elements.","vue":"In Vue, pass aria-label or aria-labelledby to the root element of custom meter components. The native <meter> element works in Vue templates and provides built-in AT support without ARIA attributes.","angular":"In Angular, bind [attr.aria-label]='meterLabel' on custom meter components. Angular Material does not include a meter component — if using MatProgressBar as a meter, ensure role='meter' is set alongside the accessible name.","svelte":"In Svelte, <div role='meter'> must have aria-label or aria-labelledby. Svelte does not validate ARIA naming — add labels explicitly. Consider using the native <meter> element instead, which supports <label>.","astro":"In .astro files, role='meter' elements must have aria-label or aria-labelledby in the static HTML. Prefer the native <meter> element when possible."},"fix_difficulty_notes":"The native <meter> element is the preferred approach — it provides implicit semantics, does not require role='meter', and has built-in accessible value announcements. Use role='meter' only when the native element cannot be styled to match design requirements. When using role='meter', all three value attributes (aria-valuenow, aria-valuemin, aria-valuemax) are required alongside the accessible name.","related_rules":[{"id":"aria-progressbar-name","reason":"Meters and progress bars share the same accessible name requirements — fix both together."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-progressbar-name":{"category":"aria","managed_by_libraries":["radix","chakra","mantine","material-ui","react-aria","primevue","vuetify"],"fix":{"description":"Add an accessible name to every element with role='progressbar' via aria-label, aria-labelledby, or the title attribute. Without a name, screen readers announce the progress value but not what process it represents.","code":"<!-- Using aria-label -->\n<div role=\"progressbar\" aria-valuenow=\"60\" aria-valuemin=\"0\" aria-valuemax=\"100\"\n  aria-label=\"File upload progress\">\n  60%\n</div>\n\n<!-- Using aria-labelledby -->\n<span id=\"download-label\">Downloading update</span>\n<progress id=\"download\" max=\"100\" value=\"30\" aria-labelledby=\"download-label\">\n  30%\n</progress>"},"false_positive_risk":"low","framework_notes":{"react":"In React, use the native <progress> element when possible — it has implicit role='progressbar'. For custom progress bars (e.g., animated SVG rings), ensure the wrapper has role='progressbar', aria-valuenow, and aria-label. Libraries like Radix UI Progress expose these props automatically.","vue":"In Vue, the native <progress> element works in templates and provides built-in AT support. For custom progress components (e.g., Vuetify's v-progress-linear), pass the label prop or aria-label to ensure the component renders an accessible name.","angular":"Angular Material's MatProgressBar (mat-progress-bar) applies role='progressbar' automatically but does not set an accessible name by default. Add [attr.aria-label]='progressLabel' to the <mat-progress-bar> element.","svelte":"In Svelte, <div role='progressbar'> must have aria-label or aria-labelledby. For progress indicators, consider using the native <progress> element instead, which supports <label> association.","astro":"In .astro files, role='progressbar' elements must have aria-label in the static HTML. For dynamic progress bars inside framework islands, ensure the island component manages aria-valuenow and aria-label."},"fix_difficulty_notes":"The native <progress> element is the simplest solution — it has an implicit progressbar role and built-in AT value announcements. For indeterminate progress bars (no known completion percentage), omit aria-valuenow and set aria-valuemin and aria-valuemax — the screen reader will announce 'busy' or 'loading'. Custom animated progress indicators (CSS-only or SVG) are the hardest to fix — they require explicit ARIA attributes on a wrapping element.","related_rules":[{"id":"aria-meter-name","reason":"Meters and progress bars share the same accessible name requirements — fix both together."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-prohibited-attr":{"category":"aria","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify","swiper"],"fix":{"description":"The violation message identifies the exact prohibited combination. Two distinct cases: (1) aria-label on an element with NO role — add a landmark or semantic role that permits aria-label (e.g. role='region', role='navigation', role='complementary'); (2) aria-label on role='none' or role='presentation' — these roles strip all semantics so aria-label has no effect: either assign a real role or remove both attributes.","code":"<!-- Case 1: aria-label on element with NO role → add a semantic role -->\n<!-- Before: -->\n<div aria-label=\"Hero slides\">...</div>\n<!-- After: add a role that permits aria-label -->\n<div role=\"region\" aria-label=\"Hero slides\">...</div>\n\n<!-- Case 2: aria-label on role='none' or role='presentation' → remove aria-label -->\n<!-- Before: -->\n<div role=\"none\" aria-label=\"Decorative wrapper\">...</div>\n<!-- After: -->\n<div role=\"none\">...</div>\n\n<!-- Case 3: wrong ARIA state for a role (e.g. aria-checked on plain button) -->\n<!-- Before: -->\n<button aria-checked=\"true\">Toggle</button>\n<!-- After: use role='switch' which supports aria-checked -->\n<button role=\"switch\" aria-checked=\"true\">Toggle</button>"},"false_positive_risk":"low","framework_notes":{"react":"In React, ARIA attributes are passed as JSX props — there is no compile-time check for prohibited combinations. Use eslint-plugin-jsx-a11y, which includes the role-supports-aria-props rule to catch these at build time.","vue":"In Vue, ARIA attributes are standard HTML attributes — no framework-level check exists. Use eslint-plugin-vue with vue/no-aria-hidden-on-focusable or similar lint rules.","angular":"In Angular, no built-in check prevents prohibited ARIA combinations. The Angular CDK a11y lint rules (via @angular-eslint) flag some cases — enable them in .eslintrc.","svelte":"Svelte does not warn about prohibited ARIA attributes at compile time. Attributes like aria-label on elements with role='presentation' or role='none' are prohibited — remove them. Use eslint-plugin-svelte for static analysis.","astro":"In .astro files, prohibited ARIA attributes render to static HTML without warnings. Validate the build output with axe-core to catch attributes that conflict with the element's role."},"fix_difficulty_notes":["Read the Observed Violation message — it names the exact prohibited combination.","Pattern 1: `aria-label` on a plain `<div>` or `<span>` with no role — add a semantic role that permits labelling (`role=\"region\"` for sections, `role=\"navigation\"` for nav-like containers, `role=\"complementary\"` for sidebars).","Pattern 2: `aria-label` on `role=\"none\"` or `role=\"presentation\"` — these roles explicitly remove the element from the accessibility tree, so any ARIA attribute is meaningless: remove the `aria-label`, or swap to a real role if labelling is needed.","Pattern 3: wrong ARIA state for a role (e.g. `aria-checked` on a plain button) — change the role to one that supports the attribute (`role=\"switch\"` for `aria-checked`). Consult https://www.w3.org/TR/wai-aria/#role_definitions for Inherited States and Properties per role."],"related_rules":[{"id":"aria-required-attr","reason":"Often co-located — fix the role first, then verify required attributes are present and prohibited ones are removed."},{"id":"aria-valid-attr-value","reason":"After fixing prohibited attrs, check that remaining ARIA attribute values are valid tokens."},{"id":"aria-roles","reason":"Often co-located — fix the role first, then verify required attributes are present and prohibited ones are removed."},{"id":"aria-allowed-attr","reason":"Both rules enforce correct ARIA attribute usage per role — fix them together to avoid repeated passes."},{"id":"presentation-role-conflict","reason":"Both rules address ARIA attributes that should not be present on the element — fix together."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-required-attr":{"category":"aria","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Add the missing required ARIA attribute(s) for the element's role. Common examples: role='combobox' requires aria-expanded and aria-controls; role='slider' requires aria-valuenow, aria-valuemin, and aria-valuemax; role='checkbox' requires aria-checked.","code":"<!-- combobox requires: aria-expanded + aria-controls -->\n<div role=\"combobox\" aria-expanded=\"false\" aria-controls=\"listbox-id\" aria-haspopup=\"listbox\">\n  <input type=\"text\" aria-autocomplete=\"list\">\n</div>\n<ul role=\"listbox\" id=\"listbox-id\">...</ul>\n\n<!-- scrollbar requires: aria-controls + aria-valuenow + aria-valuemin + aria-valuemax -->\n<div role=\"scrollbar\" aria-controls=\"scrollable-region\" aria-valuenow=\"0\" aria-valuemin=\"0\" aria-valuemax=\"100\"></div>"},"false_positive_risk":"low","framework_notes":{"react":"Headless component libraries (Radix UI, Headless UI, Ark UI) handle required ARIA attributes internally — do not duplicate or override them. If building a custom ARIA widget from scratch, consult the WAI-ARIA spec for each role's required attributes before binding props.","vue":"Floating Vue, Headless UI for Vue, and Vuetify manage ARIA attributes internally. Only add ARIA attributes when building custom widgets. Binding incorrect or unsupported attributes can introduce new violations rather than fixing existing ones.","angular":"Angular CDK's a11y module (FocusTrap, ListKeyManager, ActiveDescendantKeyManager) manages required ARIA attributes for composite widgets. Use these utilities before building custom ARIA widgets from scratch.","svelte":"Svelte passes ARIA attributes to the DOM without validation. Missing required attributes (e.g., aria-checked on role='checkbox', aria-expanded on role='combobox') must be added manually. Use eslint-plugin-svelte for compile-time checks.","astro":"In .astro files, ARIA attributes are rendered to static HTML. Ensure all required ARIA attributes are present for the element's role. For dynamic ARIA states inside framework islands, the island framework manages them."},"fix_difficulty_notes":"Required attributes vary per role — consult https://www.w3.org/TR/wai-aria/#role_definitions. The most frequent mistake: using role='combobox' without aria-expanded, or role='slider' without aria-valuenow/aria-valuemin/aria-valuemax. When in doubt, prefer native HTML elements (e.g., <select> instead of role='listbox') which carry implicit semantics.","related_rules":[{"id":"aria-roles","reason":"An invalid role is often the root cause of missing required attributes — fix the role first."},{"id":"aria-valid-attr-value","reason":"After adding required attributes, verify their values are valid."},{"id":"aria-prohibited-attr","reason":"After adding required attributes, verify no prohibited attributes remain for the fixed role."},{"id":"aria-toggle-field-name","reason":"role=\"switch\" requires aria-checked — fix accessible name and required attributes together."},{"id":"aria-allowed-attr","reason":"After removing unsupported attributes, verify the required attributes for the role are still present."},{"id":"aria-allowed-role","reason":"After ensuring the role is allowed, verify all required ARIA attributes for that role are present."},{"id":"aria-dialog-name","reason":"Dialogs with aria-modal='true' require proper focus trapping — fix naming and modal attributes together."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-required-children":{"category":"aria","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Add the required child roles to composite ARIA elements. For example, give role='list' children with role='listitem', and give role='tablist' children with role='tab'.","code":"<!-- role='list' requires role='listitem' children -->\n<div role=\"list\">\n  <div role=\"listitem\">Item 1</div>\n  <div role=\"listitem\">Item 2</div>\n</div>\n\n<!-- role='tablist' requires role='tab' children -->\n<div role=\"tablist\" aria-label=\"Settings\">\n  <button role=\"tab\" aria-selected=\"true\" aria-controls=\"panel-1\">General</button>\n  <button role=\"tab\" aria-selected=\"false\" aria-controls=\"panel-2\">Advanced</button>\n</div>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, wrapper elements between the parent and child roles (e.g., a <div> between role='list' and role='listitem') break the required parent-child relationship. Use role='presentation' or role='none' on intermediate wrappers to make them semantically transparent. In tabbed interfaces, ensure role='tab' elements are direct children of role='tablist'.","vue":"In Vue, component wrapper elements can introduce extra DOM nodes between required role relationships. Use Vue 3 Fragments or <template> to avoid wrapper elements, or apply role='none' to intermediate wrappers.","angular":"In Angular, host elements of child components create extra DOM layers. Use the host property in @Component to set role='none' on the host element, or use attribute selectors on the host to eliminate extra wrappers.","svelte":"Svelte does not validate ARIA parent-child role relationships. Ensure composite roles (role='list' → role='listitem', role='tablist' → role='tab') have the correct child roles in the rendered DOM.","astro":"In .astro files, ARIA parent-child relationships must be correct in the rendered HTML. When composing components, verify that parent and child roles remain valid across component boundaries."},"fix_difficulty_notes":"The most common cause in component frameworks is an intermediate wrapper element between the parent and child roles. The wrapper breaks the ARIA relationship because the child role is no longer a direct descendant of the parent role in the accessibility tree. Solutions: (1) apply role='none' or role='presentation' to the wrapper, (2) restructure to eliminate the wrapper, or (3) use owned children via aria-owns (last resort). Reference: https://www.w3.org/TR/wai-aria/#mustContain.","related_rules":[{"id":"aria-required-parent","reason":"Required children and required parent are complementary checks — fix both together to ensure complete ARIA relationships."},{"id":"aria-treeitem-name","reason":"Tree structures require correct nesting of treeitem within tree and group roles — fix hierarchy and naming together."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-required-parent":{"category":"aria","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Nest each ARIA role inside its required parent role. For example, wrap role='listitem' inside role='list', and wrap role='tab' inside role='tablist'.","code":"<!-- role='listitem' must be inside role='list' -->\n<div role=\"list\">\n  <div role=\"listitem\">Item 1</div>\n  <div role=\"listitem\">Item 2</div>\n</div>\n\n<!-- role='tab' must be inside role='tablist' -->\n<div role=\"tablist\" aria-label=\"Account settings\">\n  <button role=\"tab\" aria-selected=\"true\">Profile</button>\n  <button role=\"tab\" aria-selected=\"false\">Security</button>\n</div>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, rendering role='listitem' elements via a component that does not render inside a role='list' parent is a common source. Ensure the parent component applies role='list' to its container. For Portalled content (e.g., menu items in a dropdown), the portal must render inside the role='menu' container, not at the body level.","vue":"In Vue, Teleport can break required parent-child ARIA relationships by moving child content to a different DOM location. If teleporting role='menuitem' elements, ensure the Teleport target is inside the role='menu' parent.","angular":"In Angular, CDK Overlay renders content at the body level — menu items in an overlay may lose their role='menu' parent. Use cdkConnectedOverlayOrigin or restructure so the overlay container has the required parent role.","svelte":"Svelte does not validate ARIA parent-child requirements. Elements with roles like 'listitem', 'tab', 'menuitem' must be direct children of their required parent role. Component wrappers that add extra <div>s can break this relationship.","astro":"In .astro files, ARIA parent requirements must be met in the rendered HTML. Astro component boundaries can insert wrapper elements — verify the final DOM structure preserves the required parent-child role hierarchy."},"fix_difficulty_notes":"The fix is to ensure the DOM hierarchy matches the required ARIA role hierarchy. In SPAs, this is complicated by portals, overlays, and dynamic rendering that can detach child roles from their required parents. If restructuring the DOM is not feasible, aria-owns on the parent can establish the relationship regardless of DOM position — but this is a last resort and has inconsistent screen reader support.","related_rules":[{"id":"aria-required-children","reason":"Required parent and required children are complementary checks — fix both together to ensure complete ARIA relationships."},{"id":"aria-treeitem-name","reason":"Each treeitem must be a child of a tree or group role — fix parent role requirements alongside naming."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-roledescription":{"category":"aria","fix":{"description":"Apply aria-roledescription only to elements that have an explicit or implicit ARIA role. Do not use it on elements with no role or with role='generic' (the implicit role of <div> and <span>).","code":"<!-- Before: aria-roledescription on a generic div -->\n<div aria-roledescription=\"slide\">Slide content</div>\n<!-- After: add an appropriate role -->\n<div role=\"group\" aria-roledescription=\"slide\" aria-label=\"Slide 1 of 5\">\n  Slide content\n</div>\n\n<!-- Valid: aria-roledescription on an element with an implicit role -->\n<button aria-roledescription=\"toggle switch\">Dark mode</button>"},"false_positive_risk":"low","framework_notes":{"react":"In React, carousel or slider components often add aria-roledescription='slide' to plain <div> children. Add role='group' or role='region' to the div first, then apply aria-roledescription. Libraries like Embla Carousel may need a custom render function to inject the role.","vue":"In Vue, ensure the element receiving aria-roledescription has an explicit role. Swiper.js and similar carousel libraries may apply aria-roledescription to wrapper <div> elements without adding a semantic role — override via slot props or custom wrappers.","angular":"In Angular, bind [attr.aria-roledescription] only on elements that already have a role. If using a carousel CDK, ensure the slide container has role='group' or role='region' before applying the roledescription.","svelte":"Svelte passes aria-roledescription to the DOM as-is. This attribute must only be used on elements with an explicit or implicit ARIA role. It customizes how AT announces the role — use only when the default role announcement is insufficient.","astro":"In .astro files, aria-roledescription renders to static HTML. Ensure it is paired with a valid role. This is a specialized attribute — most elements do not need it."},"fix_difficulty_notes":"aria-roledescription customizes the role announcement for screen readers (e.g., 'slide' instead of 'group'). It only works on elements that have a role in the accessibility tree. Elements with no role or role='generic' (implicit for <div>/<span>) are ignored by AT, so the roledescription has no effect. The fix: add an appropriate semantic role to the element before applying aria-roledescription.","related_rules":[{"id":"aria-roles","reason":"The host element needs a valid ARIA role before aria-roledescription has any effect — fix the role first."},{"id":"aria-braille-equivalent","reason":"aria-brailleroledescription must pair with aria-roledescription — fix both when either is present."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-roles":{"category":"aria","fix":{"description":"Replace invalid ARIA role values with valid roles from the WAI-ARIA specification, or remove the role attribute if it is not needed.","code":"<!-- Invalid roles: -->\n<!-- role=\"text\" — not a valid ARIA role -->\n<!-- role=\"container\" — not a valid ARIA role -->\n<!-- role=\"button\" on a <button> — redundant, not a violation but unnecessary -->\n\n<!-- Valid replacements: -->\n<div role=\"region\" aria-labelledby=\"section-heading\">...</div>\n<span role=\"status\" aria-live=\"polite\">Saved successfully</span>\n<div role=\"alert\">Error: field is required</div>"},"false_positive_risk":"low","framework_notes":{"react":"In React, ARIA roles are passed as the role prop. Use eslint-plugin-jsx-a11y (aria-role rule) to catch invalid role values at build time — there is no runtime validation.","vue":"In Vue, invalid role values are passed through to the DOM without validation. Use eslint-plugin-vuejs-accessibility to catch invalid role attributes in templates.","angular":"In Angular, @angular-eslint includes aria-role lint rules. Enable them in .eslintrc to validate role attribute values at compile time.","svelte":"Svelte does not validate ARIA role values at compile time. Invalid roles (typos, deprecated values) render silently. Use eslint-plugin-svelte or axe-core to catch invalid role values before deployment.","astro":"In .astro files, ARIA roles render to static HTML without validation. Typos in role values (e.g., role='buton' instead of role='button') will not be caught at build time — use axe-core."},"fix_difficulty_notes":"Common invalid roles: 'text' (not valid — use role='paragraph' or remove the role), 'input' (not valid — use native <input>), 'container' (not valid — use role='group'). Also watch for typos: 'dialouge' instead of 'dialog'. Adding a role that matches the element's implicit role (e.g., role='button' on <button>) is not a violation but is unnecessary — remove it for cleaner markup.","related_rules":[{"id":"aria-required-attr","reason":"After fixing an invalid role, verify the replacement role has all required ARIA attributes."},{"id":"aria-prohibited-attr","reason":"After fixing the role, verify no ARIA attributes are prohibited for the new role."},{"id":"aria-valid-attr-value","reason":"After fixing the role, verify attribute values are valid tokens for the corrected role."},{"id":"aria-allowed-attr","reason":"An invalid role makes all attribute checks unreliable — fix the role first."},{"id":"aria-allowed-role","reason":"aria-roles validates the role value itself; aria-allowed-role validates whether that role is appropriate for the host element."},{"id":"aria-deprecated-role","reason":"Both rules validate role attribute values — fix all role violations together."},{"id":"aria-roledescription","reason":"A valid role must exist before adding a custom roledescription — fix aria-roles first."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-text":{"category":"aria","fix":{"description":"Ensure role='text' is used only on elements with no focusable descendants. role='text' tells assistive technology to treat the element's content as a single text string — if focusable children exist inside, they become unreachable.","code":"<!-- Valid: role='text' with no focusable descendants -->\n<p role=\"text\">\n  On sale: <span class=\"price\">$9.99</span>\n</p>\n\n<!-- Invalid: role='text' with a focusable link inside -->\n<!-- <p role=\"text\">Visit <a href=\"/store\">our store</a></p> -->\n\n<!-- Fix: remove role='text' when interactive children exist -->\n<p>Visit <a href=\"/store\">our store</a></p>"},"false_positive_risk":"low","framework_notes":{"react":"In React, role='text' is occasionally used on price or status components to prevent screen readers from splitting text across child spans. Ensure no <a>, <button>, or <input> elements exist inside the subtree. If interactive children are needed, remove role='text' and let the default content model apply.","vue":"In Vue, avoid using role='text' on wrapper components that accept slots — slot content may include interactive elements injected by consuming components. Validate the slot content at the template level or remove role='text' entirely.","angular":"In Angular, avoid role='text' on components with ng-content projections. Projected content may include interactive elements from parent templates, breaking the role='text' contract.","svelte":"In Svelte, role='text' can be used to prevent AT from splitting text interrupted by semantic elements. Ensure the element with role='text' contains only text content and no interactive children.","astro":"In .astro files, role='text' renders to static HTML. This role is used to prevent screen readers from splitting text content at semantic boundaries — use sparingly."},"fix_difficulty_notes":"role='text' is a convenience for preventing AT from splitting visually contiguous text into separate announcements (e.g., prices with styled currency symbols). It is not a WCAG requirement — if removing it causes no usability regression, removal is the safest fix. If role='text' is needed, audit all descendants to ensure none are focusable (no links, buttons, inputs, or elements with tabindex >= 0).","related_rules":[{"id":"nested-interactive","reason":"role='text' forbids focusable descendants — check for nested-interactive violations in the same element."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-toggle-field-name":{"category":"aria","preferred_relationship_checks":["aria-labelledby","explicit-label","label","aria-label","implicit-label"],"managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Add an accessible name to toggle input fields (checkbox, radio, switch) via a <label>, aria-label, or aria-labelledby.","code":"<!-- Checkbox with associated label: -->\n<label for=\"subscribe\">\n  <input type=\"checkbox\" id=\"subscribe\"> Subscribe to newsletter\n</label>\n\n<!-- Custom ARIA switch with aria-label: -->\n<button role=\"switch\" aria-checked=\"false\" aria-label=\"Enable dark mode\">\n  <span class=\"toggle-knob\" aria-hidden=\"true\"></span>\n</button>"},"false_positive_risk":"low","framework_notes":{"react":"In React, custom toggle components must spread aria-label and aria-checked to the underlying element. For native checkboxes, use htmlFor on <label>. For switches: <button role='switch' aria-checked={isOn} aria-label='Enable notifications'>.","vue":"In Vue, custom toggle components must pass aria-label and aria-checked to the root element. For native checkboxes, use <label :for='id'> with matching :id on the <input>.","angular":"In Angular, use <label [for]='checkboxId'> for native checkboxes. For custom switches, bind [attr.aria-label]='label' and [attr.aria-checked]='isChecked' on the role='switch' element.","svelte":"In Svelte, custom toggle components (checkboxes, switches, radio buttons) must have aria-label or aria-labelledby. Ensure wrapper components pass accessible names through to the underlying interactive element.","astro":"In .astro files, toggle roles (checkbox, switch, radio) need aria-label or visible labels in the static HTML. For dynamic toggles inside framework islands, the island component manages the accessible name."},"fix_difficulty_notes":"Custom toggle switches built with role='switch' require both aria-label AND aria-checked. Missing either triggers a violation. For checkbox inputs, a label must be associated via for/id or by wrapping — visually adjacent text without a <label> element is not sufficient for AT.","related_rules":[{"id":"label","reason":"The same label association pattern resolves both label and aria-toggle-field-name violations."},{"id":"aria-required-attr","reason":"role='switch' requires aria-checked — fix the accessible name and required attributes together."},{"id":"aria-input-field-name","reason":"Fix all ARIA field naming violations together — they share the same accessible name patterns."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-tooltip-name":{"category":"aria","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","floating-ui","primevue","vuetify"],"fix":{"description":"Give every element with role='tooltip' an accessible name via text content, aria-label, or aria-labelledby. Without a name, the tooltip is invisible to screen reader users.","code":"<!-- Tooltip with text content (accessible name from content) -->\n<span role=\"tooltip\" id=\"password-hint\">\n  Password must be at least 8 characters\n</span>\n<input type=\"password\" aria-describedby=\"password-hint\">\n\n<!-- Tooltip with aria-label (for icon-based tooltips) -->\n<div role=\"tooltip\" aria-label=\"Copy to clipboard shortcut: Ctrl+C\">\n  <kbd>Ctrl</kbd>+<kbd>C</kbd>\n</div>"},"false_positive_risk":"low","framework_notes":{"react":"In React, tooltip libraries (Radix Tooltip, Floating UI, React Tooltip) manage role='tooltip' and accessible names internally. If building a custom tooltip, ensure the tooltip element has text content or aria-label, and the trigger element references it via aria-describedby.","vue":"In Vue, Floating Vue (v-tooltip) and Headless UI manage tooltip semantics. For custom tooltips, bind role='tooltip' and ensure text content or :aria-label is present on the tooltip element.","angular":"In Angular, Angular CDK Overlay with MatTooltip handles role='tooltip' and accessible naming. For custom tooltips, ensure the overlay element has role='tooltip' and contains text content or [attr.aria-label].","svelte":"In Svelte, elements with role='tooltip' must have accessible text content or aria-label. Tooltip libraries for Svelte (like Tippy.js/svelte) should expose a label prop for the tooltip trigger.","astro":"In .astro files, role='tooltip' elements need text content or aria-label in the static HTML. For dynamic tooltips inside framework islands, the island framework's tooltip component rules apply."},"fix_difficulty_notes":"Tooltips should contain plain text that describes or supplements the trigger element. Complex interactive content inside a tooltip is an anti-pattern — use a dialog or popover instead. The tooltip's accessible name comes from its text content; aria-label is only needed when the tooltip contains non-text content (icons, formatted markup).","related_rules":[{"id":"aria-command-name","reason":"The trigger element for a tooltip often also needs an accessible name — fix both the tooltip and its trigger together."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-treeitem-name":{"category":"aria","fix":{"description":"Ensure every element with role='treeitem' has an accessible name via its text content, aria-label, or aria-labelledby.","code":"<!-- Treeitem with visible text content (preferred): -->\n<ul role=\"tree\" aria-label=\"File browser\">\n  <li role=\"treeitem\" aria-expanded=\"false\">\n    Documents\n    <ul role=\"group\">\n      <li role=\"treeitem\">Resume.pdf</li>\n      <li role=\"treeitem\">Cover letter.docx</li>\n    </ul>\n  </li>\n</ul>\n\n<!-- Treeitem with aria-label (when icon-only): -->\n<li role=\"treeitem\" aria-label=\"Inbox (3 unread)\">\n  <svg aria-hidden=\"true\">...</svg>\n</li>"},"false_positive_risk":"low","framework_notes":{"react":"In React, tree components (React Aria TreeView, MUI TreeView, Ant Design Tree) manage treeitem names from a data prop. Ensure the label or name field is never empty. For custom tree implementations, pass aria-label to icon-only tree items.","vue":"In Vue, PrimeVue Tree and Vuetify Treeview derive treeitem names from the data model label field. Verify that all tree data nodes have a non-empty label. For custom trees, add aria-label to icon-only items.","angular":"In Angular, Angular Material Tree (mat-tree-node) does not automatically set an accessible name — the template must include visible text or an aria-label. Use [attr.aria-label]='node.name' on mat-tree-node elements.","svelte":"In Svelte, tree view components must ensure every role='treeitem' has visible text or aria-label. Custom tree implementations should follow the WAI-ARIA Tree View pattern for keyboard navigation and naming.","astro":"In .astro files, role='treeitem' elements need visible text or aria-label. Tree views are complex widgets — consider rendering them inside a framework island for proper keyboard and state management."},"fix_difficulty_notes":"Tree views are complex ARIA widgets requiring correct role hierarchy (tree > treeitem > group > treeitem), aria-expanded on parent nodes, and an accessible name on every treeitem. The most common violation is icon-only tree nodes (file browser icons, folder icons) missing aria-label. Add aria-label to every treeitem that lacks visible text content.","related_rules":[{"id":"aria-required-children","reason":"Tree structures require correct nesting of treeitem within tree and group roles — fix hierarchy and naming together."},{"id":"aria-required-parent","reason":"Each treeitem must be a child of a tree or group role — fix parent role requirements alongside naming."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-valid-attr":{"category":"aria","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Replace any misspelled or invented aria-* attribute names with valid ARIA attribute names from the WAI-ARIA specification. Invalid aria-* attributes are silently ignored by assistive technologies.","code":"<!-- Before: misspelled or invalid ARIA attributes -->\n<button aria-labelled=\"Save\">Save</button>  <!-- should be aria-label -->\n<div aria-role=\"alert\">Error</div>  <!-- aria-role is not valid; use role=\"alert\" -->\n\n<!-- After: corrected attributes -->\n<button aria-label=\"Save\">Save</button>\n<div role=\"alert\">Error</div>"},"false_positive_risk":"low","framework_notes":{"react":"React does not validate aria-* attribute names at compile time — misspelled attributes pass through to the DOM silently. Use eslint-plugin-jsx-a11y which includes the aria-props rule to catch invalid attribute names. Common typos: aria-labelled (should be aria-label), aria-role (should be role).","vue":"Vue does not validate aria-* attributes. Use eslint-plugin-vuejs-accessibility to catch misspelled ARIA attributes in templates. The most common mistake is aria-labelled instead of aria-label or aria-labelledby.","angular":"Angular does not validate aria-* attributes at compile time. Enable @angular-eslint ARIA rules to detect invalid attribute names. TypeScript does not type-check HTML attribute strings, so aria-* typos pass through uncaught.","svelte":"Svelte does not validate ARIA attribute names at compile time. Typos (e.g., aria-lable instead of aria-label) render silently to the DOM. Use eslint-plugin-svelte's a11y rules to catch invalid ARIA attribute names.","astro":"In .astro files, ARIA attributes render to static HTML without name validation. Typos in ARIA attribute names are invisible at build time — use axe-core or lint tools to catch them."},"fix_difficulty_notes":"This rule catches typos and invented attribute names. The fix is almost always correcting a misspelled attribute. Common mistakes: aria-labelled (should be aria-label or aria-labelledby), aria-role (not an ARIA attribute — use the role HTML attribute), aria-description (valid in ARIA 1.3 but not yet widely supported — use aria-describedby with a referenced element instead). Consult https://www.w3.org/TR/wai-aria/#state_prop_def for the complete list of valid aria-* attributes.","related_rules":[{"id":"aria-valid-attr-value","reason":"After fixing the attribute name, verify the value is also valid."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"aria-valid-attr-value":{"category":"aria","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Set a valid value for the ARIA attribute. Consult the WAI-ARIA spec for the list of allowed values.","code":"<!-- Common invalid → valid corrections: -->\n\n<!-- aria-live: must be 'off' | 'polite' | 'assertive' -->\n<div aria-live=\"polite\">...</div>  <!-- not aria-live=\"yes\" -->\n\n<!-- aria-expanded: must be 'true' | 'false' -->\n<button aria-expanded=\"false\">Menu</button>  <!-- not aria-expanded=\"0\" -->\n\n<!-- aria-haspopup: must be 'true' | 'false' | 'menu' | 'listbox' | 'tree' | 'grid' | 'dialog' -->\n<button aria-haspopup=\"menu\">Options</button>  <!-- not aria-haspopup=\"dropdown\" -->"},"false_positive_risk":"low","framework_notes":{"react":"React coerces aria-expanded={isOpen} to the string 'true'/'false' correctly. Do not use aria-expanded={isOpen ? '1' : '0'} or other non-token values. Use aria-expanded={undefined} to omit the attribute entirely when the role does not require it.","vue":"Use :aria-expanded='isOpen' — Vue renders boolean true/false as the strings 'true'/'false'. Do not use :aria-expanded='isOpen ? 1 : 0'. To omit the attribute, bind to null: :aria-expanded='null'.","angular":"Use [attr.aria-expanded]='isOpen' binding — Angular renders the boolean as the correct string. Setting [attr.aria-expanded]='null' removes the attribute entirely when not applicable.","svelte":"Svelte passes ARIA attribute values to the DOM without validation. Invalid values (e.g., aria-hidden='yes' instead of 'true', aria-live='aggressive' instead of 'assertive') render silently. Validate against the WAI-ARIA spec.","astro":"In .astro files, ARIA attribute values render to static HTML without validation. Use axe-core to catch invalid ARIA values in the rendered output."},"fix_difficulty_notes":"The most common mistake is using incorrect types for boolean attributes: aria-expanded='0' or aria-expanded='yes' instead of 'true'/'false'. In template engines, ensure dynamic state is coerced to the string 'true' or 'false', not a JavaScript boolean. React spreads boolean props correctly — aria-expanded={isOpen} renders 'true'/'false' — but aria-expanded={isOpen ? 1 : 0} does not.","related_rules":[{"id":"aria-required-attr","reason":"Required attributes must be present before their values can be validated — fix both together."},{"id":"aria-roles","reason":"An invalid role produces invalid attribute values — fix the role before the attribute values."},{"id":"aria-prohibited-attr","reason":"After removing prohibited attrs, verify remaining attribute values are valid tokens."},{"id":"aria-conditional-attr","reason":"After fixing the attribute choice, verify the value is a valid token."},{"id":"aria-valid-attr","reason":"After fixing the attribute name, verify the value is also valid."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"audio-caption":{"category":"text-alternatives","fix":{"description":"Add a <track kind='captions'> element inside every <audio> element, or provide a text transcript linked adjacent to the player.","code":"<audio controls>\n  <source src=\"podcast.mp3\" type=\"audio/mpeg\">\n  <track kind=\"captions\" src=\"podcast.vtt\" srclang=\"en\" label=\"English captions\" default>\n</audio>\n\n<!-- Alternative: linked transcript -->\n<audio controls src=\"podcast.mp3\"></audio>\n<p><a href=\"podcast-transcript.html\">Read the full transcript</a></p>"},"false_positive_risk":"low","framework_notes":{"react":"In React, pass <track> as a child of the <audio> JSX element. React requires a key prop on <track> when rendered in a list. Use the default prop (boolean) to set the default caption track.","vue":"In Vue, nest <track> inside <audio> in the template. For dynamic caption src, bind :src='captionsSrc'. The default boolean attribute is passed as a plain HTML attribute without binding.","angular":"In Angular, the native <audio> element with nested <track> works in component templates. For dynamic caption URLs, use [attr.src]='captionsSrc' on the <track> element.","svelte":"In Svelte, add <track kind='captions'> inside <audio> elements. Svelte does not warn about missing captions on media elements — validate manually or with axe-core.","astro":"In .astro files, <audio> elements need <track kind='captions'> in the static HTML. For audio players inside framework islands, add tracks within the island component."},"fix_difficulty_notes":"Captions must be synchronized with the audio — a plain text page is a transcript, not captions. VTT (WebVTT) is the standard format for <track> elements and is supported in all modern browsers. Generating captions retroactively is effort-intensive; tools like Whisper (OpenAI), Adobe Premiere, or Rev.com can auto-generate VTT files that require human review before publishing.","related_rules":[{"id":"video-caption","reason":"Both require media captions — fix all media accessibility violations together."},{"id":"no-autoplay-audio","reason":"Auto-playing audio also needs captions if it conveys information — fix both together."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"autocomplete-valid":{"category":"forms","fix":{"description":"Add a valid autocomplete token to form inputs to assist users with autofill.","code":"<input type=\"email\" name=\"email\" autocomplete=\"email\">\n<input type=\"text\" name=\"name\" autocomplete=\"name\">\n<input type=\"tel\" name=\"phone\" autocomplete=\"tel\">"},"false_positive_risk":"low","framework_notes":{"react":"Pass autocomplete as a string prop in JSX: <input autoComplete='email' />. Note: React uses camelCase autoComplete, which renders as the autocomplete HTML attribute. React Hook Form does not intercept it — set it directly on the input element.","vue":"Use autocomplete='email' as a plain HTML attribute in Vue templates. Vee-Validate passes the autocomplete attribute through to the native input via v-bind on the field component.","angular":"Use the autocomplete attribute in Angular Reactive Forms or Template-driven forms — Angular does not strip or override it. For Angular Material inputs, add autocomplete='email' to the <input> element inside <mat-form-field>.","svelte":"Use the standard HTML autocomplete attribute: <input autocomplete='email'>. Svelte passes all attributes through to the rendered element. For form libraries like Superforms, set autocomplete on the <input> directly, not through the library's config.","astro":"In .astro files, use the standard HTML autocomplete attribute. For form elements inside framework islands, each framework's syntax applies (e.g., autoComplete in React islands)."},"cms_notes":{"shopify":"Shopify checkout forms handle autocomplete automatically. For custom theme forms (newsletter signup, contact), add autocomplete tokens to each input: autocomplete='email' for email, autocomplete='given-name' for first name. Dawn's forms include these by default.","wordpress":"WordPress login and comment forms include autocomplete by default. Form plugins (Gravity Forms, WPForms) may not set autocomplete tokens — check the plugin's field settings or add them via a custom filter. Use woocommerce_form_field_args to add autocomplete to WooCommerce checkout fields.","drupal":"Drupal's Form API supports #attributes['autocomplete'] on form elements. For login forms, Drupal core sets autocomplete='username' and autocomplete='current-password'. Custom forms built with Form API should explicitly set the autocomplete token via #attributes."},"fix_difficulty_notes":"Acceptable autocomplete tokens are strictly defined by the HTML Living Standard. Custom or invented values (e.g., autocomplete='my-app-email') are invalid even if they help password managers. Use only the tokens listed at https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#autofilling-form-controls:-the-autocomplete-attribute. Verify you are applying the token to the right field type — autocomplete='email' on a phone number field is invalid.","guardrails_overrides":{"must_not":["Do not use custom or invented autocomplete values — only use the tokens defined in the HTML Living Standard.","Do not apply autocomplete='off' as a fix — it disables autofill and harms usability for users who rely on password managers."],"verify":["Confirm the autocomplete token matches the field's expected input type (e.g., 'email' on an email field, 'tel' on a phone field)."]},"related_rules":[{"id":"label","reason":"Properly labeled inputs should also have correct autocomplete tokens — fix label association and autocomplete together."}]},"avoid-inline-spacing":{"category":"sensory","fix":{"description":"Move text spacing properties (letter-spacing, word-spacing, line-height) from inline style attributes into a stylesheet so user CSS can override them. Hard-coded inline styles with !important prevent users with low vision from adjusting text spacing (WCAG 1.4.12).","code":"<!-- Before: inline spacing that cannot be overridden -->\n<p style=\"letter-spacing: 0.1em !important; line-height: 1.2 !important;\">Text content</p>\n\n<!-- After: move spacing to a stylesheet class (overridable by user CSS) -->\n<p class=\"body-text\">Text content</p>\n<!-- In CSS: -->\n<!-- .body-text { letter-spacing: 0.1em; line-height: 1.5; } -->"},"false_positive_risk":"medium","framework_notes":{"react":"In React, inline styles via the style prop (e.g., style={{ letterSpacing: '0.1em' }}) render as inline style attributes. Move these to CSS classes or CSS Modules. CSS-in-JS solutions (styled-components, Emotion) generate stylesheet rules that are overridable — they are preferable to inline styles for spacing properties.","vue":"In Vue, :style bindings render as inline styles and have the same issue. Move letter-spacing, word-spacing, and line-height to <style scoped> classes. Scoped styles generate class-based selectors that user stylesheets can override.","angular":"In Angular, [ngStyle] and [style.*] bindings render as inline styles. Move spacing properties to component stylesheets. Angular's ViewEncapsulation.Emulated generates scoped class selectors that are overridable by user CSS.","svelte":"In Svelte, style directives (style:letter-spacing='0.1em') render as inline styles. Move spacing properties to the component's <style> block or CSS classes instead. Scoped styles are overridable by user stylesheets.","astro":"In .astro files, inline style attributes render to static HTML. Move text spacing properties (letter-spacing, word-spacing, line-height) to the component's <style> block or external CSS."},"fix_difficulty_notes":"Inline styles with !important on spacing properties are the primary trigger. Inline styles without !important are technically overridable but still flagged by axe as a risk. The safest fix: move all text spacing (letter-spacing, word-spacing, line-height) to stylesheet classes. CMS-generated content and WYSIWYG editors are common sources of inline spacing styles — sanitize the output to remove inline spacing declarations.","cms_notes":{"shopify":"Shopify's WYSIWYG rich text editor (theme editor and Metaobject editor) can inject inline letter-spacing and line-height via the Shopify HTML sanitizer. In Liquid, sanitize rich text output using the strip_html filter if spacing styles are injected. For sections with typed content, prevent inline styles by restricting the rich text schema to text blocks only.","wordpress":"WordPress's Classic Editor (TinyMCE) and Gutenberg's Typography panel both inject inline letter-spacing, word-spacing, and line-height via style attributes. In Gutenberg, these are set per-block. To fix at scale, use the remove_filter hook to strip inline style attributes from wp_kses_post output, or configure Gutenberg's theme.json to disable per-block typography controls.","drupal":"Drupal's CKEditor (4 and 5) can inject inline style attributes when authors use the Format or Style dropdowns. Restrict allowed HTML attributes in the text format's 'Limit allowed HTML tags' filter to exclude the style attribute. Use the 'Styles' plugin configuration to apply classes instead of inline styles."},"related_rules":[{"id":"css-orientation-lock","reason":"Both rules address WCAG 1.3.x/1.4.x adaptability — user ability to override visual presentation. Audit display adaptation constraints together."},{"id":"meta-viewport-large","reason":"Restricting zoom (meta-viewport-large) and blocking text spacing overrides (avoid-inline-spacing) are both WCAG 1.4.x adaptability failures — fix as a group."}],"guardrails_overrides":{"must_not":["Do not strip ALL inline styles from the element — only remove the specific text spacing properties (letter-spacing, word-spacing, line-height). Other inline styles (color, background) are unrelated to this rule.","Do not move spacing into a !important declaration in CSS — user stylesheets must be able to override them."],"verify":["Confirm the moved spacing properties in the stylesheet are not marked !important and can be overridden by a user stylesheet."]}},"blink":{"category":"sensory","fix":{"description":"Remove all <blink> elements from the page. The <blink> element is deprecated in HTML and causes content to flash, which is inaccessible to users with cognitive disabilities and can trigger seizures in users with photosensitive epilepsy.","code":"<!-- Before: blinking text -->\n<blink>Important announcement!</blink>\n\n<!-- After: use CSS animation with user preference respect -->\n<p class=\"announcement\">Important announcement!</p>\n<!-- In CSS: -->\n<!-- .announcement { animation: fade 2s ease-in-out; } -->\n<!-- @media (prefers-reduced-motion: reduce) { .announcement { animation: none; } } -->"},"false_positive_risk":"low","framework_notes":{"react":"The <blink> element is not a valid JSX element — React will render it as an unknown HTML tag. If encountered in legacy code, replace it with a styled <span> or <p>. If animation is needed, use CSS with prefers-reduced-motion support.","vue":"In Vue, <blink> renders as an unknown HTML element. Replace with a standard element and CSS animation that respects prefers-reduced-motion.","angular":"In Angular, <blink> is treated as an unknown element. Replace it with a standard element. If attention-grabbing styling is needed, use Angular animations with a prefers-reduced-motion media query check.","svelte":"The <blink> element is deprecated HTML — Svelte will render it but it should never be used. Replace with CSS animation that respects prefers-reduced-motion.","astro":"The <blink> element should never appear in .astro files. Replace with CSS animation that uses @media (prefers-reduced-motion: reduce) { animation: none; }."},"fix_difficulty_notes":"This is extremely easy to fix — simply replace <blink> with a standard HTML element. The <blink> element is obsolete in the HTML spec and is not supported by any modern browser. If you encounter it, it is in legacy code that needs updating. No modern browser renders the blink effect, but the element is still flagged because it indicates outdated, inaccessible intent.","related_rules":[{"id":"marquee","reason":"Both <blink> and <marquee> are deprecated elements that cause inaccessible animations — remove both together."}],"guardrails_overrides":{"must":["If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."],"must_not":["Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."],"verify":["Confirm link purpose remains clear out of context and in the accessibility tree."]}},"button-name":{"category":"name-role-value","preferred_relationship_checks":["aria-labelledby","aria-label","explicit-label","implicit-label","presentational-role"],"managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Give every button an accessible name via visible text or aria-label.","code":"<!-- Via visible text: -->\n<button>Submit form</button>\n<!-- Icon button via aria-label: -->\n<button aria-label=\"Close dialog\"><svg aria-hidden=\"true\">...</svg></button>"},"false_positive_risk":"low","framework_notes":{"react":"Use aria-label prop: <button aria-label=\"Close dialog\">. Prefer visible text children whenever possible.","vue":"Use :aria-label or aria-label attribute — standard HTML semantics apply.","angular":"Use [attr.aria-label] binding or the CDK a11y AccessibilityModule for managed focus.","svelte":"Svelte's compiler warns about missing button names at build time. For icon buttons, use aria-label directly: <button aria-label='Close'>. If using an on:click on a non-button element, Svelte will also warn — prefer native <button> elements.","astro":"Buttons in Astro's static HTML render without JS — ensure the accessible name is in the HTML, not added via client-side scripts. For interactive island buttons (React/Vue/Svelte inside Astro), the framework's rules apply within the island."},"cms_notes":{"shopify":"Icon buttons in Dawn and other themes often use {% render 'icon-close' %} snippets without aria-label. Add aria-label to the <button> in the section template, not the snippet — snippets lack context about the button's purpose.","wordpress":"In Gutenberg custom blocks, use the RichText component for button text or set aria-label in the block's save() function. Avoid adding labels only in edit() — they must be in the rendered HTML.","drupal":"In Twig templates, add aria-label via the Attribute object: <button{{ attributes.setAttribute('aria-label', 'Close'|t) }}>. Use Drupal's |t filter for translatable labels."},"fix_difficulty_notes":["Using `aria-label` on a button with visible text creates a label mismatch — voice control users speak the visible text, not the `aria-label`. If visible text exists, keep it and remove `aria-label`.","Only use `aria-label` for icon-only buttons with no visible text."],"related_rules":[{"id":"input-button-name","reason":"The same accessible name requirement applies to <input type='button'/'submit'/'reset'> — fix all button naming violations together."},{"id":"link-name","reason":"The same accessible name requirement applies to links — fix all interactive element naming together."},{"id":"aria-command-name","reason":"button-name covers native <button> elements — fix all button naming violations together."},{"id":"summary-name","reason":"summary acts as a toggle button — both must have accessible names for the disclosure widget to be operable."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"bypass":{"category":"keyboard","fix":{"description":"Add a skip link at the very top of each page so keyboard users can bypass repetitive navigation.","code":"<a class=\"skip-link\" href=\"#main-content\">Skip to main content</a>\n<nav aria-label=\"Primary\">\n  <a href=\"/\">Home</a>\n  <a href=\"/shop\">Shop</a>\n  <a href=\"/about\">About</a>\n</nav>\n<main id=\"main-content\">\n  <h1>Welcome to our store</h1>\n</main>"},"false_positive_risk":"medium","framework_notes":{"react":"In Next.js, add the skip link as the first element in the root layout (app/layout.tsx), before the <header> or navigation components. Style it with CSS to appear only on :focus. The target #main-content must reference the <main id='main-content'> in the same layout.","vue":"In Nuxt, add the skip link at the very top of layouts/default.vue, before the <header> component. The target #main-content must be on the <main> element wrapping <slot />.","angular":"Add the skip link as the first element inside app.component.html, before <app-header> or navigation. The target #main-content must match the id on the <main> element rendered inside the page — typically adjacent to <router-outlet>.","svelte":"In SvelteKit, add the skip link as the first element in +layout.svelte, before any <header> or navigation. SvelteKit handles page transitions client-side — use afterNavigate() to reset focus to the skip link target on route changes.","astro":"Place the skip link in your base layout (layouts/BaseLayout.astro) as the first element in <body>. Since Astro pre-renders static HTML, the skip link and its target are always in the DOM without hydration delays."},"cms_notes":{"shopify":"Dawn theme includes a skip link in layout/theme.liquid. If building a custom theme, add <a href='#MainContent' class='skip-to-content-link'>Skip to content</a> before the header section. The target id='MainContent' should be on the <main> element wrapping {{ content_for_layout }}.","wordpress":"Most WordPress themes include a skip link in header.php. If missing, add it as the first element inside <body>. The Underscores (_s) starter theme includes a skip link by default. Block themes should include it in the header template part.","drupal":"Olivero includes a skip link by default. Custom themes should add it in page.html.twig as the first element inside <body>. Drupal's #skip-link region is designed for this purpose — ensure it is rendered before the page header region."},"fix_difficulty_notes":"The skip link must be visible on focus — hiding it with display:none or visibility:hidden prevents keyboard users from seeing or activating it. The correct pattern is to position it off-screen by default (position:absolute; left:-9999px) and bring it on-screen on :focus (left:0; top:0). The target anchor (#main-content) must be a real element — if it's missing or the href is broken, the skip link appears to work but focus doesn't actually move.","related_rules":[{"id":"landmark-one-main","reason":"The skip link target (#main-content) must point to the <main> landmark."},{"id":"landmark-unique","reason":"Unique landmark labels enhance skip navigation — users can jump directly to a specific landmark."},{"id":"skip-link","reason":"Skip links are the primary mechanism for satisfying the bypass blocks requirement (WCAG 2.4.1)."},{"id":"accesskeys","reason":"Both are keyboard enhancement mechanisms — accesskey conflicts with the shortcuts bypass provides."}],"guardrails_overrides":{"must":["Place the skip link as the very first focusable element in the DOM, before any navigation or header markup."],"must_not":["Do not hide the skip link with display:none or visibility:hidden — use the off-screen CSS pattern (position:absolute; left:-9999px) and bring on-screen on :focus.","Do not point the href to a non-existent or unmatched id."],"verify":["Confirm the skip link is the first focusable element in keyboard tab order.","Confirm activating the skip link moves focus to the <main> content target."]}},"color-contrast":{"category":"color","fix":{"description":"The Observed Violation contains the exact foreground hex, background hex, and failing ratio. Use those values as your starting point: input both into https://webaim.org/resources/contrastchecker/, darken the foreground (or lighten the background) until the ratio reaches ≥4.5:1 for normal text or ≥3:1 for large text (≥18pt / ≥14pt bold). Then locate the CSS token or utility class that sets that foreground color in the source and replace it with the compliant value.","code":"/* Step 1 — identify the failing pair from Observed Violation, e.g.: */\n/* foreground: #8e8a86 / background: #f8f8f8 / ratio: 3.22 — target ≥4.5:1 */\n\n/* Step 2 — find the CSS token or Tailwind class that sets the color */\n/* e.g. text-cloud → look up --color-cloud in CSS vars or tailwind.config.js */\n\n/* Step 3 — replace with a compliant value */\n.element {\n  color: #5e5b58; /* example: darkened value — verify ratio before committing */\n}\n/* Or update the CSS custom property at its definition point: */\n:root {\n  --color-cloud: #5e5b58; /* was #8e8a86 (3.22:1) → now verify ≥4.5:1 */\n}"},"false_positive_risk":"high","framework_notes":{"react":"In Tailwind (including shadcn/ui), verify that HSL CSS custom properties resolve to accessible values in both light and dark themes. CSS-in-JS libraries (styled-components, Emotion) compute colors at runtime — axe audits the computed value, not the source variable.","vue":"In Vue with Tailwind or CSS Modules, verify contrast in the computed styles, not just the source CSS variables. Use DevTools color picker to confirm the rendered ratio.","angular":"In Angular Material, override theme colors via mat.define-theme() using contrast-checked color pairs. Avoid raw CSS overrides that bypass the Angular Material theming system's built-in contrast checks.","svelte":"Svelte's scoped styles compile to unique class names — contrast violations must be fixed in the component's <style> block, not global CSS. When using Tailwind with SvelteKit, verify that dark mode colors (dark:text-*) also meet contrast requirements.","astro":"Astro renders static HTML with inlined styles — contrast issues are baked into the build output. Fix colors in the source .astro component's <style> block or at the CSS variable definition level (e.g., :root in global.css)."},"cms_notes":{"shopify":"Theme color settings are defined in settings_schema.json and applied via Liquid ({{ settings.color_text }}). Verify that the default color values meet 4.5:1 contrast. Merchants can override these — add contrast guidance in the setting description field.","wordpress":"Classic themes use the Customizer's color settings; block themes use theme.json's color.palette. Verify default palette contrast pairs. If using wp_add_inline_style(), ensure injected colors are contrast-checked.","drupal":"Olivero (Drupal's default theme) ships with WCAG 2.1 AA contrast. Custom themes should use CSS custom properties for colors and validate pairs in the color scheme configuration. Check sub-theme overrides in the .theme file."},"fix_difficulty_notes":["Each instance in Evidence from DOM is an INDEPENDENT element — fix every instance separately.","False positives are common on text rendered over gradient backgrounds, images, or when color is set dynamically via JavaScript or CSS variables resolved at runtime.","axe-core samples a single point of the background — text on gradients may appear to fail even when contrast is sufficient.","Verify each flagged instance visually using the browser DevTools color picker before fixing."],"related_rules":[{"id":"link-in-text-block","reason":"Links distinguished only by color need sufficient contrast — both rules enforce color-based visual distinction."}],"guardrails_overrides":{"must_not":["Do not rely solely on adjusting opacity to fix contrast — opacity affects both foreground and background.","Do not apply a fix without verifying the computed contrast ratio using browser DevTools or https://webaim.org/resources/contrastchecker/"],"verify":["Confirm ratio is ≥4.5:1 for normal text and ≥3:1 for large text (≥18pt or ≥14pt bold).","Re-check contrast under keyboard :focus state — focus indicators may reduce background contrast."]}},"css-orientation-lock":{"category":"keyboard","fix":{"description":"Remove CSS, manifest, or JavaScript rules that lock the display to a specific orientation (portrait or landscape) unless that orientation is essential. Users with motor disabilities may mount their device in a fixed position (WCAG 1.3.4).","code":"<!-- Avoid orientation-locking CSS like: -->\n<!-- @media (orientation: portrait) { body { transform: rotate(90deg); } } -->\n\n<!-- Instead, ensure content adapts to both orientations: -->\n<style>\n  .layout {\n    display: grid;\n    grid-template-columns: 1fr;\n  }\n  @media (orientation: landscape) {\n    .layout {\n      grid-template-columns: 1fr 1fr;\n    }\n  }\n</style>"},"false_positive_risk":"medium","framework_notes":{"react":"In React Native or PWAs, avoid using the Screen Orientation API to lock orientation programmatically (screen.orientation.lock('portrait')). In web.manifest, do not set 'orientation': 'portrait' unless the app genuinely requires it (e.g., a camera viewfinder). In Next.js or Remix, check the manifest.json if present.","vue":"In Vue PWAs (e.g., with @vite-pwa/nuxt), check the manifest for orientation locking. Do not use CSS transforms to force rotation on orientation change — this locks the visual layout even though the device is in a different orientation.","angular":"In Angular PWAs, check angular.json or manifest.webmanifest for the 'orientation' field. Remove it or set it to 'any'. Avoid using @media (orientation: portrait) with transforms that force landscape rendering.","svelte":"In SvelteKit, avoid CSS that locks orientation via @media (orientation: portrait) { display: none; } or similar. Content must be accessible in both orientations unless a specific orientation is essential (e.g., a piano app).","astro":"In .astro files, CSS orientation locks are baked into the static build. Ensure no CSS rules hide content based on orientation unless the orientation is essential for the content."},"fix_difficulty_notes":"Orientation locking can come from three sources: (1) CSS @media (orientation) rules with transforms, (2) the web app manifest 'orientation' field, (3) JavaScript Screen Orientation API calls. The WCAG exception applies when a specific orientation is 'essential' — e.g., a piano keyboard app, a bank check scanning interface. Most web content does not qualify for this exception. axe detects CSS-based locking; manifest and JavaScript-based locking require manual checks.","guardrails_overrides":{"must_not":["Do not remove orientation-related CSS without verifying the content does not have an 'essential orientation' use case (e.g., piano keyboard, check scanner, video fullscreen interface).","Do not assume axe has detected all orientation locking — also check the web app manifest 'orientation' field and any Screen Orientation API calls manually."],"verify":["Confirm the layout is fully usable in both portrait and landscape orientations after removing the orientation lock."]},"related_rules":[{"id":"meta-viewport","reason":"Both rules restrict user control of the display — orientation locking and zoom blocking are the same class of WCAG 1.3.4/1.4.4 failure. Fix together."},{"id":"avoid-inline-spacing","reason":"Both rules address WCAG adaptability requirements — users must be able to control their viewing environment. Audit together."}]},"definition-list":{"category":"semantics","fix":{"description":"Ensure <dl> elements contain only properly-ordered <dt> and <dd> elements (or wrapping <div> elements per HTML5). No other elements should be direct children of <dl>.","code":"<!-- Correct structure -->\n<dl>\n  <dt>Term 1</dt>\n  <dd>Definition 1</dd>\n  <dt>Term 2</dt>\n  <dd>Definition 2</dd>\n</dl>\n\n<!-- Also valid: wrapping in <div> (HTML5) -->\n<dl>\n  <div>\n    <dt>Term 1</dt>\n    <dd>Definition 1</dd>\n  </div>\n  <div>\n    <dt>Term 2</dt>\n    <dd>Definition 2</dd>\n  </div>\n</dl>"},"false_positive_risk":"low","framework_notes":{"react":"In React, rendering a list of definition items via .map() may introduce wrapper <div> elements at the wrong level. Ensure the <div> wraps a <dt>/<dd> pair, not individual items. Use React.Fragment (<></>) only when the fragment renders as a child of <dl> directly — fragments do not produce DOM nodes.","vue":"In Vue, v-for on <dl> children must produce <dt>/<dd> pairs or wrapping <div> elements. Use <template v-for> to loop without introducing extra wrapper elements at the wrong nesting level.","angular":"In Angular, *ngFor on definition list items must produce valid <dt>/<dd> children. Use <ng-container> to loop without adding extra DOM elements between <dl> and its children.","svelte":"In Svelte, <dl> elements must only contain <dt>, <dd>, and <div> children. Component wrappers that render extra elements inside <dl> will break the definition list structure.","astro":"In .astro files, <dl> structure must be correct in the rendered HTML. Astro component boundaries may insert wrapper elements — verify the final DOM preserves the <dl>/<dt>/<dd> hierarchy."},"fix_difficulty_notes":"The most common violation: a <span>, <p>, or other element placed as a direct child of <dl>. Only <dt>, <dd>, and <div> (as a grouping wrapper) are valid direct children. In component frameworks, extra wrapper elements from component hosts can break the structure — use role='none' or host element elimination to fix.","related_rules":[{"id":"dlitem","reason":"definition-list validates the parent; dlitem validates the children — fix both together."},{"id":"list","reason":"Both validate list structures — audit all list semantics violations together."}]},"dlitem":{"category":"semantics","fix":{"description":"Ensure <dt> and <dd> elements are contained within a <dl> element. These elements have no semantic meaning outside of a definition list.","code":"<!-- Before: orphaned dt/dd -->\n<dt>Name</dt>\n<dd>Jane Doe</dd>\n\n<!-- After: wrapped in dl -->\n<dl>\n  <dt>Name</dt>\n  <dd>Jane Doe</dd>\n</dl>"},"false_positive_risk":"low","framework_notes":{"react":"In React, a component rendering <dt> and <dd> elements must be placed inside a parent component rendering <dl>. If the component is reused outside a <dl> context, the dt/dd elements will be orphaned. Add a runtime check or documentation noting the required parent.","vue":"In Vue, components rendering <dt>/<dd> must be used inside a <dl> wrapper. Vue does not validate HTML nesting — the orphaned dt/dd will render without error but fail accessibility audits.","angular":"In Angular, components rendering <dt>/<dd> must be placed inside a <dl>. Angular host elements between <dl> and <dt>/<dd> break the relationship — use attribute selectors or role='none' on the host.","svelte":"In Svelte, <dt> and <dd> elements must be inside a <dl> parent. Component composition that separates definition terms from their list container will trigger this violation.","astro":"In .astro files, <dt>/<dd> elements must be direct children of <dl> in the rendered HTML. When splitting definition list items across components, verify the parent-child relationship is preserved."},"fix_difficulty_notes":"The fix is straightforward: wrap orphaned <dt>/<dd> elements in a <dl>. In component frameworks, the issue often occurs when a definition list item component is rendered without its parent definition list component. Ensure the component API enforces the parent-child relationship.","related_rules":[{"id":"definition-list","reason":"dlitem validates children placement; definition-list validates parent structure — fix both together."}]},"document-title":{"category":"name-role-value","fix":{"description":"Add a descriptive, unique <title> element to every page.","code":"<title>Product Details — My Store</title>"},"false_positive_risk":"low","framework_notes":{"react":"Use document.title in a useEffect, or react-helmet for declarative title management. In Next.js, use <title> inside <Head> from 'next/head' — it is server-side rendered.","vue":"Update document.title in vue-router's afterEach navigation guard, or use vue-meta / @vueuse/head for declarative management.","angular":"Inject the Title service from @angular/platform-browser and call this.title.setTitle() inside route guards or component ngOnInit.","svelte":"In SvelteKit, use <svelte:head><title>Page Title</title></svelte:head> in each +page.svelte. SvelteKit updates the <title> automatically on client-side navigation. For dynamic titles, bind the title to a reactive variable.","astro":"Pass a title prop to your base layout and render it in <head>: <title>{title}</title>. Since Astro generates static HTML per page, each page gets a unique pre-rendered title without JavaScript."},"cms_notes":{"shopify":"Shopify themes set the title in layout/theme.liquid via <title>{{ page_title }} — {{ shop.name }}</title>. The {{ page_title }} Liquid variable is set automatically per page type (product, collection, etc.). Verify it renders meaningful titles, not just the shop name.","wordpress":"WordPress generates titles via wp_get_document_title() and the document_title_parts filter. Yoast SEO and similar plugins override the default. Block themes use <title>{{ wp_title }}</title> in html.html. Never hardcode the title in header.php.","drupal":"Drupal sets the page title via the title_resolver service and renders it in html.html.twig: <title>{{ head_title|safe_join(' | ') }}</title>. Custom modules can alter titles via hook_preprocess_html(). Verify that Views pages set proper titles."},"fix_difficulty_notes":"In SPAs, the <title> is often set only on initial load. After client-side route changes, the title must be updated programmatically — the browser tab title stays stale otherwise. Each page title should follow the pattern 'Page Name — Site Name' so users understand context without reading page content.","related_rules":[{"id":"page-has-heading-one","reason":"The page title and h1 should describe the same page — fix both together to ensure consistent context for screen reader users."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"duplicate-id":{"category":"parsing","fix":{"description":"Search for duplicate id attribute values and rename them so every id is unique within the page. Update any referencing aria-labelledby, aria-controls, or href='#' attributes accordingly.","code":"<!-- Before: duplicate ids -->\n<nav id=\"main-nav\">...</nav>\n<footer id=\"main-nav\">...</footer>\n\n<!-- After: unique ids -->\n<nav id=\"primary-nav\">...</nav>\n<footer id=\"footer-nav\">...</footer>\n\n<!-- Update any referencing aria-labelledby / aria-controls / href=\"#\" accordingly -->"},"false_positive_risk":"low","framework_notes":{"react":"Use the useId() hook (React 18+) to generate unique IDs per component instance: const id = useId(); return <label htmlFor={id}>.","vue":"Bind a unique key to IDs: <label :for=\"`field-${uid}`\"> where uid is a prop or generated value (e.g., Math.random().toString(36)).","angular":"Inject a counter service or use the CDK's uniqueId utility to generate stable, unique IDs per component instance.","svelte":"Svelte does not have a built-in useId() equivalent. Generate unique IDs using a module-level counter or crypto.randomUUID(). For SSR with SvelteKit, ensure IDs are deterministic by accepting them as props rather than generating at render time.","astro":"Since Astro pre-renders each page to static HTML, duplicate IDs typically come from reusing the same component multiple times. Pass unique id props to each instance, or use Astro.slots with unique naming."},"cms_notes":{"shopify":"Shopify sections can be added multiple times to the same page, causing duplicate IDs. Use the {{ section.id }} Liquid variable to namespace all IDs within a section: id='heading-{{ section.id }}'. This is the most common cause of duplicate-id in Shopify themes.","wordpress":"WordPress widgets and reusable blocks can render the same HTML multiple times. Use wp_unique_id() to generate unique IDs in PHP. Gutenberg blocks should use useInstanceId() from @wordpress/compose for block-level unique IDs.","drupal":"Drupal's Html::getUniqueId() generates unique IDs per element. In Twig templates, use {{ attributes.setAttribute('id', 'block-' ~ block.id) }} instead of hardcoding IDs. Views that render the same twig template multiple times are a common source of duplicates."},"fix_difficulty_notes":"In component-based frameworks, duplicate IDs typically occur when the same component renders multiple times on the same page. Use framework-native ID generation: useId() in React 18+, a unique :id binding per instance in Vue, or a service-based ID generator in Angular.","guardrails_overrides":{"must_not":["Do not fix duplicate IDs by appending '-1', '-2', '-3' suffixes manually — this approach will fail when a third instance renders. Use a programmatic ID generator instead.","Do not update the ID without also updating all elements that reference it (aria-labelledby, aria-describedby, aria-controls, href='#id', htmlFor)."],"verify":["Confirm all referencing attributes (aria-labelledby, aria-controls, htmlFor, href='#') point to the updated unique ID after the fix."]},"related_rules":[{"id":"duplicate-id-aria","reason":"Duplicate IDs break both element references and ARIA relationships — fix all ID uniqueness violations together."}]},"duplicate-id-aria":{"category":"parsing","managed_by_libraries":["radix","headless-ui","chakra","mantine","material-ui","polaris","react-aria","ariakit","shadcn","primevue","vuetify"],"fix":{"description":"Ensure all IDs referenced by ARIA attributes (aria-labelledby, aria-describedby, aria-controls, aria-owns) are unique. Duplicate IDs cause screen readers to reference the wrong element.","code":"<!-- Before: duplicate IDs break aria-labelledby -->\n<span id=\"label\">Username</span>\n<input aria-labelledby=\"label\" type=\"text\">\n<!-- ...later on same page... -->\n<span id=\"label\">Email</span>  <!-- duplicate! -->\n\n<!-- After: unique IDs -->\n<span id=\"username-label\">Username</span>\n<input aria-labelledby=\"username-label\" type=\"text\">\n<span id=\"email-label\">Email</span>\n<input aria-labelledby=\"email-label\" type=\"email\">"},"false_positive_risk":"low","framework_notes":{"react":"Use React 18's useId() hook to generate unique IDs per component instance: const id = useId(); return <><span id={id}>Label</span><input aria-labelledby={id} /></>. Never hardcode IDs in components that render more than once.","vue":"In Vue, generate a unique ID per instance using a composable: const id = `field-${Math.random().toString(36).slice(2)}`; or use the useId() utility from VueUse. Bind with :id='id' and :aria-labelledby='id'.","angular":"In Angular, inject a counter service or use a module-level incrementing variable to generate stable unique IDs: private static idCounter = 0; readonly fieldId = `field-${++FieldComponent.idCounter}`;. Bind with [attr.id]='fieldId'.","svelte":"In Svelte, duplicate IDs referenced by aria-labelledby, aria-describedby, or aria-controls break ARIA associations. Use unique IDs per component instance — generate them with a module-level counter or accept them as props.","astro":"In .astro files, duplicate IDs across components break ARIA references. Pass unique id props to each component instance. Since Astro pre-renders to static HTML, verify IDs are unique in the build output."},"fix_difficulty_notes":"Unlike duplicate-id (which flags all duplicate IDs), this rule specifically targets IDs that are referenced by ARIA attributes — making it higher severity because the duplicate directly breaks an accessibility relationship. In component-based apps, this almost always occurs when the same component renders multiple times with a hardcoded ID in its template. Use framework ID generation utilities to ensure uniqueness per instance.","related_rules":[{"id":"duplicate-id","reason":"Duplicate IDs break both element references and ARIA relationships — fix all ID uniqueness violations together."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"empty-heading":{"category":"semantics","fix":{"description":"Add meaningful text content to the heading element, or remove it if it serves no structural purpose.","code":"<!-- Before: empty heading -->\n<h2></h2>\n\n<!-- After: heading with content -->\n<h2>Customer Reviews</h2>\n\n<!-- Or remove entirely if structural-only -->\n<!-- Use CSS pseudo-content for decorative dividers instead -->"},"false_positive_risk":"low","framework_notes":{"react":"In React, a heading with dynamic content like <h2>{title}</h2> renders an empty heading if title is undefined, null, or an empty string. Guard with: {title && <h2>{title}</h2>} or provide a fallback string.","vue":"In Vue, <h2>{{ title }}</h2> renders an empty heading if title is falsy. Use a v-if guard: <h2 v-if='title'>{{ title }}</h2> or a computed fallback.","angular":"In Angular, <h2>{{ title }}</h2> renders empty if title is undefined. Use *ngIf='title' on the heading element, or provide a default value in the component.","svelte":"In Svelte, <h2>{title}</h2> renders an empty heading if title is undefined or empty. Use {#if title}<h2>{title}</h2>{/if} to conditionally render. Svelte does not warn about empty headings at compile time.","astro":"In .astro files, headings with empty props render empty tags in static HTML. Use conditional rendering: {title && <h2>{title}</h2>}. This is baked into the build output — axe catches it in the rendered page."},"cms_notes":{"shopify":"Empty headings in Shopify commonly occur when a section schema includes a heading field but the merchant leaves it blank. In Liquid, guard with: {% if section.settings.heading != blank %}<h2>{{ section.settings.heading }}</h2>{% endif %}. Dawn theme already does this — custom themes often miss it.","wordpress":"WordPress WYSIWYG editors (Classic and Gutenberg) let authors insert empty headings easily. The Heading block prevents empty saves, but the Classic Editor does not. Theme templates that render archive/taxonomy titles should check for empty values before rendering the <h> tag.","drupal":"Drupal's block title field can be left empty. In block.html.twig, guard with: {% if label %}<h2{{ title_attributes }}>{{ label }}</h2>{% endif %}. Views page titles and exposed filter labels are also common sources of empty headings."},"fix_difficulty_notes":"Empty headings commonly occur in CMS-driven layouts where a heading tag is part of a section template but the author left the field blank. In component libraries, empty headings can also result from a conditional slot that renders nothing. Check both the template and the content source — the fix may be in the CMS content, not the code.","related_rules":[{"id":"heading-order","reason":"Empty headings disrupt the heading hierarchy — resolve them together."},{"id":"summary-name","reason":"An unnamed summary is similar to an empty heading — both leave structural landmarks without labels."}]},"empty-table-header":{"category":"tables","fix":{"description":"Ensure all <th> elements contain discernible text. Empty table headers provide no context for the column or row data they describe, making tables unintelligible to screen reader users.","code":"<!-- Before: empty table header -->\n<table>\n  <tr>\n    <th></th>\n    <th>Q1</th>\n    <th>Q2</th>\n  </tr>\n  <tr>\n    <td>Revenue</td>\n    <td>$100k</td>\n    <td>$120k</td>\n  </tr>\n</table>\n\n<!-- After: add descriptive text or use <td> for non-header cells -->\n<table>\n  <tr>\n    <th>Metric</th>\n    <th>Q1</th>\n    <th>Q2</th>\n  </tr>\n  <tr>\n    <th scope=\"row\">Revenue</th>\n    <td>$100k</td>\n    <td>$120k</td>\n  </tr>\n</table>"},"false_positive_risk":"low","framework_notes":{"react":"In React table components, ensure the header row maps over column definitions that always include a non-empty label. If a column is for checkboxes or actions, add a visually hidden label: <th><span className='sr-only'>Select</span></th>.","vue":"In Vue, data table components (PrimeVue DataTable, Vuetify v-data-table) auto-generate headers from column definitions. Verify the header/text field is defined for every column, including selection or action columns.","angular":"In Angular Material mat-table, mat-header-cell content is template-driven. Add visible or visually hidden text to every <th mat-header-cell> — do not leave any header cell empty.","svelte":"In Svelte data table components, ensure every <th> has text content. For checkbox or action columns, add visually hidden text: <th><span class='sr-only'>Select</span></th>.","astro":"In .astro files, <th> elements must have text content in the rendered HTML. For tables inside framework islands, the island framework's table component rules apply."},"fix_difficulty_notes":"The most common case is a checkbox column or an actions column with an empty <th>. The fix is to add a visually hidden label (e.g., 'Select all' for checkboxes, 'Actions' for action columns) so screen readers can announce the column purpose. If the <th> genuinely has no header role, change it to a <td> instead.","related_rules":[{"id":"th-has-data-cells","reason":"Headers without text and headers without associated data cells are related structural issues — fix together."},{"id":"td-headers-attr","reason":"The headers attribute references <th> elements by id — empty headers make these references meaningless."},{"id":"scope-attr-valid","reason":"Scope on an empty <th> is meaningless — ensure headers have text content before adding scope."}]},"focus-order-semantics":{"category":"keyboard","fix":{"description":"Ensure elements in the focus order have an appropriate role for interactive content. Non-interactive elements (e.g., <div>, <span>, <p>) with tabindex='0' should use a semantic interactive element or an appropriate ARIA role.","code":"<!-- Before: non-interactive element in the focus order -->\n<div tabindex=\"0\">Click to expand</div>\n\n<!-- After: use a semantic element -->\n<button type=\"button\">Click to expand</button>\n\n<!-- Or add an appropriate ARIA role if a native element is not viable -->\n<div role=\"button\" tabindex=\"0\" aria-expanded=\"false\">\n  Click to expand\n</div>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, custom interactive components often use <div tabIndex={0} onClick={handler}> — replace with <button> or add role='button' with onKeyDown handling for Enter and Space. Libraries like React Aria's useButton hook handle this automatically.","vue":"In Vue, replace <div tabindex='0' @click='handler'> with <button @click='handler'>. If a custom element is required, add role='button' and handle keydown events for Enter (13) and Space (32).","angular":"In Angular, replace <div tabindex='0' (click)='handler()'> with <button (click)='handler()'>. Angular CDK's CdkAriaLive and A11yModule provide utilities for making custom elements properly interactive.","svelte":"In Svelte, tabindex values greater than 0 disrupt natural focus order. Use tabindex='0' for elements that should be in the tab sequence and tabindex='-1' for elements that should only be focusable programmatically.","astro":"In .astro files, tabindex values render to static HTML. Avoid tabindex > 0 — it creates unpredictable focus order. For dynamic focus management, use framework islands with JavaScript focus control."},"fix_difficulty_notes":"Adding tabindex='0' to a non-interactive element makes it focusable but does not make it operable — keyboard users cannot activate it with Enter or Space unless explicit keydown handlers are added. The simplest fix is to use a native interactive element (<button>, <a>, <input>). If a custom element is required, add the correct ARIA role plus full keyboard event handling.","guardrails_overrides":{"must_not":["Do not add tabindex='0' to a non-interactive element without also adding the correct ARIA role and full keyboard event handlers (Enter/Space activation).","Do not remove a tabindex to fix focus order without verifying the element is still reachable by keyboard."],"verify":["Confirm the element can be activated by keyboard (Enter or Space) after any tabindex change.","Confirm the element's role is correctly exposed in the accessibility tree."]},"related_rules":[{"id":"tabindex","reason":"Both rules address focus order issues — fix tabindex values and semantic roles together."},{"id":"scrollable-region-focusable","reason":"Scrollable regions may need tabindex='0' for keyboard access but also need an appropriate role."},{"id":"nested-interactive","reason":"Nested interactive elements corrupt focus order — fix nested-interactive first, then verify focus-order-semantics."}]},"form-field-multiple-labels":{"category":"forms","fix":{"description":"Remove duplicate label associations so each form field has exactly one associated <label>.","code":"<!-- One label per input: -->\n<label for=\"name\">Full name</label>\n<input id=\"name\" type=\"text\" name=\"name\">"},"false_positive_risk":"medium","framework_notes":{"react":"In React, multiple labeling sources are introduced accidentally when a component applies both htmlFor on a <label> and aria-label on the input itself. Choose exactly one labeling strategy per input — prefer a visible <label htmlFor='id'> and remove aria-label.","vue":"In Vue form component wrappers, ensure the component does not add internal aria-labels that conflict with a parent <label>. A common issue is a UI kit that adds aria-label='Input field' to every input by default — override this with an empty string or use the component's label prop instead.","angular":"In Angular Material, mat-label inside mat-form-field serves as the accessible label. Do not also add aria-label directly to the input — both will be announced, triggering this violation.","svelte":"In Svelte, wrapping an input inside a <label> AND also using for='id' creates a double association. Choose one: either wrap the input inside the label (implicit association) or use for/id (explicit association). Svelte's compiler may not warn about this.","astro":"In .astro files, this issue typically arises when a framework island component adds its own aria-label internally, and the surrounding Astro markup also includes a <label for='id'>. Check the island component's rendered output to identify the duplicate."},"cms_notes":{"shopify":"Shopify themes sometimes apply both a Liquid-generated <label> and an aria-label on the same input (e.g., search forms in Dawn). Remove the aria-label when a visible <label> exists. Check search-related snippets for this pattern.","wordpress":"WordPress form plugins (WPForms, Gravity Forms) may add both a visible label and an aria-label. Check the plugin's accessibility settings — some have a toggle to prevent double labeling. Custom block forms should use a single labeling strategy.","drupal":"Drupal's Form API can produce multiple labels when both #title and #attributes['aria-label'] are set. Use only #title for visible labels. Views exposed filters sometimes add both a label and a title attribute, which can trigger this rule."},"fix_difficulty_notes":"aria-labelledby can legitimately reference multiple IDs to concatenate a compound label (e.g., aria-labelledby='label1 label2'). axe may flag this pattern. Review whether both sources are intentional — if so, it is valid and the finding is a false positive. Remove one reference only if the concatenated announcement is redundant.","related_rules":[{"id":"label","reason":"Multiple labels on an input conflict with the single-label association requirement — fix both together."},{"id":"label-content-name-mismatch","reason":"Multiple labels often cause the accessible name to diverge from visible text."},{"id":"label-title-only","reason":"When adding a visible label, verify you are not creating a duplicate label association."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"frame-focusable-content":{"category":"keyboard","fix":{"description":"Do not set tabindex='-1' on <iframe> or <frame> elements that contain focusable content. This prevents keyboard users from accessing the content inside the frame.","code":"<!-- Before: iframe with focusable content blocked -->\n<iframe src=\"form.html\" tabindex=\"-1\" title=\"Registration form\"></iframe>\n\n<!-- After: remove tabindex=-1 so keyboard users can access the content -->\n<iframe src=\"form.html\" title=\"Registration form\"></iframe>\n\n<!-- If the iframe is decorative with no interactive content, tabindex=-1 is acceptable -->\n<iframe src=\"animation.html\" tabindex=\"-1\" title=\"Decorative animation\" aria-hidden=\"true\"></iframe>"},"false_positive_risk":"low","framework_notes":{"react":"In React, third-party embed components (e.g., YouTube, maps, payment forms) sometimes add tabindex='-1' to the iframe. Override by removing the tabindex prop or setting it to 0. If the embed library does not expose a tabindex prop, wrap the iframe and use a ref to remove the attribute after mount.","vue":"In Vue, check embedded iframe components for tabindex='-1'. Use a mounted hook to remove tabindex from the iframe element if the component does not expose it as a prop.","angular":"In Angular, check [tabindex] bindings on iframe elements. If using a third-party embed directive, override the tabindex via a host binding or AfterViewInit lifecycle hook.","svelte":"In Svelte, do not set tabindex='-1' on iframes that contain focusable content. If the iframe embeds interactive elements (forms, links, buttons), remove tabindex='-1' so keyboard users can tab into it. Only use tabindex='-1' on iframes that are purely decorative or have no interactive content.","astro":"In .astro files, <iframe> elements render to static HTML. Ensure iframes with focusable content have a title attribute. For iframes embedding external content, the external page's accessibility is the source's responsibility."},"fix_difficulty_notes":"tabindex='-1' on an iframe removes it from the sequential tab order but also prevents keyboard users from tabbing into the iframe's content. If the iframe contains any interactive content (forms, links, buttons), removing tabindex='-1' is the correct fix. If the iframe is purely decorative or contains no interactive content, tabindex='-1' combined with aria-hidden='true' is acceptable.","guardrails_overrides":{"must_not":["Do not remove tabindex='-1' from an iframe that is decorative (animation, background) with aria-hidden='true' — this combination is intentional and correct.","Do not remove tabindex='-1' from a cross-origin iframe containing only non-interactive content (e.g., an embedded map with no form fields or links)."],"verify":["Confirm the iframe actually contains interactive content (forms, links, buttons) before removing tabindex='-1'.","Confirm aria-hidden is not also set to 'true' on the iframe — if it is, both tabindex='-1' and aria-hidden='true' may be intentional."]},"related_rules":[{"id":"frame-title","reason":"Iframes must be both keyboard-accessible and labeled — fix both together."}]},"frame-tested":{"category":"keyboard","fix":{"description":"Ensure <iframe> and <frame> elements contain the axe-core script for complete accessibility testing. This is a testing infrastructure rule — it informs you that content inside frames was not analyzed because axe-core was not injected into them.","code":"<!-- This is not an HTML fix — it is a testing configuration issue. -->\n<!-- Ensure your axe-core test runner is configured to test iframes: -->\n\n<!-- axe-core configuration: -->\n<!-- axe.run({ iframes: true }) -->\n\n<!-- For cross-origin iframes, axe-core cannot inject automatically. -->\n<!-- Load axe-core inside the iframe's own page: -->\n<iframe src=\"https://third-party.com/widget\" title=\"Chat widget\"></iframe>\n<!-- Inside the iframe page, include: -->\n<!-- <script src=\"axe-core/axe.min.js\"></script> -->"},"false_positive_risk":"high","framework_notes":{"react":"In React apps using @axe-core/react, iframe testing is limited to same-origin frames. For cross-origin iframes (payment forms, chat widgets, embedded maps), document them as out-of-scope and ensure the third-party provider meets WCAG compliance independently.","vue":"In Vue apps using vue-axe or axe-core/puppeteer, enable the iframes option in axe configuration. Cross-origin iframes cannot be tested — request a VPAT or accessibility statement from the third-party provider.","angular":"In Angular apps using axe-core with Protractor or Cypress, configure runOnly with iframes: true for same-origin frames. Cross-origin iframes require separate testing arrangements with the frame content provider.","svelte":"In Svelte, <iframe> content is not tested by axe-core unless the iframe shares the same origin. This rule is informational — ensure iframe content is independently accessible.","astro":"In .astro files, <iframe> elements render to static HTML. Axe-core cannot evaluate cross-origin iframe content — verify accessibility of embedded content separately."},"fix_difficulty_notes":"This rule is informational — it means axe-core could not analyze content inside an iframe. Same-origin iframes can be tested by enabling the iframes option in axe configuration. Cross-origin iframes (third-party widgets, payment forms) cannot be injected with axe-core — they must be tested separately by the content provider. Do not treat this as an accessibility violation; treat it as a gap in test coverage.","guardrails_overrides":{"must_not":["Do not mark this finding as a violation requiring a code fix — it is a test coverage gap, not an accessibility failure.","Do not modify the iframe based on this finding alone; address frame-title violations separately."],"verify":["Confirm whether the iframe is same-origin (can be tested with axe iframes option) or cross-origin (requires separate testing by the provider)."]},"related_rules":[{"id":"frame-title","reason":"Every iframe needs a title attribute regardless of whether its content can be tested — fix frame titles alongside test coverage gaps."}]},"frame-title":{"category":"name-role-value","fix":{"description":"Add a descriptive title attribute to every <iframe>.","code":"<iframe\n  title=\"Embedded map showing our store location\"\n  src=\"https://maps.example.com/embed\"\n></iframe>"},"false_positive_risk":"low","framework_notes":{"react":"When embedding iframes (Google Maps, YouTube, Stripe), add the title prop directly: <iframe title='Google Maps — store location' src='...' />. Third-party React wrapper components that embed iframes should expose a title prop passthrough.","vue":"Use the title attribute directly: <iframe title='Payment form' :src='url' />. For third-party Vue components that embed iframes internally, check the component's props API for a title or label prop.","angular":"Use [title]='iframeTitle' binding for dynamic titles, or title='Embedded video' for static ones. For hidden tracking iframes generated by third-party scripts, set title='' programmatically to suppress screen reader announcement.","svelte":"In Svelte, <iframe> elements must have a title attribute: <iframe title='Video player' src='...'></iframe>. Svelte does not warn about missing iframe titles — add them manually.","astro":"In .astro files, <iframe> elements must include a title attribute in the static HTML. This describes the iframe's purpose for screen reader users."},"fix_difficulty_notes":"Hidden or off-screen iframes used for third-party scripts (analytics, chat SDKs, A/B testing) should use title='' (empty) to suppress screen reader announcement — not a descriptive title. Only visible, interactive iframes that users would encounter need a meaningful title.","cms_notes":{"shopify":"Shopify apps inject iframes for reviews (Judge.me, Yotpo), live chat (Tidio, Gorgias), and payment UIs. These are typically third-party and cannot be modified directly — contact the app provider. For theme-owned iframes (e.g., YouTube embeds in sections), add title='{{ section.settings.video_description }}' using the section schema.","wordpress":"WordPress's embed block renders iframes for YouTube, Vimeo, and Google Maps via oEmbed. WordPress core adds the video title as the iframe title for YouTube/Vimeo embeds since 5.6. For Classic Editor embeds and older plugins, the title may be missing — update the embed shortcode or use the block editor.","drupal":"Drupal's Media module and oEmbed integration renders iframes for remote video. The oEmbed title is used as the iframe title by default. For custom iframe renders in Twig, add title='{{ media.name.value }}' via the template."},"related_rules":[{"id":"frame-focusable-content","reason":"Iframes must be both keyboard-accessible and labeled — fix both together."},{"id":"frame-tested","reason":"Every iframe needs a title attribute regardless of whether its content can be tested — fix frame titles alongside test coverage gaps."},{"id":"frame-title-unique","reason":"frame-title checks for the presence of a title; frame-title-unique checks for uniqueness — fix both together."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"frame-title-unique":{"category":"name-role-value","fix":{"description":"Give every <iframe> and <frame> a unique title attribute that distinguishes it from other frames on the same page. Duplicate titles confuse screen reader users navigating between frames.","code":"<!-- Before: duplicate iframe titles -->\n<iframe src=\"ad1.html\" title=\"Advertisement\"></iframe>\n<iframe src=\"ad2.html\" title=\"Advertisement\"></iframe>\n\n<!-- After: unique titles -->\n<iframe src=\"ad1.html\" title=\"Advertisement: Summer sale banner\"></iframe>\n<iframe src=\"ad2.html\" title=\"Advertisement: Free shipping promo\"></iframe>"},"false_positive_risk":"low","framework_notes":{"react":"In React, when rendering multiple iframes via .map(), include a unique identifier in the title prop (e.g., title={`Widget ${index + 1}`} or title={widget.name}). Avoid generic titles like 'iframe' or 'widget' repeated across instances.","vue":"In Vue, bind :title with unique descriptive text for each iframe rendered via v-for. Use the item's name or purpose in the title, not just a generic label.","angular":"In Angular, use [title]='uniqueFrameTitle' with a descriptive string per iframe instance. When rendering multiple iframes via *ngFor, include the item's identifier in the title.","svelte":"In Svelte, each <iframe> on the page must have a unique title. If rendering multiple iframes from a component, pass unique titles as props.","astro":"In .astro files, each <iframe> must have a distinct title attribute. When reusing iframe components, pass unique title props to each instance."},"fix_difficulty_notes":"The title must describe the purpose or content of the frame, not just its type. 'Advertisement' is valid for one ad iframe but becomes ambiguous when multiple ad iframes exist. Append a distinguishing qualifier (e.g., the ad campaign name, position, or content summary). For dynamically generated iframes (e.g., ad slots), the title should reflect the loaded content when possible.","related_rules":[{"id":"frame-title","reason":"frame-title checks for the presence of a title; frame-title-unique checks for uniqueness — fix both together."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"heading-order":{"category":"semantics","fix":{"description":"Fix the heading hierarchy — no levels may be skipped.","code":"<!-- Valid heading hierarchy: -->\n<h1>Accessibility Audit Report</h1>\n<h2>Color Contrast Violations</h2>\n<h3>Product listing page</h3>\n<!-- Invalid: jumping from h1 to h3 skips h2 -->"},"false_positive_risk":"low","framework_notes":{"react":"In component libraries (shadcn/ui, Radix), heading levels are often hardcoded (e.g., CardTitle always renders as h3). Use the 'as' prop to override the level based on context: <CardTitle as='h2'> when the component appears as a top-level section heading.","vue":"In Vue UI kits (Vuetify, Nuxt UI), check if heading components support a 'tag' prop to override the rendered element. Use semantic levels based on document structure, not visual size.","angular":"In Angular Material, headings inside mat-card and mat-expansion-panel are often rendered as <div> or <span>. Add the appropriate heading element explicitly inside the component template rather than relying on implicit heading structure.","svelte":"Svelte does not warn about heading order at compile time. Use an eslint plugin or axe-core integration to catch hierarchy issues. In component libraries (Skeleton UI, Svelte Headless UI), verify that heading levels can be overridden via props.","astro":"Astro assembles pages from multiple components — heading hierarchy issues arise when components assume a fixed heading level. Pass the heading level as a prop: <Section headingLevel={2}> and render dynamically with <h{headingLevel}> patterns."},"cms_notes":{"shopify":"Shopify sections often hardcode heading levels (e.g., <h2> in featured-collection.liquid). When sections are reordered in the theme editor, the heading hierarchy breaks. Use the section schema to let merchants choose the heading level, or use CSS classes for sizing instead of heading elements.","wordpress":"Gutenberg's Heading block lets authors pick any level — there is no enforcement of hierarchy. Educate content authors or use a plugin like Flavor that warns about heading order violations in the editor. Theme templates that hardcode <h2> for widget titles also break hierarchy.","drupal":"Drupal Views titles default to <h2>, and block titles also default to <h2> — when multiple blocks appear on the same page, the hierarchy breaks. Override heading levels in block--*.html.twig or via the Views UI. Use the Block Title Level module to give editors control."},"fix_difficulty_notes":["Never use heading elements purely for visual sizing (e.g., `<h4>` because it renders smaller) — use CSS classes for font size. Heading level must reflect document structure, not visual hierarchy.","Resolve `page-has-heading-one` first — a missing `h1` often causes cascading `heading-order` violations."],"related_rules":[{"id":"page-has-heading-one","reason":"Fixing the h1 establishes the root of the hierarchy — resolve it first."},{"id":"empty-heading","reason":"Empty headings disrupt the heading hierarchy — resolve them together."},{"id":"p-as-heading","reason":"After converting p-as-heading to real headings, verify they fit the existing heading hierarchy."}],"guardrails_overrides":{"must":["Resolve page-has-heading-one first — a missing h1 causes cascading heading-order violations."],"must_not":["Do not change heading levels purely for visual sizing — use CSS classes for font size.","Do not adjust heading numbers alone without restructuring content hierarchy — the fix must reflect document structure, not just the numeric sequence."],"verify":["Confirm no heading levels are skipped in the final DOM output.","Confirm the fix does not alter visual design — heading element changes must be purely structural."]}},"hidden-content":{"category":"semantics","fix":{"description":"Inform users about hidden content that was not evaluated by the accessibility scanner. Content hidden via display:none, visibility:hidden, or the hidden attribute is excluded from the accessibility tree and from automated testing — it may contain violations that surface only when revealed.","code":"<!-- Hidden content that axe cannot evaluate: -->\n<div id=\"modal\" hidden>\n  <h2>Login</h2>\n  <form>...</form>\n</div>\n\n<!-- When revealed, it must be accessible: -->\n<div id=\"modal\" role=\"dialog\" aria-labelledby=\"modal-title\" aria-modal=\"true\">\n  <h2 id=\"modal-title\">Login</h2>\n  <form>\n    <label for=\"email\">Email</label>\n    <input type=\"email\" id=\"email\" autocomplete=\"email\">\n  </form>\n</div>"},"false_positive_risk":"high","framework_notes":{"react":"In React, conditionally rendered content ({showModal && <Modal />}) is not in the DOM until rendered — axe cannot test it. Test each UI state separately: run axe after opening modals, expanding accordions, and triggering dropdowns.","vue":"In Vue, v-if removes content from the DOM entirely, so axe cannot evaluate it. Use v-show for content that should be testable in all states, or run separate axe scans with each visibility state toggled on.","angular":"In Angular, *ngIf removes content from the DOM. Run axe-core scans after triggering each UI state (dialog open, dropdown expanded, tab panel visible) to ensure hidden content is covered.","svelte":"In Svelte, {#if condition} removes content from the DOM entirely — axe cannot test it. Test each UI state separately: run axe after opening modals, expanding accordions, and triggering dropdowns. Use {#if} for conditional rendering, not CSS display:none.","astro":"In .astro files, content hidden via CSS (display:none) is in the static HTML but excluded from axe testing. For dynamic visibility inside framework islands, test each state separately."},"fix_difficulty_notes":"This rule is informational, not a violation. It alerts you that some page content was hidden during the scan and therefore not tested. The fix is not to change the hidden content itself, but to ensure your test suite evaluates every visibility state. Run accessibility scans on all interactive states: modals open, accordions expanded, menus visible, toast notifications active.","guardrails_overrides":{"must_not":["Do not treat this finding as a code defect requiring a fix — it is a test coverage indicator.","Do not make the hidden content visible as a workaround; address actual violations found when re-testing in the visible state."],"verify":["Confirm all interactive states (modals, drawers, accordions, tooltips) have been tested separately in visible state."]},"related_rules":[{"id":"aria-hidden-focus","reason":"Hidden content that becomes visible may contain focusable elements inside aria-hidden containers — test each state."},{"id":"aria-hidden-body","reason":"If aria-hidden='true' is applied to the body or root during a hidden state, removing it on reveal must be verified."}]},"html-has-lang":{"category":"language","fix":{"description":"Add a lang attribute to the <html> element so screen readers pronounce content correctly.","code":"<html lang=\"en\">"},"false_positive_risk":"low","framework_notes":{"react":"In Next.js App Router, set lang in the root layout: export default function RootLayout() { return <html lang='en'>...</html>; } in app/layout.tsx. For i18n, derive the lang from the locale route segment.","vue":"In Nuxt, set lang in nuxt.config.ts: app: { head: { htmlAttrs: { lang: 'en' } } }. For multilingual Nuxt apps, @nuxtjs/i18n sets the lang attribute per locale automatically.","angular":"In Angular, set lang in index.html: <html lang='en'>. With Angular Universal (SSR), inject LOCALE_ID and set document.documentElement.lang in a server-side app initializer to support locale-specific rendering.","svelte":"In SvelteKit, set lang in app.html (the HTML template): <html lang='en'>. For i18n, use hooks.server.ts to dynamically set the lang attribute based on the request locale or route parameter.","astro":"Set lang in your base layout: <html lang='en'>. For multilingual sites with Astro i18n routing, pass the lang as a prop to the layout: <html lang={Astro.currentLocale ?? 'en'}>."},"cms_notes":{"shopify":"Shopify sets the lang attribute in layout/theme.liquid via <html lang='{{ request.locale.iso_code }}'> for multi-language stores. Single-language stores should hardcode <html lang='en'> (or the appropriate language). The Shopify admin's language settings control {{ request.locale }}.","wordpress":"WordPress sets the lang attribute via the language_attributes() function in header.php. The site language is configured in Settings > General. Multilingual plugins (WPML, Polylang) override this per page. Never hardcode lang in the theme — always use language_attributes().","drupal":"Drupal sets the lang attribute in html.html.twig via {{ html_attributes }}, which includes lang from the active language. Multilingual configuration in admin/config/regional/language controls this. Sub-themes overriding html.html.twig must preserve {{ html_attributes }}."},"fix_difficulty_notes":"The lang attribute must be on the <html> element itself, not on a meta tag or the <body>. In framework app templates, the <html> tag is typically in an index.html or document template file outside of component scope — not in a React/Vue/Angular component. For multilingual SPAs, update document.documentElement.lang programmatically on each route change to reflect the current content language.","related_rules":[{"id":"html-lang-valid","reason":"Adding a lang attribute must use a valid BCP 47 language tag — fix both together."},{"id":"valid-lang","reason":"Child elements with lang attributes must also use valid tags — audit all lang values at once."},{"id":"html-xml-lang-mismatch","reason":"The lang attribute must be present before validating its agreement with xml:lang."}]},"html-lang-valid":{"category":"language","fix":{"description":"Use a valid BCP 47 language tag on the <html> element.","code":"<!-- English -->\n<html lang=\"en\">\n<!-- French Canadian -->\n<html lang=\"fr-CA\">\n<!-- Brazilian Portuguese -->\n<html lang=\"pt-BR\">"},"false_positive_risk":"low","framework_notes":{"react":"Same fix location as html-has-lang — set lang in app/layout.tsx: <html lang='en-US'>. Ensure the value is a valid BCP 47 tag, not a locale string from your i18n library (e.g., 'en_US' with underscore is invalid).","vue":"Same as html-has-lang — set in nuxt.config.ts htmlAttrs or in the HTML template. Verify the value against the BCP 47 registry before deploying.","angular":"Same as html-has-lang — set in index.html or via Angular Universal's locale injection. Confirm the value uses hyphen separators (en-US), not underscore (en_US).","svelte":"In SvelteKit, set a valid BCP 47 lang tag in app.html: <html lang='en'>. For i18n apps, validate that each locale maps to a valid BCP 47 tag (e.g., 'en-US' not 'english').","astro":"In .astro layouts, ensure <html lang='en'> uses a valid BCP 47 tag. For multilingual Astro sites, validate each locale's lang value against the BCP 47 standard."},"fix_difficulty_notes":"Common mistakes: using underscore separator ('en_US') instead of hyphen ('en-US'), or spelling out the full language name ('english') instead of the BCP 47 subtag ('en'). Verify against https://www.iana.org/assignments/language-subtag-registry/.","related_rules":[{"id":"html-has-lang","reason":"html-has-lang and html-lang-valid are often co-located — fix the lang attribute once to resolve both."},{"id":"valid-lang","reason":"The same BCP 47 validity requirement applies to lang attributes on child elements."},{"id":"html-xml-lang-mismatch","reason":"Both lang and xml:lang must contain valid BCP 47 language tags."}]},"html-xml-lang-mismatch":{"category":"language","fix":{"description":"Align the lang and xml:lang attributes on the <html> element so both specify the same base language, or remove xml:lang entirely unless serving XHTML. A mismatch confuses assistive technologies about the page language.","code":"<!-- Before: mismatched language attributes -->\n<html lang=\"en\" xml:lang=\"fr\">\n\n<!-- After: matching language attributes -->\n<html lang=\"en\" xml:lang=\"en\">\n\n<!-- Best: remove xml:lang unless serving XHTML -->\n<html lang=\"en\">"},"false_positive_risk":"low","framework_notes":{"react":"In Next.js, the lang attribute is set in next.config.js (i18n.defaultLocale) or in the root layout. xml:lang is only needed for XHTML — remove it in standard HTML5. If both exist, ensure they match the same locale.","vue":"In Nuxt, set the lang attribute in nuxt.config.ts (app.head.htmlAttrs.lang). Do not add xml:lang unless serving XHTML content type. If both are present, ensure they agree on the base language.","angular":"In Angular, set the lang attribute in index.html on the <html> element. Remove xml:lang unless the app is served as application/xhtml+xml. If both are needed, ensure they specify the same language.","svelte":"In SvelteKit, app.html typically has only lang (not xml:lang). If both are present (XHTML mode), they must match exactly. This is rare in modern Svelte projects.","astro":"In .astro layouts, if both lang and xml:lang are present on <html>, they must have identical values. This is rare in modern Astro projects since XHTML mode is uncommon."},"fix_difficulty_notes":"The simplest fix is to remove xml:lang — it is only required for XHTML served with an XML content type. Modern HTML5 documents should use only the lang attribute. If your CMS or framework generates both attributes, ensure the template or configuration sets them to the same value. The 'base language' comparison ignores subtags (e.g., 'en-US' and 'en-GB' have the same base language 'en').","related_rules":[{"id":"html-has-lang","reason":"The lang attribute must be present before validating its agreement with xml:lang."},{"id":"html-lang-valid","reason":"Both lang and xml:lang must contain valid BCP 47 language tags."}]},"identical-links-same-purpose":{"category":"name-role-value","fix":{"description":"Ensure links with identical visible text lead to the same destination, or differentiate them with unique text or aria-label to clarify their distinct purposes.","code":"<!-- Before: two 'Read more' links with different destinations -->\n<a href=\"/article-1\">Read more</a>\n<a href=\"/article-2\">Read more</a>\n\n<!-- After: descriptive link text -->\n<a href=\"/article-1\">Read more about accessibility</a>\n<a href=\"/article-2\">Read more about inclusive design</a>\n\n<!-- Or: extend with aria-label (preserves visual design) -->\n<a href=\"/article-1\" aria-label=\"Read more about accessibility\">Read more</a>\n<a href=\"/article-2\" aria-label=\"Read more about inclusive design\">Read more</a>"},"false_positive_risk":"high","framework_notes":{"react":"In React, card components with 'Read more' links should accept a linkLabel prop: <a href={href} aria-label={`Read more about ${title}`}>Read more</a>. This preserves visual design while adding screen reader context.","vue":"In Vue, pass the article or card title into the link: <a :href='url' :aria-label='`Read more about ${title}`'>Read more</a>.","angular":"In Angular, use [attr.aria-label]='\"Read more about \" + card.title' on the link element within the card component.","svelte":"In Svelte, links with the same accessible name should navigate to the same URL. If two 'Learn more' links go to different pages, make the link text unique: 'Learn more about pricing', 'Learn more about features'.","astro":"In .astro files, links with identical text must go to the same destination. Use descriptive, unique link text rather than generic 'Read more' or 'Click here' across different sections."},"fix_difficulty_notes":"axe uses heuristics to detect this — it flags links with identical text pointing to different URLs. False positives are common when 'Read more' links in a card grid are accompanied by a heading that provides context. WCAG 2.4.4 allows disambiguation through programmatic context (e.g., an aria-labelledby relationship between a card heading and its link). Check whether this is already satisfied before fixing. The simplest fix that avoids template changes is aria-label.","related_rules":[{"id":"link-name","reason":"Both rules require descriptive link text — fixing generic link names (link-name) also resolves identical-links-same-purpose violations."}],"guardrails_overrides":{"must":["If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."],"must_not":["Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."],"verify":["Confirm link purpose remains clear out of context and in the accessibility tree."]}},"image-alt":{"category":"text-alternatives","fix":{"description":"Add a descriptive alt attribute to every <img>. Use alt=\"\" for decorative images.","code":"<img src=\"photo.jpg\" alt=\"Brown leather hiking boots with red laces on a white background\">\n<!-- Decorative image (hidden from AT): -->\n<img src=\"divider.png\" alt=\"\">"},"false_positive_risk":"low","framework_notes":{"react":"Use the alt prop directly on <img>: <img src={src} alt=\"Description\" />. For decorative images: alt=\"\".","vue":"Use :alt binding or plain alt attribute — standard HTML semantics apply.","angular":"Use [attr.alt] binding or plain alt attribute on <img> elements.","svelte":"Svelte's compiler enforces alt attributes on <img> elements at build time — missing alt triggers a warning (a11y-missing-attribute). Use alt='' for decorative images. This is one of Svelte's strongest built-in accessibility features.","astro":"Astro's <Image /> component from astro:assets requires the alt prop by default (TypeScript will error without it). For standard <img> tags in .astro files, add alt manually — Astro does not validate HTML attributes at build time."},"cms_notes":{"shopify":"Product images use {{ image | image_url }} with product.featured_image.alt as alt text. If the merchant hasn't set alt text in the admin, it defaults to blank — add a fallback: alt='{{ image.alt | default: product.title }}' in your Liquid template.","wordpress":"WordPress stores alt text per attachment via update_post_meta($id, '_wp_attachment_image_alt', $value). The image block populates alt from the Media Library. Ensure custom image rendering via wp_get_attachment_image() preserves the stored alt attribute.","drupal":"Drupal's Image field requires alt text by default (configurable per field instance). In Twig templates, use {{ content.field_image }} which renders with the stored alt. If rendering manually, use {{ file_url(node.field_image.entity.uri.value) }} with alt={{ node.field_image.alt }}."},"fix_difficulty_notes":"axe-core confirms alt presence but cannot evaluate alt quality. An alt='photo.jpg' or alt='image' passes axe but violates 1.1.1. Always verify that alt text is descriptive and conveys the image's purpose. For decorative images, use alt='' (empty, not omitted — omitting alt causes some screen readers to announce the filename).","related_rules":[{"id":"input-image-alt","reason":"The same alt text requirement applies to <input type=\"image\"> — fix all alt text violations together."},{"id":"svg-img-alt","reason":"SVGs used as images need equivalent alt text — audit both together."},{"id":"image-redundant-alt","reason":"When adding alt text, avoid duplicating visible adjacent text — fixing one can trigger the other."},{"id":"object-alt","reason":"The same text alternative requirement applies to <object> — audit both together."},{"id":"area-alt","reason":"The parent <img> of the image map also needs alt text — fix both together."},{"id":"role-img-alt","reason":"Both rules require images to have accessible names — fix all image alternatives together."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"image-redundant-alt":{"category":"text-alternatives","fix":{"description":"Remove or shorten the alt text when it duplicates adjacent visible text. Use alt='' to mark the image as decorative when adjacent text fully explains it.","code":"<!-- Before: alt duplicates adjacent figcaption -->\n<figure>\n  <img src=\"chart.png\" alt=\"Bar chart showing Q1 2024 sales by region\">\n  <figcaption>Bar chart showing Q1 2024 sales by region</figcaption>\n</figure>\n\n<!-- After: empty alt — caption provides the description -->\n<figure>\n  <img src=\"chart.png\" alt=\"\">\n  <figcaption>Bar chart showing Q1 2024 sales by region</figcaption>\n</figure>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, CMS-driven content often auto-populates alt from the image title, which duplicates the adjacent heading. Use conditional alt: alt={caption ? '' : imageAlt} when a caption is present.","vue":"In Vue, compute the alt conditionally: :alt='caption ? \"\" : imageAlt'. Avoid binding the same string to both alt and a figcaption.","angular":"In Angular, use conditional binding: [attr.alt]='caption ? \"\" : imageAlt' to suppress redundant alt when a visible caption is present.","svelte":"In Svelte, avoid duplicating visible text in the alt attribute. If a card has <h2>Product Name</h2><img alt='Product Name'>, the alt is redundant — use alt='' or describe the image differently.","astro":"In .astro files, alt text that duplicates adjacent visible text is redundant. Use alt='' for decorative images next to their text equivalent, or describe the image's visual content instead."},"fix_difficulty_notes":"axe flags exact or near-exact matches between alt and adjacent text — but verify the adjacent text is truly sufficient before setting alt=''. For charts, the figcaption may describe the title but not the data values — the image alt may still be needed. In <figure>/<figcaption> pairs, the figcaption typically replaces the alt for descriptive images, but for complex diagrams, consider aria-describedby pointing to a detailed description.","related_rules":[{"id":"image-alt","reason":"When adding alt text, avoid duplicating visible adjacent text — fixing one can trigger the other."},{"id":"svg-img-alt","reason":"When adding aria-label to SVGs, avoid duplicating visible adjacent text."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"input-button-name":{"category":"forms","preferred_relationship_checks":["aria-labelledby","aria-label","explicit-label","implicit-label"],"fix":{"description":"Add a value attribute or aria-label to every <input type='button'>, <input type='submit'>, and <input type='reset'>.","code":"<!-- Input buttons use value as accessible name: -->\n<input type=\"submit\" value=\"Submit order\">\n<input type=\"reset\" value=\"Clear form\">\n<input type=\"button\" value=\"Load more results\">\n\n<!-- If value must stay empty for visual reasons, use aria-label: -->\n<input type=\"submit\" value=\"\" aria-label=\"Submit order\">"},"false_positive_risk":"low","framework_notes":{"react":"In React, use the value prop: <input type='submit' value='Submit order' />. For modern React, prefer <button type='submit'>Submit order</button> — it supports child elements (icons, spans) and is more styleable.","vue":"In Vue, use value='Submit order' or :value='submitLabel' for dynamic labels. Prefer <button type='submit'> over <input type='submit'> for greater flexibility.","angular":"In Angular, use [value]='submitLabel' or a static value attribute. Angular Material's mat-button directives work on <button> — prefer <button> for all interactive controls.","svelte":"In Svelte, <input type='submit'> and <input type='button'> need a value attribute for their accessible name. For icon-only inputs, use aria-label instead.","astro":"In .astro files, <input type='button'> and <input type='submit'> must have a value attribute. This renders to static HTML — ensure the value is descriptive."},"fix_difficulty_notes":"For <input type='submit'> and <input type='reset'>, browsers provide default labels ('Submit' and 'Reset') when value is omitted — axe may or may not flag these depending on context. Prefer explicit value attributes over browser defaults, as default labels are not consistently translated across locales. Prefer <button type='submit'> over <input type='submit'> for new code — it is more flexible.","cms_notes":{"shopify":"Dawn theme's add-to-cart form uses <button type='submit'> not <input type='submit'>. If you see this violation it is likely in a legacy custom section or a third-party app's injected form. In theme forms, add value='{{ 'products.product.add_to_cart' | t }}' to any remaining <input type='submit'> elements.","wordpress":"Contact Form 7 and older WordPress form plugins historically used <input type='submit'>. CF7 now uses <button> by default. Classic plugin-generated forms may still use <input type='submit' value=''> with value set dynamically via PHP filters — hook into wpcf7_form_tag_data_normalize to set a valid value.","drupal":"Drupal's Form API renders submit buttons as <input type='submit'> by default with value set from #value. The #value key is required — never set #value to empty. Use 'Save' or a descriptive translatable string: '#value' => $this->t('Save configuration')."},"related_rules":[{"id":"button-name","reason":"The same accessible name requirement applies to <button> elements — fix all button naming violations together."},{"id":"link-name","reason":"The same accessible name requirement applies to links — fix all interactive element naming together."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"input-image-alt":{"category":"text-alternatives","fix":{"description":"Add an alt attribute to every <input type=\"image\"> describing the action it performs.","code":"<input type=\"image\" src=\"submit.png\" alt=\"Submit form\">"},"false_positive_risk":"low","framework_notes":{"react":"In React, <input type='image'> is rarely used — most apps use <button> with an <img> or SVG icon instead. If encountered, add the alt prop directly: <input type='image' src={src} alt='Submit form' />.","vue":"In Vue, bind alt directly: <input type='image' :src='src' alt='Submit form'>. This pattern is uncommon in Vue apps — consider replacing with a <button> containing an icon for better maintainability.","angular":"In Angular, use [alt]='buttonAction' on the input element. Angular does not validate alt on input[type=image] — this must be caught by axe or manual review.","svelte":"In Svelte, add alt directly: <input type='image' src={src} alt='Submit form'>. Svelte's a11y warnings do not cover input[type=image] — rely on axe-core for detection.","astro":"In .astro files, <input type='image'> renders as static HTML. Add the alt attribute directly in the template. This element is uncommon in modern Astro projects — consider replacing with a <button> and an icon."},"fix_difficulty_notes":"The alt must describe the button's action, not the image appearance. 'Submit form' is correct; 'Blue arrow pointing right' is not.","related_rules":[{"id":"image-alt","reason":"The same alt text requirement applies to <img> — fix all alt text violations together."},{"id":"svg-img-alt","reason":"SVGs used as images share the same accessible name requirement."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"label":{"category":"forms","preferred_relationship_checks":["aria-labelledby","explicit-label","form-field-multiple-labels","label","aria-label","implicit-label"],"fix":{"description":"Associate every form input with a visible <label> element.","code":"<label for=\"email\">Email address</label>\n<input id=\"email\" type=\"email\" name=\"email\">"},"false_positive_risk":"low","framework_notes":{"react":"Use htmlFor prop (not 'for') on <label>: <label htmlFor=\"email\">Email</label>. The 'for' attribute is reserved in JSX.","vue":"Use the standard for attribute: <label for=\"email\">. Vue renders standard HTML — no special prop needed.","angular":"Use [for]=\"inputId\" binding or wrap the input inside the label element to avoid explicit ID linking.","svelte":"Use the standard HTML for attribute: <label for='email'>. Svelte's compiler warns if interactive form elements lack associated labels (a11y-label-has-associated-control). Wrapping the input inside the label also satisfies the check.","astro":"In .astro files, use standard HTML <label for='id'>. For form inputs inside framework islands (React/Vue/Svelte), each framework's label rules apply within the island boundary — Astro does not validate cross-island label-input associations."},"cms_notes":{"shopify":"Dawn theme hides labels visually with the 'visually-hidden' class. Ensure labels exist in the DOM even when hidden — screen readers need the <label> element. Never remove the label; instead use CSS to hide it if the design requires it.","wordpress":"Gutenberg's built-in form blocks include labels by default. For custom blocks, use <label> inside the block's save() function. Contact Form 7 and WPForms plugins generate labels automatically — verify they use the 'for' attribute.","drupal":"Drupal's Form API automatically generates labels when #title is set on form elements. In custom Twig templates for forms, ensure every input has a corresponding <label for='{{ input_id }}'>. Use form_element.html.twig as your reference."},"fix_difficulty_notes":"aria-label works technically but voice control users cannot target the field by speaking the label — they need a visible text match. Prefer a visible <label> over aria-label for all inputs. placeholder is not a substitute for a label — it disappears on input and is not reliably announced by screen readers.","related_rules":[{"id":"select-name","reason":"The same label association pattern resolves select-name violations."},{"id":"autocomplete-valid","reason":"Properly labeled inputs should also have correct autocomplete tokens — fix label association and autocomplete together."},{"id":"form-field-multiple-labels","reason":"Fixing label association may expose or create multiple-label conflicts — audit both together."},{"id":"label-content-name-mismatch","reason":"The visible label text must match the accessible name — fix label association and name mismatch together."},{"id":"aria-input-field-name","reason":"ARIA input field naming and native label association address the same accessible name gap — fix together."},{"id":"aria-toggle-field-name","reason":"The same label association pattern resolves both label and aria-toggle-field-name violations."},{"id":"label-title-only","reason":"Both rules enforce proper label association — fix label-title-only and label violations together."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"label-content-name-mismatch":{"category":"forms","fix":{"description":"Ensure the element's accessible name contains or starts with the visible label text so voice control users can activate it by speaking what they see.","code":"<!-- Visible label: 'Search products' -->\n<!-- aria-label must contain that text: -->\n<button aria-label=\"Search products\">Search products</button>\n\n<!-- Or remove aria-label and rely on visible text: -->\n<button>Search products</button>\n\n<!-- If icon + text: make aria-label match the visible text -->\n<button aria-label=\"Search products\">\n  <svg aria-hidden=\"true\">...</svg>\n  Search products\n</button>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, avoid aria-label props that differ from the button's child text. For icon buttons, if you add visible text alongside the icon, the aria-label becomes unnecessary — remove it.","vue":"In Vue, check components that accept both a label slot and an aria-label prop — if both are provided with different values, this violation occurs. Prefer deriving the accessible name from the visible slot content.","angular":"In Angular, aria-label bindings on buttons with text content are a common source of this violation. Remove [attr.aria-label] on buttons that have visible text children unless the label extends the text rather than replacing it.","svelte":"In Svelte, the accessible name (from aria-label or aria-labelledby) must include the visible text of the element. Voice control users speak the visible text — if it doesn't match the accessible name, activation fails.","astro":"In .astro files, ensure aria-label includes the visible text content. This rule ensures voice control users can activate elements by speaking the visible label."},"fix_difficulty_notes":"The accessible name must contain (not just match) the visible text — it can have additional context. For example, aria-label='Search products in catalog' on a button with visible text 'Search products' is valid. The violation is when aria-label completely replaces the visible label with different text (e.g., visible 'Buy now', aria-label='Add to cart'). The simplest fix is often to remove the aria-label and let the visible text serve as the accessible name.","related_rules":[{"id":"label","reason":"Fixing label association is the primary step before resolving name mismatch."},{"id":"form-field-multiple-labels","reason":"Multiple labels frequently cause accessible name to differ from visible label text."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"label-title-only":{"category":"forms","fix":{"description":"Ensure every form element has a visible label and is not solely labeled using the title attribute, aria-describedby, or hidden labels. The title attribute is not consistently exposed by all screen readers and is not visible to sighted users.","code":"<!-- Before: labeled only by title (not visible, not reliable) -->\n<input type=\"text\" title=\"Enter your name\">\n\n<!-- After: visible <label> element -->\n<label for=\"name\">Full name</label>\n<input type=\"text\" id=\"name\">\n\n<!-- Also valid: floating label pattern with visible label -->\n<div class=\"form-group\">\n  <input type=\"email\" id=\"email\" placeholder=\" \" required>\n  <label for=\"email\">Email address</label>\n</div>"},"false_positive_risk":"low","framework_notes":{"react":"In React, avoid using title as the sole labeling mechanism on inputs. Use <label htmlFor='id'> or aria-label only for visually hidden inputs. For floating labels, ensure the <label> is always rendered — not replaced by placeholder text.","vue":"In Vue, replace title-only labeling with <label :for='id'>. For component libraries (Vuetify, PrimeVue), use the label prop which renders a visible <label> element, not just a title attribute.","angular":"In Angular, use <label [for]='inputId'> or Angular Material's <mat-label> inside <mat-form-field>. The mat-label renders a visible, persistent label. Do not rely on [attr.title] as the sole accessible name.","svelte":"In Svelte, prefer <label for='id'> over a title attribute for form inputs. The title attribute is only exposed on hover — screen reader users hear it, but it's invisible to sighted keyboard users.","astro":"In .astro files, form inputs should have <label> elements, not just title attributes. The title attribute is a fallback, not a substitute for a visible label."},"fix_difficulty_notes":"The title attribute provides a tooltip on hover but is not reliably announced by all screen reader and browser combinations. WCAG requires a visible label for form inputs (1.3.1 Info and Relationships, 3.3.2 Labels or Instructions). The fix is to add a <label> element associated via for/id. For cases where a visible label is not desired (icon-only search fields), use aria-label with a visually hidden <label> as a fallback.","related_rules":[{"id":"label","reason":"Both rules enforce proper label association — fix label-title-only and label violations together."},{"id":"form-field-multiple-labels","reason":"When adding a visible label, verify you are not creating a duplicate label association."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"landmark-banner-is-top-level":{"category":"structure","fix":{"description":"Ensure the banner landmark (<header> or role='banner') is at the top level of the document and not nested inside another landmark such as <main>, <aside>, <nav>, or <section>.","code":"<!-- Correct: banner at the top level -->\n<body>\n  <header>\n    <nav aria-label=\"Primary\">\n      <a href=\"/\">Home</a>\n    </nav>\n  </header>\n  <main>...</main>\n  <footer>...</footer>\n</body>\n\n<!-- Incorrect: banner nested inside main -->\n<!-- <main>\n  <header>Site header</header>\n  <section>Content</section>\n</main> -->"},"false_positive_risk":"medium","framework_notes":{"react":"In Next.js, place <header> in the root layout.tsx as a sibling of <main>, not inside it. Page components must not render a top-level <header> — use <section> or <div> for page-specific header areas.","vue":"In Nuxt, place <header> in layouts/default.vue before the <main> wrapping <slot />. Do not nest <header> inside <main> or <aside>.","angular":"In Angular, place <header> in app.component.html before the <main> wrapping <router-outlet>. Feature modules must not render a <header> inside the routed content area.","svelte":"In SvelteKit, <header> elements (which have implicit role='banner') must be top-level — not nested inside <main>, <section>, or <article>. Place <header> as a direct child of <body> in +layout.svelte.","astro":"In .astro layouts, ensure <header> (role='banner') is a direct child of <body>, not nested inside <main> or <section>. Astro component nesting can accidentally push <header> inside other landmarks."},"fix_difficulty_notes":"A <header> inside <article> or <section> does not create a banner landmark — it is scoped to that sectioning element. The violation occurs when a <header> intended as the site banner is nested inside <main> or another landmark. Move it to be a direct child of <body>. In SPA frameworks, ensure the layout component places <header> before <main>, not inside it.","guardrails_overrides":{"must_not":["Do not add role='banner' to a <header> nested inside <main> as a shortcut — move the element to the correct position in the DOM.","Do not add a second <header role='banner'> at the body level if one already exists — this creates a duplicate-banner violation."],"verify":["Confirm the <header> is a direct child of <body> (or is the only banner landmark at body level) in the rendered DOM."]},"related_rules":[{"id":"landmark-no-duplicate-banner","reason":"If the banner is duplicated and one copy is nested incorrectly, fix both the nesting and the duplication together."},{"id":"landmark-contentinfo-is-top-level","reason":"The contentinfo (footer) landmark has the same top-level requirement — fix both together."},{"id":"landmark-main-is-top-level","reason":"All primary landmarks (banner, main, contentinfo) must be at the top level — fix as a group."},{"id":"landmark-complementary-is-top-level","reason":"All primary landmarks share the same top-level requirement — fix nesting issues for all landmarks together."}]},"landmark-complementary-is-top-level":{"category":"structure","fix":{"description":"Ensure the complementary landmark (<aside> or role='complementary') is at the top level of the document and not nested inside another landmark such as <main>, <nav>, or <header>.","code":"<!-- Correct: aside at the top level -->\n<body>\n  <header>...</header>\n  <main>...</main>\n  <aside aria-label=\"Related articles\">\n    <h2>Related articles</h2>\n    <ul>...</ul>\n  </aside>\n  <footer>...</footer>\n</body>\n\n<!-- Incorrect: aside nested inside main -->\n<!-- <main>\n  <article>Content</article>\n  <aside>Sidebar</aside>\n</main> -->"},"false_positive_risk":"medium","framework_notes":{"react":"In Next.js App Router, place <aside> in layout.tsx as a sibling of <main>, not inside it. If sidebar content varies per page, use a slot pattern or React context to project sidebar content into the layout-level <aside>.","vue":"In Nuxt, use a named slot in layouts/default.vue for sidebar content: <aside><slot name='sidebar' /></aside> placed outside <main>. Page components fill the slot without nesting <aside> inside <main>.","angular":"In Angular, place <aside> in app.component.html alongside <main>, not inside the <router-outlet>. Use a service or ng-content projection to populate sidebar content from route components.","svelte":"In Svelte, <aside> elements (role='complementary') must be top-level landmarks — not nested inside <main> unless they are related to the main content specifically.","astro":"In .astro layouts, <aside> should be a direct child of <body> for top-level complementary content. If related to a specific section, it can be inside <main> with an aria-label."},"fix_difficulty_notes":"The HTML spec allows <aside> inside <article> or <section>, where it is scoped to that sectioning element and does not create a top-level complementary landmark. The violation occurs when an <aside> intended as a page-level sidebar is nested inside <main>. Move it to be a sibling of <main>. Common in blog layouts where the sidebar is mistakenly placed inside the main content area.","guardrails_overrides":{"must_not":["Do not add role='complementary' to an <aside> nested inside <main> as a workaround — move the element to be a sibling of <main>.","Do not flag an <aside> inside <article> or <section> — that placement is intentional and does not create a landmark."],"verify":["Confirm the <aside> intended as a page sidebar is a direct child of <body> or a sibling of <main> in the rendered DOM."]},"related_rules":[{"id":"landmark-banner-is-top-level","reason":"All primary landmarks share the same top-level requirement — fix nesting issues for all landmarks together."},{"id":"landmark-main-is-top-level","reason":"Complementary and main landmarks must both be at the top level — fix together."}]},"landmark-contentinfo-is-top-level":{"category":"structure","fix":{"description":"Ensure the contentinfo landmark (<footer> or role='contentinfo') is at the top level of the document and not nested inside another landmark such as <main>, <aside>, or <nav>.","code":"<!-- Correct: footer at the top level -->\n<body>\n  <header>...</header>\n  <main>...</main>\n  <footer>\n    <p>&copy; 2026 Company Name</p>\n    <nav aria-label=\"Footer\">\n      <a href=\"/privacy\">Privacy</a>\n      <a href=\"/terms\">Terms</a>\n    </nav>\n  </footer>\n</body>\n\n<!-- Incorrect: footer nested inside main -->\n<!-- <main>\n  <section>Content</section>\n  <footer>Copyright info</footer>\n</main> -->"},"false_positive_risk":"medium","framework_notes":{"react":"In Next.js, place <footer> in the root layout.tsx after <main>, not inside it. Page components should not render a top-level <footer> — the layout owns the site-wide footer.","vue":"In Nuxt, place <footer> in layouts/default.vue after the <main> wrapping <slot />. Individual page components must not add a <footer> at the landmark level.","angular":"In Angular, place <footer> in app.component.html after the <main> wrapping <router-outlet>. Route components must not render their own <footer> at the document root level.","svelte":"In SvelteKit, <footer> (role='contentinfo') must be top-level — not nested inside <main> or <section>. Place it as a direct child of <body> in +layout.svelte, after </main>.","astro":"In .astro layouts, <footer> (role='contentinfo') must be a direct child of <body>. Astro component composition can accidentally nest <footer> inside other landmarks."},"fix_difficulty_notes":"A <footer> inside <article> or <section> does not create a contentinfo landmark — it is scoped to that sectioning element. The violation occurs when the site-wide <footer> is nested inside <main> or another landmark. Move it to be a direct child of <body>. In SPAs, this is typically a layout architecture issue — the layout component must place <footer> after <main>, not inside it.","guardrails_overrides":{"must_not":["Do not add role='contentinfo' to a <footer> inside <main> as a workaround — move the element to be a direct child of <body>.","Do not flag a <footer> inside <article> or <section> — that placement is scoped to the sectioning element and does not create a landmark."],"verify":["Confirm the site-wide <footer> is a direct child of <body> in the rendered DOM, not nested inside any other landmark."]},"related_rules":[{"id":"landmark-no-duplicate-contentinfo","reason":"If multiple contentinfo landmarks exist, fix both the nesting and the duplication together."},{"id":"landmark-banner-is-top-level","reason":"Banner and contentinfo landmarks share the same top-level requirement — fix together."}]},"landmark-main-is-top-level":{"category":"structure","fix":{"description":"Ensure the main landmark (<main> or role='main') is at the top level of the document and not nested inside another landmark such as <header>, <aside>, <nav>, or <section>.","code":"<!-- Correct: main at the top level -->\n<body>\n  <header>...</header>\n  <main id=\"main-content\">\n    <h1>Page title</h1>\n    <section>...</section>\n  </main>\n  <footer>...</footer>\n</body>\n\n<!-- Incorrect: main nested inside a section -->\n<!-- <section>\n  <main>Content</main>\n</section> -->"},"false_positive_risk":"low","framework_notes":{"react":"In Next.js App Router, <main> belongs in layout.tsx as a direct child of <body> (or the root element). Do not wrap <main> inside a <section> or <div role='region'>.","vue":"In Nuxt, <main> belongs in layouts/default.vue as a top-level element wrapping <slot />. Do not nest it inside another landmark element.","angular":"In Angular, <main> belongs in app.component.html wrapping <router-outlet>. Ensure no parent component template wraps it in a <section> or other landmark.","svelte":"In SvelteKit, <main> must be a direct child of <body> — not nested inside another landmark. Place <main> in +layout.svelte wrapping <slot />, alongside (not inside) <header> and <footer>.","astro":"In .astro layouts, <main> must be a direct child of <body>. Ensure no wrapper <div>, <section>, or other landmark nests the <main> element."},"fix_difficulty_notes":"In SPAs and component-based architectures, <main> is often wrapped by layout shells, provider components, or CSS utility wrappers that may inadvertently introduce a landmark parent. The fix requires understanding which component owns the layout structure — in Next.js it is layout.tsx, in Nuxt layouts/default.vue, in SvelteKit +layout.svelte. Non-landmark <div> wrappers (for CSS Grid/Flexbox) are safe and do not trigger this rule.","guardrails_overrides":{"must_not":["Do not flag <main> wrapped in a non-landmark <div> — plain <div> elements are not landmarks and do not violate this rule.","Do not add role='main' to a <main> element — the implicit role is already 'main' and the attribute is redundant."],"verify":["Confirm no ancestor of <main> has an ARIA role that creates a landmark (header, footer, aside, nav, section with aria-label)."]},"related_rules":[{"id":"landmark-one-main","reason":"Ensure exactly one main landmark exists and that it is at the top level."},{"id":"landmark-no-duplicate-main","reason":"If the main landmark is duplicated, fix both the nesting and the duplication."},{"id":"landmark-banner-is-top-level","reason":"All primary landmarks (banner, main, contentinfo) must be at the top level — fix as a group."},{"id":"landmark-complementary-is-top-level","reason":"Complementary and main landmarks must both be at the top level — fix together."}]},"landmark-no-duplicate-banner":{"category":"structure","fix":{"description":"Ensure only one <header> element (or role='banner') exists at the top level of the page, outside of sectioning elements.","code":"<body>\n  <!-- One top-level header (banner landmark): -->\n  <header>\n    <a href=\"/\" aria-label=\"Acme Corp home\">\n      <img src=\"/logo.svg\" alt=\"Acme Corp\" width=\"120\" height=\"40\">\n    </a>\n    <nav aria-label=\"Primary\">\n      <a href=\"/shop\">Shop</a>\n      <a href=\"/about\">About</a>\n    </nav>\n  </header>\n  <main>\n    <!-- Nested headers inside article/section do NOT create banner landmarks: -->\n    <article>\n      <header>Published on March 15, 2026</header>\n    </article>\n  </main>\n  <footer>...</footer>\n</body>"},"false_positive_risk":"medium","framework_notes":{"react":"In Next.js App Router, the root layout (layout.tsx) should have exactly one <header> at the top level. Page components must not add a second top-level <header> — use <section> or <div> for page-specific header areas.","vue":"In Nuxt, the global <header> belongs in layouts/default.vue. Individual page components must not render a top-level <header> — use <section aria-labelledby='...'>.","angular":"In Angular, app.component.html should contain exactly one top-level <header>. Route components must not add a second <header> at the document root level.","svelte":"In SvelteKit, ensure only one top-level <header> exists per page. If +layout.svelte and +page.svelte both render <header>, one will be a duplicate. Keep <header> only in the layout.","astro":"In .astro files, ensure only one top-level <header> exists per page. If the base layout includes <header>, individual page components must not add another. Use <section> with aria-label for sub-headers."},"fix_difficulty_notes":"A <header> element only creates a banner landmark when it is a direct child of <body> (not nested inside <article>, <aside>, <main>, <nav>, or <section>). axe may flag this when a layout component renders two <header> tags at body level — one for a skip link area and one for the visible site header. Consolidate them into one top-level <header>.","guardrails_overrides":{"must_not":["Do not add aria-label to a second banner landmark as a fix — two labelled banner landmarks still violate this rule. Only one banner is permitted.","Do not flag a <header> inside <article>, <aside>, <section>, or <nav> — it does not create a banner landmark in that context."],"verify":["Confirm exactly one <header> exists as a direct child of <body> (or at body level) in the rendered DOM."]},"related_rules":[{"id":"landmark-no-duplicate-main","reason":"Fix all duplicate landmark violations together — they share the same root cause in layout architecture."},{"id":"landmark-one-main","reason":"Landmark structure issues are often co-located — fix them as a group."},{"id":"landmark-unique","reason":"Unique landmark labels are the fix for duplicate banner violations — add aria-label to distinguish them."},{"id":"landmark-banner-is-top-level","reason":"If the banner is duplicated and one copy is nested incorrectly, fix both the nesting and the duplication together."},{"id":"landmark-no-duplicate-contentinfo","reason":"Fix all duplicate landmark violations together — they share the same root cause in layout architecture."}]},"landmark-no-duplicate-contentinfo":{"category":"structure","fix":{"description":"Ensure the document has at most one contentinfo landmark. Multiple top-level <footer> elements or elements with role='contentinfo' create ambiguity for screen reader users navigating by landmarks.","code":"<!-- Correct: one top-level footer (contentinfo landmark) -->\n<body>\n  <header>...</header>\n  <main>\n    <article>\n      <footer>Article footer — not a contentinfo landmark</footer>\n    </article>\n  </main>\n  <footer><!-- Only this one creates a contentinfo landmark -->\n    <p>&copy; 2026 Company</p>\n  </footer>\n</body>\n\n<!-- Incorrect: two top-level footers -->\n<!-- <body>\n  <main>...</main>\n  <footer>Site links</footer>\n  <footer>Copyright</footer>\n</body> -->"},"false_positive_risk":"medium","framework_notes":{"react":"In Next.js, the root layout.tsx should contain exactly one top-level <footer>. Page components that need footer-like content should use <section> or <div>, not <footer>, to avoid creating a second contentinfo landmark.","vue":"In Nuxt, the global <footer> belongs in layouts/default.vue. Individual page components must not render a second top-level <footer>. Use <div> or <section> for page-specific footer content.","angular":"In Angular, app.component.html should contain exactly one <footer>. Route components must not add a second <footer> at the document root level — use <section> for page-specific bottom content.","svelte":"In SvelteKit, ensure only one top-level <footer> exists per page. Keep <footer> in +layout.svelte only — individual +page.svelte files should use generic containers for page-specific footer content.","astro":"In .astro files, ensure only one top-level <footer> exists per page. If the base layout includes <footer>, page components should not add another."},"fix_difficulty_notes":"A <footer> inside <article>, <section>, or <aside> does not create a contentinfo landmark — it is scoped to that sectioning element. The violation only occurs when two or more <footer> elements exist at the body level (not inside sectioning elements). Consolidate them into one <footer> or move the extra ones inside sectioning elements where they become scoped footers.","guardrails_overrides":{"must_not":["Do not flag a <footer> inside <article>, <section>, or <aside> — it is scoped to that element and does not create a contentinfo landmark.","Do not add aria-label to differentiate two body-level footers as a fix — the rule requires at most one contentinfo landmark."],"verify":["Confirm only one <footer> exists as a direct child of <body> (or at body level) in the rendered DOM."]},"related_rules":[{"id":"landmark-contentinfo-is-top-level","reason":"Duplicate contentinfo landmarks are often caused by incorrect nesting — fix both together."},{"id":"landmark-no-duplicate-banner","reason":"Fix all duplicate landmark violations together — they share the same root cause in layout architecture."},{"id":"landmark-unique","reason":"If duplicate contentinfo landmarks cannot be eliminated, give each a unique aria-label."}]},"landmark-no-duplicate-main":{"category":"structure","fix":{"description":"Ensure only one <main> element (or role='main') exists on the page. If multiple content areas are needed, use <section> with unique aria-labelledby.","code":"<main id=\"main-content\">\n  <!-- all primary page content -->\n  <section aria-labelledby=\"section-a-heading\">\n    <h2 id=\"section-a-heading\">Section A</h2>\n  </section>\n  <section aria-labelledby=\"section-b-heading\">\n    <h2 id=\"section-b-heading\">Section B</h2>\n  </section>\n</main>"},"false_positive_risk":"low","framework_notes":{"react":"In Next.js App Router, <main> belongs in layout.tsx, not in page.tsx. Individual page components render content inside the layout's <main> — never add a second <main> inside a page component.","vue":"In Nuxt, <main> belongs in layouts/default.vue wrapping <slot />. Page components must not add a <main> wrapper.","angular":"In Angular, <main> belongs in app.component.html wrapping <router-outlet>. Route component templates must not contain a second <main>.","svelte":"In SvelteKit, ensure only one <main> element exists per page. Place <main> in the root +layout.svelte wrapping <slot />. Individual +page.svelte files must not add their own <main>.","astro":"In .astro files, ensure only one <main> element exists per page. The base layout should contain the single <main> wrapping <slot />."},"fix_difficulty_notes":"In SPAs, a second <main> commonly appears when a layout component defines one and a page component adds another. The fix is to ensure only the layout component owns the <main> wrapper, and page components render their content inside it without adding a second <main>.","guardrails_overrides":{"must_not":["Do not add aria-label to two <main> elements as a workaround — multiple main landmarks are not permitted regardless of labelling.","Do not use role='main' as a secondary main alongside <main> — both create main landmarks and violate this rule."],"verify":["Confirm exactly one <main> element exists in the rendered DOM."]},"related_rules":[{"id":"landmark-one-main","reason":"landmark-one-main requires exactly one <main> — duplicate main violations are the inverse of the same requirement."},{"id":"landmark-no-duplicate-banner","reason":"Fix all duplicate landmark violations together."},{"id":"landmark-main-is-top-level","reason":"If the main landmark is duplicated, fix both the nesting and the duplication."}]},"landmark-one-main":{"category":"structure","fix":{"description":"Add a <main> landmark wrapping your page content.","code":"<main id=\"main-content\">\n  <h1>Products</h1>\n  <section aria-labelledby=\"featured-heading\">\n    <h2 id=\"featured-heading\">Featured items</h2>\n  </section>\n</main>"},"false_positive_risk":"low","framework_notes":{"react":"Place <main id='main-content'> in the root layout component (app/layout.tsx in Next.js App Router, or the root App component). Do not place <main> in individual page components — it will be missing for routes that render before the layout mounts.","vue":"Add <main id='main-content'> to the root layout component (App.vue or layouts/default.vue in Nuxt), wrapping <router-view /> or <slot />. Nuxt: set it in layouts/default.vue.","angular":"Add <main id='main-content'> in app.component.html wrapping <router-outlet>. This ensures the landmark is present for all routes and the skip link target resolves correctly.","svelte":"In SvelteKit, wrap <slot /> in +layout.svelte with <main id='main-content'>. SvelteKit's layout inheritance ensures every page is wrapped. Never place <main> in individual +page.svelte files.","astro":"Place <main id='main-content'> in your base layout (e.g., layouts/BaseLayout.astro) wrapping the <slot />. Since Astro pre-renders to static HTML, the <main> landmark is always present without hydration delays."},"cms_notes":{"shopify":"Dawn theme uses <main id='MainContent'> in layout/theme.liquid. If building a custom theme, wrap {{ content_for_layout }} in <main>. Never place <main> inside a section template — it only renders when that section is included.","wordpress":"Classic themes should wrap the_content() in <main> inside page.php/single.php. Block themes use <main> in templates/index.html. WordPress core does not add <main> automatically — the theme is responsible.","drupal":"Olivero (the default theme) includes <main> in page.html.twig. Custom themes must ensure page.html.twig wraps {{ page.content }} in <main id='main-content'>. Sub-theme overrides of page.html.twig sometimes lose this landmark."},"fix_difficulty_notes":["SPAs often render `<main>` conditionally — ensure the root layout component (`layout.tsx` in Next.js, `App.vue` in Vue, `app.component.html` in Angular) always wraps page content in `<main>`, not individual page components.","axe may flag SPA routes where `<main>` is rendered client-side after the initial snapshot — ensure it is server-side rendered or present in the initial HTML payload."],"guardrails_overrides":{"must_not":["Do not add <main> to individual page components if the root layout already wraps content in <main> — this creates a duplicate-main violation.","Do not use role='main' on a <div> if a <main> element already exists on the page."],"verify":["Confirm exactly one <main> element exists in the rendered DOM after adding it."]},"related_rules":[{"id":"bypass","reason":"The skip link target (#main-content) should reference the <main> landmark."},{"id":"region","reason":"Adding <main> may resolve orphan-content region violations."},{"id":"landmark-no-duplicate-banner","reason":"Landmark structure issues are often co-located — fix them as a group."},{"id":"landmark-no-duplicate-main","reason":"Duplicate main violations are the inverse of the single <main> requirement — fix together."},{"id":"landmark-main-is-top-level","reason":"Ensure exactly one main landmark exists and that it is at the top level."},{"id":"skip-link","reason":"The skip link target should be the <main> landmark — ensure it exists and has the correct id."}]},"landmark-unique":{"category":"structure","fix":{"description":"Add unique accessible labels to landmarks of the same type using aria-label or aria-labelledby.","code":"<nav aria-label=\"Primary navigation\">\n  <a href=\"/\">Home</a>\n  <a href=\"/shop\">Shop</a>\n  <a href=\"/about\">About</a>\n</nav>\n\n<nav aria-label=\"Breadcrumb\">\n  <ol>\n    <li><a href=\"/\">Home</a></li>\n    <li><a href=\"/shop\">Shop</a></li>\n    <li>Running Shoes</li>\n  </ol>\n</nav>\n\n<nav aria-label=\"Footer links\">\n  <a href=\"/privacy\">Privacy Policy</a>\n  <a href=\"/terms\">Terms of Service</a>\n</nav>"},"false_positive_risk":"low","framework_notes":{"react":"In React, pass the aria-label prop to navigation components: <Nav aria-label='Primary navigation'>. Ensure the component forwards the prop to the native <nav> element via spread or explicit prop.","vue":"In Vue, bind aria-label directly on <nav>: <nav aria-label='Primary navigation'>. Navigation components should accept and forward an aria-label prop to the root <nav>.","angular":"In Angular, use aria-label='Primary navigation' or [attr.aria-label]='navLabel' on <nav> elements. Shared navigation components should accept an @Input() ariaLabel string and bind it.","svelte":"In SvelteKit, if multiple <nav> elements exist, each must have a unique aria-label (e.g., 'Primary navigation', 'Footer navigation'). This applies to all landmarks that appear more than once.","astro":"In .astro files, duplicate landmark types (multiple <nav>, <aside>, etc.) must each have a unique aria-label to distinguish them for screen reader users."},"fix_difficulty_notes":"In component-based apps, duplicate landmarks often come from independently authored components that each render their own <nav> or <aside>. The challenge is coordinating unique labels across components that don't know about each other. Establish a naming convention early (e.g., 'Primary', 'Footer', 'Breadcrumb') and document it in your design system. The label becomes part of the AT announcement: 'Primary navigation, navigation landmark'.","guardrails_overrides":{"must":["If visible text exists as a heading inside the landmark, use aria-labelledby pointing to that heading rather than duplicating the text in aria-label."],"must_not":["Do not use generic labels like 'navigation 1', 'navigation 2' — labels must be descriptive of the landmark's purpose."],"verify":["Confirm all same-type landmarks on the page have unique, descriptive aria-label or aria-labelledby values."]},"related_rules":[{"id":"landmark-no-duplicate-banner","reason":"If duplicate banners exist, add aria-label to each — or eliminate the duplicate."},{"id":"bypass","reason":"Unique landmark labels enhance skip navigation — users can jump directly to a specific landmark."},{"id":"landmark-no-duplicate-contentinfo","reason":"If duplicate contentinfo landmarks cannot be eliminated, give each a unique aria-label."}]},"link-in-text-block":{"category":"color","fix":{"description":"Distinguish links within a block of text from surrounding text using a visual cue beyond color alone (e.g., underline, bold, outline). Users with color vision deficiency cannot rely on color difference alone to identify links (WCAG 1.4.1).","code":"<!-- Before: link distinguished only by color -->\n<p>Read our <a href=\"/terms\" style=\"color: blue; text-decoration: none;\">terms of service</a>.</p>\n\n<!-- After: underline makes the link identifiable without color -->\n<p>Read our <a href=\"/terms\">terms of service</a>.</p>\n<!-- Browser default underline is sufficient -->\n\n<!-- Or use a visible underline + contrast -->\n<style>\n  a { text-decoration: underline; text-underline-offset: 0.2em; }\n</style>"},"false_positive_risk":"medium","framework_notes":{"react":"In Tailwind CSS projects, the 'no-underline' utility on links inside text blocks violates this rule. Use 'underline' or 'decoration-2' instead. In design systems, ensure the link component applies a visible non-color indicator by default.","vue":"In Vue, global CSS resets (normalize.css, Tailwind's preflight) often remove link underlines. Re-add underlines to links within text blocks: a:not([class]) { text-decoration: underline; }. Scoped styles in Vue SFCs may not reach deep enough — check computed styles.","angular":"In Angular Material, links may inherit the Material typography styles that remove underlines. Override in the component stylesheet: a { text-decoration: underline; }. Angular's ViewEncapsulation may prevent global styles from applying — use ::ng-deep cautiously or component-level styles.","svelte":"In Svelte, links within text blocks must be distinguishable by more than just color — use underlines or other visual indicators. Svelte's scoped styles can target a:not(:hover) for default underline styling.","astro":"In .astro files, links within paragraphs must be visually distinct from surrounding text via underline or border, not just color contrast alone."},"fix_difficulty_notes":"The 3:1 contrast ratio between link color and surrounding text color is the alternative to underlines per WCAG 1.4.1 — but meeting this ratio is difficult to verify and unreliable for users with color vision deficiency. The safest approach: always underline links within text blocks. Links in navigation menus, buttons, or clearly distinct UI elements are generally exempt because their context makes them identifiable as interactive.","related_rules":[{"id":"color-contrast","reason":"Links distinguished only by color need sufficient contrast — both rules enforce color-based visual distinction."}],"guardrails_overrides":{"must":["If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."],"must_not":["Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."],"verify":["Confirm link purpose remains clear out of context and in the accessibility tree."]}},"link-name":{"category":"name-role-value","preferred_relationship_checks":["aria-labelledby","aria-label","has-visible-text","presentational-role"],"managed_by_libraries":["radix","react-aria","ariakit"],"fix":{"description":"Use descriptive link text that conveys the destination or purpose. Avoid \"click here\" or \"read more\".","code":"<a href=\"/products\">View our product catalog</a>\n<!-- Avoid: <a href=\"/products\">click here</a> -->"},"false_positive_risk":"low","framework_notes":{"react":"In React Router, use <Link to='/path'>Descriptive text</Link>. For icon links, add aria-label directly: <Link to='/search' aria-label='Search products'>. Avoid wrapping <Link> around empty or icon-only elements without an aria-label.","vue":"In Vue Router, use <RouterLink to='/path'>Descriptive text</RouterLink>. For icon links, add :aria-label='...' on the RouterLink component.","angular":"Use the routerLink directive on native <a> elements: <a routerLink='/path'>Descriptive text</a>. The native <a> carries the correct link role and accessible name automatically.","svelte":"In SvelteKit, use <a href='/path'>Descriptive text</a> — SvelteKit enhances native links for client-side navigation. For icon links, add aria-label directly. Svelte's a11y warnings will flag <a> elements without discernible text.","astro":"In .astro files, use standard HTML <a href='/path'>Descriptive text</a>. Astro does not transform links — they render as-is. For icon links inside framework islands, the island framework's rules apply."},"cms_notes":{"shopify":"Social media icon links in Shopify themes often lack aria-label. In the social-icons snippet, add aria-label='{{ service }} (opens in a new window)' to each <a> element. Navigation menus use {{ link.title }} from the menu editor — verify merchants have set descriptive titles.","wordpress":"WordPress nav menus (wp_nav_menu) use the menu item title as link text. Custom link labels can be empty if the author only sets a URL. Social icon blocks render <a> with SVG — ensure aria-label is set via the block's 'Label' field in the editor.","drupal":"Drupal's Menu system uses the link title field as the accessible name. In Twig, menu links render via menu.html.twig — verify {{ item.title }} is not empty. For icon links in custom blocks, add aria-label via the Attribute object."},"fix_difficulty_notes":["Adding `aria-label` to a link that already has visible text creates a mismatch — voice control users speak the visible text, not the `aria-label`, and activation may fail.","Use `aria-label` only for icon links with no visible text, or use `aria-labelledby` to reference visible content."],"related_rules":[{"id":"button-name","reason":"The same accessible name requirement applies to buttons — fix all interactive element naming together."},{"id":"input-button-name","reason":"The same accessible name requirement applies to <input type=\"button\"> — fix all naming violations together."},{"id":"aria-command-name","reason":"link-name covers native <a> elements — fix all interactive element naming together."},{"id":"identical-links-same-purpose","reason":"Generic link names (link-name) are the root cause of identical-links-same-purpose failures — fix link-name first."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm link purpose remains clear out of context and in the accessibility tree."]}},"list":{"category":"semantics","fix":{"description":"Ensure <ul> and <ol> elements contain only <li> children (and optionally <script> or <template>). Remove or rewrap invalid direct children.","code":"<!-- Before: div inside ul (invalid) -->\n<ul>\n  <div class=\"list-item\">Item 1</div>\n  <div class=\"list-item\">Item 2</div>\n</ul>\n\n<!-- After: proper li elements -->\n<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n</ul>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, mapping an array to list items is straightforward: {items.map(item => <li key={item.id}>{item.name}</li>)}. Never wrap the map in an extra <div> inside <ul> — use React.Fragment or a flat map.","vue":"In Vue, use v-for directly on <li>: <li v-for='item in items' :key='item.id'>{{ item.name }}</li>. Avoid adding a wrapper component between <ul> and <li>.","angular":"In Angular, use *ngFor directly on <li>: <li *ngFor='let item of items'>{{ item.name }}</li>. Component wrappers between <ul> and <li> will introduce invalid children.","svelte":"In Svelte, <ul> and <ol> must only contain <li>, <script>, and <template> as direct children. Component wrappers that add extra elements inside lists break the list structure.","astro":"In .astro files, <ul>/<ol> must contain only <li> children in the rendered HTML. Astro component boundaries can insert wrapper elements — verify the final DOM preserves list structure."},"fix_difficulty_notes":"Some CSS frameworks (Bootstrap, Tailwind) output <div> wrappers inside list elements via JavaScript-rendered components. axe will flag these. Before fixing, check whether the violation is in source HTML or in framework-rendered output — the fix location differs. Also note: a <ul> with role='none' on all <li> children (to remove list semantics) is an intentional pattern and not a violation of this rule.","guardrails_overrides":{"must_not":["Do not add role='list' to a <ul> that has CSS list-style:none removed — Safari does this intentionally and it is a false positive in many cases.","Do not restructure the list purely in HTML source without verifying the final rendered DOM — framework-rendered wrappers may re-introduce the violation."],"verify":["Confirm the rendered DOM (not just source HTML) has only valid list child elements (<li>, role='presentation' wrappers, or <script>/<template>) directly inside the list."]},"related_rules":[{"id":"listitem","reason":"The inverse rule — li elements must be inside a ul/ol. Fix list structure violations together."},{"id":"definition-list","reason":"Both validate list structures — audit all list semantics violations together."}]},"listitem":{"category":"semantics","fix":{"description":"Wrap orphan <li> elements inside a <ul> or <ol> parent, or change the element to a non-list element if list semantics are not intended.","code":"<!-- Before: li without a list parent -->\n<li>Item 1</li>\n<li>Item 2</li>\n\n<!-- After: wrapped in ul -->\n<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n</ul>\n\n<!-- Or if list semantics not intended: -->\n<p>Item 1</p>\n<p>Item 2</p>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, a component that returns <li> must always be rendered inside a <ul> or <ol>. If the component can be used in contexts without a list parent, consider making it return a generic container and letting the parent decide whether to wrap in <ul>.","vue":"In Vue, a <li> component must have a <ul> or <ol> as its direct DOM parent. Vue's component wrapper does not count as a list — verify the rendered HTML structure in DevTools, not just the Vue template.","angular":"In Angular, an <li> component inside <app-list-item> is still a valid <li> in the rendered DOM if the component tag is replaced. Verify the rendered output — Angular component tags are replaced, so check the actual HTML tree.","svelte":"In Svelte, <li> elements must be inside <ul>, <ol>, or role='list'. Component composition that separates list items from their list container will trigger this violation.","astro":"In .astro files, <li> elements must be direct children of <ul>/<ol> in the rendered HTML. When splitting list items across components, verify the parent-child relationship is preserved."},"fix_difficulty_notes":"This often occurs in component-based frameworks when a list item component renders <li> at the root but is used outside a parent list component. The fix is either to ensure the parent always provides a <ul>/<ol> context, or to restructure the component so <li> is not the root element when rendered standalone.","guardrails_overrides":{"must_not":["Do not add role='listitem' to a <li> as a fix — the element already has an implicit listitem role; the issue is the missing parent list.","Do not wrap a standalone <li> in a <ul> as a one-off fix without verifying the full list structure is correct."],"verify":["Confirm the <li> element is a direct child of a <ul> or <ol> in the rendered DOM."]},"related_rules":[{"id":"list","reason":"Inverse rule — fix list/listitem violations together to restore correct list semantics."}]},"marquee":{"category":"sensory","fix":{"description":"Remove all <marquee> elements. The <marquee> element is deprecated in HTML and creates moving content that users cannot pause, which is inaccessible to users with cognitive disabilities and fails WCAG 2.2.2.","code":"<!-- Before: scrolling marquee -->\n<marquee>Breaking news: accessibility matters!</marquee>\n\n<!-- After: static text with optional CSS animation that respects user preferences -->\n<p class=\"news-ticker\" role=\"alert\">Breaking news: accessibility matters!</p>\n<style>\n  .news-ticker { /* static by default */ }\n  @media (prefers-reduced-motion: no-preference) {\n    .news-ticker { animation: scroll-text 10s linear infinite; }\n  }\n  @media (prefers-reduced-motion: reduce) {\n    .news-ticker { animation: none; }\n  }\n</style>"},"false_positive_risk":"low","framework_notes":{"react":"The <marquee> element is not a standard React element and should never be used. If scrolling text is needed, implement it with CSS animations and useReducedMotion() from Framer Motion or a prefers-reduced-motion media query hook.","vue":"In Vue, <marquee> is treated as an unknown HTML element. Replace with a <p> or <div> and use CSS animations that respect prefers-reduced-motion. Nuxt projects should use the usePreferredReducedMotion() composable from VueUse.","angular":"In Angular, replace <marquee> with a component that uses CSS animations controlled by a prefers-reduced-motion check. Use the Angular CDK BreakpointObserver or matchMedia to detect and respect the user's motion preference.","svelte":"The <marquee> element is deprecated HTML — Svelte will render it but it should never be used. Replace with CSS animation that respects @media (prefers-reduced-motion: reduce).","astro":"The <marquee> element should never appear in .astro files. Replace with CSS animation using @media (prefers-reduced-motion: reduce) { animation: none; }."},"fix_difficulty_notes":"This is one of the easiest fixes — simply remove the <marquee> element and replace with static content. The <marquee> element is fully deprecated and unsupported in the HTML spec. If scrolling/ticker functionality is genuinely needed (e.g., a stock ticker), implement it with CSS animations that respect prefers-reduced-motion and include a pause button for manual control.","related_rules":[{"id":"blink","reason":"Both <marquee> and <blink> are deprecated elements causing inaccessible animations — remove both together."}]},"meta-refresh":{"category":"sensory","fix":{"description":"Remove automatic page refresh. If redirecting immediately, a delay of 0 is permitted.","code":"<!-- Remove this: -->\n<!-- <meta http-equiv=\"refresh\" content=\"5; url=...\"> -->\n\n<!-- Instant redirect only (delay=0 is OK): -->\n<meta http-equiv=\"refresh\" content=\"0; url=https://example.com/new-page\">"},"false_positive_risk":"low","framework_notes":{"react":"In Next.js, use redirect() in server components or middleware for redirects, and useRouter().replace() for client-side navigation. Neither uses <meta http-equiv='refresh'>. Never insert a meta refresh tag.","vue":"In Nuxt, use navigateTo() or definePageMeta({ redirect: '/' }) — both produce server or router-level redirects without <meta http-equiv='refresh'>.","angular":"Use the Angular Router service (this.router.navigate() or this.router.navigateByUrl()) for all navigation. Never insert <meta http-equiv='refresh'> into templates or index.html.","svelte":"In SvelteKit, avoid <meta http-equiv='refresh'>. Use SvelteKit's goto() function for programmatic redirects, or throw redirect(301, '/new-url') in load functions for server-side redirects.","astro":"In .astro files, avoid <meta http-equiv='refresh'> for redirects. Use Astro.redirect() in the frontmatter for server-side redirects, or configure redirects in astro.config.mjs."},"fix_difficulty_notes":"Server-side HTTP redirects (301/302) do not use <meta http-equiv='refresh'> and are not flagged by this rule. The violation only occurs when a timed redirect is implemented in the HTML <head>. A delay of 0 (instant redirect) is the only permitted use — it is commonly used for canonical URL normalization and is WCAG-compliant.","guardrails_overrides":{"must_not":["Do not remove <meta http-equiv='refresh' content='0; url=...'> — a delay of 0 is the only permitted use and is WCAG-compliant.","Do not add a JavaScript-based redirect as an alternative without also providing a manual navigation option."],"verify":["Confirm the refresh delay is greater than 0 before treating this as a violation (delay=0 is allowed)."]},"related_rules":[{"id":"no-autoplay-audio","reason":"Both rules involve content that changes without user initiation — timed refresh and autoplay audio are the same class of WCAG 2.2.x timing failure."}]},"meta-viewport":{"category":"sensory","fix":{"description":"Remove user-scalable=no from the viewport meta tag to allow users to zoom.","code":"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"},"false_positive_risk":"low","framework_notes":{"react":"In Next.js App Router, manage the viewport meta via the Metadata API: export const viewport: Viewport = { width: 'device-width', initialScale: 1 }; in layout.tsx. Never set maximumScale: 1 or userScalable: false — these block zoom.","vue":"In Nuxt, set the viewport in nuxt.config.ts: app.head.meta = [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }]. Omit user-scalable=no entirely.","angular":"The viewport meta is in index.html. Remove user-scalable=no if present: <meta name='viewport' content='width=device-width, initial-scale=1'>. Do not add maximum-scale=1 either — it has the same effect.","svelte":"In SvelteKit, the viewport meta tag is in app.html: <meta name='viewport' content='width=device-width, initial-scale=1'>. Never include maximum-scale=1 or user-scalable=no — this prevents pinch-to-zoom.","astro":"In .astro layouts, set the viewport meta tag in <head> without maximum-scale or user-scalable=no restrictions. Users must be able to zoom to at least 200%."},"fix_difficulty_notes":"iOS Safari (10+) ignores user-scalable=no as an accessibility override, but Android browsers may enforce it. Remove it unconditionally — there is no valid accessibility reason to block zoom, and it is explicitly forbidden by WCAG 1.4.4.","related_rules":[{"id":"meta-viewport-large","reason":"meta-viewport checks for user-scalable=no (blocks zoom entirely); meta-viewport-large checks for insufficient maximum-scale."},{"id":"css-orientation-lock","reason":"Both restrict how users can adapt the viewport — fix together for complete WCAG 1.3.4 / 1.4.4 coverage."}],"guardrails_overrides":{"must_not":["Do not use user-scalable=no in any combination — even paired with initial-scale=1.","Do not add maximum-scale=1 as a substitute — it has the same zoom-blocking effect."],"verify":["Confirm the final viewport tag contains neither user-scalable=no nor maximum-scale=1.","Test pinch-to-zoom on a physical device or Chrome DevTools mobile simulation after the fix."]}},"meta-viewport-large":{"category":"sensory","fix":{"description":"Ensure <meta name='viewport'> allows scaling to at least 500% (maximum-scale >= 5 or omit maximum-scale entirely). This is a stricter best-practice check beyond the WCAG AA requirement.","code":"<!-- Best: no maximum-scale restriction at all -->\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\n<!-- Acceptable: maximum-scale is 5 or higher -->\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=10\">\n\n<!-- Violation: maximum-scale below 5 -->\n<!-- <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=2\"> -->"},"false_positive_risk":"low","framework_notes":{"react":"In Next.js App Router, configure viewport via the Metadata API: export const viewport: Viewport = { width: 'device-width', initialScale: 1 }; — omit maximumScale entirely. The Pages Router uses <Head><meta name='viewport' ... /></Head>.","vue":"In Nuxt, set viewport in nuxt.config.ts: app.head.meta = [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }]. Do not include maximum-scale unless it is 5 or higher.","angular":"In Angular, the viewport meta is in index.html. Remove or increase maximum-scale: <meta name='viewport' content='width=device-width, initial-scale=1'>.","svelte":"In SvelteKit's app.html, ensure the viewport meta tag allows scaling to at least 200%. Do not set maximum-scale below 2.0 or user-scalable=no.","astro":"In .astro layouts, the viewport meta tag must allow scaling to at least 200%. Users with low vision rely on pinch-to-zoom for readability."},"fix_difficulty_notes":"This is a best-practice rule that goes beyond the WCAG AA requirement (which only requires not blocking zoom entirely via user-scalable=no or maximum-scale=1). The best-practice threshold is maximum-scale >= 5 (500% zoom). The simplest fix is to omit maximum-scale entirely — there is no valid accessibility reason to cap zoom level. iOS Safari ignores maximum-scale restrictions as an accessibility override, but Android browsers may enforce them.","guardrails_overrides":{"must_not":["Do not set maximum-scale to exactly 2 or 3 as a compromise — the best-practice threshold is 5 (500%). Set to 5 or remove it entirely.","Do not confuse this rule with meta-viewport — this rule fires only on low maximum-scale values, not on user-scalable=no."],"verify":["Confirm maximum-scale is set to 5.0 or higher, or that the maximum-scale parameter is absent entirely from the viewport meta tag."]},"related_rules":[{"id":"meta-viewport","reason":"meta-viewport checks for user-scalable=no (blocks zoom entirely); meta-viewport-large checks for insufficient maximum-scale."},{"id":"avoid-inline-spacing","reason":"Both address WCAG 1.4.4/1.4.12 adaptability — fixing one without the other leaves the same user group affected."}]},"nested-interactive":{"category":"keyboard","managed_by_libraries":["radix","headless-ui","react-aria","ariakit"],"fix":{"description":"Remove or restructure nested interactive elements. Interactive controls (buttons, links, inputs) must not be descendants of other interactive controls.","code":"<!-- Pattern A: <a> wrapping a <button> (card pattern) -->\n<!-- Before: -->\n<a href=\"/product\">\n  Product name\n  <button onclick=\"addToCart()\">Add to cart</button>\n</a>\n<!-- After: stretched-link keeps card clickable without wrapping the button -->\n<div style=\"position:relative\">\n  <a href=\"/product\" style=\"position:absolute;inset:0\" aria-label=\"Product name\"></a>\n  <span>Product name</span>\n  <button onclick=\"addToCart()\">Add to cart</button>\n</div>\n\n<!-- Pattern B: role=\"option\" / role=\"listitem\" with focusable descendants -->\n<!-- ARIA spec forbids interactive children inside option/listitem roles. -->\n<!-- Before: -->\n<div role=\"option\" aria-selected=\"true\">\n  <a href=\"/detail\">View details</a>\n</div>\n<!-- After: remove href/tabIndex from descendants; parent handles keyboard interaction -->\n<div role=\"option\" aria-selected=\"true\" tabindex=\"0\" onkeydown=\"handleSelect(event)\">\n  <span>View details</span>\n</div>"},"false_positive_risk":"low","framework_notes":{"react":"In React card components, avoid wrapping the entire JSX tree in <Link> or <a> when it contains interactive children. Use a CSS stretched-link pattern: position the <a> absolutely with ::after covering the card, while the button stays outside the <a> in DOM order.","vue":"In Vue, the same pattern applies — <RouterLink> wrapping a card with buttons inside is invalid HTML. Use the stretched-link CSS technique or restructure the component so interactive children are siblings, not descendants, of the link.","angular":"In Angular, wrapping <mat-card> or a template outlet in [routerLink] creates the same issue. Set [routerLink] on a visible text element or use a CSS overlay approach to preserve DOM structure.","svelte":"In Svelte, avoid nesting interactive elements (e.g., <button> inside <a>, <a> inside <button>). Svelte does not warn about nested interactives — verify manually. This commonly occurs when wrapping card components in links.","astro":"In .astro files, nested interactive elements (links inside buttons, buttons inside links) render to static HTML. This is invalid HTML and confuses AT — restructure to avoid nesting."},"fix_difficulty_notes":["The evidence shows the OUTER container — identify the nested focusable element first. Search the component for `tabIndex`, `href=`, `<button`, `<a `, or `role=\"button\"` inside the flagged selector.","Most common pattern: a card wrapped in `<a>` containing a `<button>` — the HTML spec forbids interactive content inside `<a>`. Solutions: (1) stretched-link CSS pattern (position `<a>` with `::after` overlay, keep button outside `<a>` in DOM order); (2) keep elements separate and handle card-level clicks via JS.","COMPOUND CASE — link-as-button co-occurring: if the nested `<a>` calls `e.preventDefault()` and runs a JS action, two violations are stacked.","Remove only the invalid ARIA attributes from the container (`role`, `aria-selected`); preserve ALL `onClick`/`onKeyDown` handlers that contain non-ARIA conditional logic (drag state, position offsets, gesture thresholds, business flags).","Fix the link separately: if it never navigates, convert to `<button type=\"button\">`; if it sometimes navigates, keep `<a href>` and remove `e.preventDefault()`. Never delete a handler because the ARIA around it was wrong."],"related_rules":[{"id":"focus-order-semantics","reason":"Restructuring nested interactives changes focus order — verify semantics and tab sequence remain logical after the fix."},{"id":"scrollable-region-focusable","reason":"Scrollable containers inside interactive elements can create compounded focusability issues — audit together."},{"id":"aria-text","reason":"role=text forbids focusable descendants — aria-text violations often co-occur with nested interactive elements."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"no-autoplay-audio":{"category":"sensory","fix":{"description":"Remove the autoplay attribute from audio elements, or provide a clearly visible pause/stop control that activates before 3 seconds of audio plays.","code":"<!-- Remove autoplay: -->\n<audio controls src=\"background.mp3\"></audio>\n\n<!-- Background video: muted is acceptable -->\n<video autoplay muted loop src=\"bg-video.mp4\"></video>\n\n<!-- If autoplay with sound is required, provide an immediate stop control: -->\n<audio autoplay id=\"bg-audio\" src=\"jingle.mp3\"></audio>\n<button onclick=\"document.getElementById('bg-audio').pause()\" style=\"position:fixed;top:1rem;right:1rem\">Stop audio</button>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, never set the autoPlay prop on <audio> for content with meaningful audio. Background decorative video with autoPlay muted is acceptable. Trigger audio playback programmatically via user interaction events, not in useEffect on mount.","vue":"In Vue, avoid :autoplay='true' on audio elements. Trigger audio playback via @click handlers. Background video with autoplay muted as static attributes is acceptable.","angular":"In Angular, do not bind [autoplay]='true' on audio elements. Trigger .play() calls inside (click) event handlers, not in ngOnInit lifecycle hooks.","svelte":"In Svelte, avoid autoplay on <audio> and <video> elements. If autoplay is needed, provide a visible pause/stop button and ensure the media is muted initially or lasts less than 3 seconds.","astro":"In .astro files, <audio autoplay> and <video autoplay> render to static HTML. Avoid autoplay, or ensure media is muted and under 3 seconds. For auto-playing media, add a pause control via a framework island."},"fix_difficulty_notes":"axe detects the autoplay attribute but cannot determine whether the audio is muted — muted autoplay is acceptable. A <video autoplay muted loop> for decorative background video does not violate WCAG 1.4.2. The violation is specifically audio content that plays without user interaction and cannot be immediately stopped. Browser autoplay policies (especially Chrome) often block autoplay with sound anyway — verify the audio actually plays in the target browser before treating it as a confirmed violation.","cms_notes":{"shopify":"Dawn's video section (sections/video.liquid) uses autoplay with muted=true for hero videos — this is intentional and does not violate WCAG 1.4.2. If a merchant-selected video plays audio without muting, add muted to the <video> tag and expose a schema setting for a pause control. Shopify's native video_section block sets autoplay muted by default.","wordpress":"WordPress's Cover block and Video block allow autoplay. The block editor does not enforce muting on autoplay. If a user enables autoplay and the video has audio, add a pause/stop control using the block's 'Poster image' option and a Play/Pause button via JavaScript. The Advanced Video plugin enforces muted autoplay.","drupal":"Drupal's Media embed and Video formatter can autoplay via display settings. In the media_video_embed_field module, the 'autoplay' setting should always pair with 'muted'. Override the video formatter template in your theme to ensure autoplay is never set without muted."},"guardrails_overrides":{"must_not":["Do not flag <video autoplay muted> or <audio autoplay muted> as violations — muted autoplay does not violate WCAG 1.4.2.","Do not remove autoplay from decorative background video that is muted — verify the muted attribute is absent before treating as a confirmed violation."],"verify":["Confirm the media element does not have the muted attribute before treating this as a violation.","Confirm the audio actually auto-plays in the target browser — browser autoplay policies may block it silently."]},"related_rules":[{"id":"audio-caption","reason":"Auto-playing audio also needs captions if it conveys information — fix both together."},{"id":"video-caption","reason":"Auto-playing video with audio needs captions — address media accessibility holistically."},{"id":"meta-refresh","reason":"Both are WCAG 2.2.x timing failures that disrupt users without warning — fix together for complete criterion coverage."}]},"object-alt":{"category":"text-alternatives","fix":{"description":"Add an aria-label to every <object> element describing its content.","code":"<object data=\"chart.svg\" type=\"image/svg+xml\" aria-label=\"Bar chart: Q1 2024 sales by region\">\n  Fallback text for unsupported browsers\n</object>"},"false_positive_risk":"low","framework_notes":{"react":"In React, <object> is rarely used. If embedding SVGs, prefer <img> with alt or an inline SVG with role='img' and aria-label. For PDF embeds, consider react-pdf with an accessible fallback link.","vue":"In Vue, <object> renders as standard HTML. Add aria-label directly. For SVG content, prefer <img :src='svgPath' :alt='description'> or inline SVG with role='img'. Vue does not validate ARIA on <object>.","angular":"In Angular, use [attr.aria-label]='objectDescription' on <object>. For PDF or media embeds, consider replacing <object> with <iframe title='...'> which has broader AT support.","svelte":"In Svelte, add aria-label directly: <object data={src} type={type} aria-label='Description'>. Svelte's a11y warnings do not cover <object> — rely on axe-core for detection.","astro":"In .astro files, <object> renders as static HTML. Add aria-label directly in the template. Consider replacing with <img> or <iframe> for better cross-browser accessibility support."},"fix_difficulty_notes":"The <object> element is rarely used in modern development — most use cases (SVG, PDF, media) are better served by <img>, <video>, <embed>, or <iframe>. If <object> is used, the aria-label must describe what the embedded content communicates to the user (not just the file type or format). If the object is purely decorative, consider replacing it with an accessible equivalent (e.g., an <img> with alt='').","related_rules":[{"id":"image-alt","reason":"The same text alternative requirement applies to <img> — audit both together."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"p-as-heading":{"category":"semantics","fix":{"description":"Replace <p> elements styled to look like headings with actual heading elements (<h1>–<h6>) at the appropriate level in the document hierarchy.","code":"<!-- Before: paragraph styled as heading -->\n<p class=\"text-2xl font-bold\">Section Title</p>\n<p>Content paragraph...</p>\n\n<!-- After: semantic heading -->\n<h2>Section Title</h2>\n<p>Content paragraph...</p>"},"false_positive_risk":"medium","framework_notes":{"react":"In component libraries (shadcn/ui, Radix), heading-like components sometimes render as <p> by default. Use the 'as' prop or the 'asChild' pattern to change the rendered element: <Text as='h2' className='text-2xl font-bold'>Section Title</Text>.","vue":"In Vue UI kits (Vuetify, Nuxt UI), check if the heading-like component supports a 'tag' prop: <VTitle tag='h2'>Section Title</VTitle>. Without it, add the heading element directly in the template.","angular":"In Angular, heading-like components often render as <div> or <p>. Use the component's selector or a host element attribute to change the rendered tag, or apply the heading element directly in the template rather than relying on the component's default tag.","svelte":"In Svelte, do not style <p> elements to look like headings — use proper <h1>-<h6> elements. Svelte does not warn about this — it is a content structure issue caught by axe-core.","astro":"In .astro files, use semantic heading elements instead of styled paragraphs. This is particularly common in CMS-driven content where formatting is applied inline."},"fix_difficulty_notes":"axe detects this heuristically — it flags <p> elements with large, bold, or otherwise heading-like CSS properties. This can produce false positives on intro paragraphs, pull quotes, or callout boxes that are intentionally styled large. Verify visually: does this text introduce a new section of content? If yes, it should be a heading. If it is decorative, a caption, or a lead-in paragraph, it may not need to be a heading despite the styling.","cms_notes":{"shopify":"Shopify's rich text sections (sections/rich-text.liquid) render WYSIWYG content from the theme editor. Merchants sometimes use paragraph text formatted as bold+large instead of heading elements. In Dawn, educate merchants using the heading type selector in the rich text block. Alternatively, restrict the rich text schema to heading blocks only for section titles.","wordpress":"The Classic Editor's TinyMCE lets authors select paragraph text and apply visual formatting (bold, font-size) instead of using the heading format. The block editor's Paragraph block similarly allows font-size overrides. Educate authors to use the Heading block. The Accessibility Checker plugin by Equalize Digital flags this pattern in the editor.","drupal":"Drupal's CKEditor (both CKEditor 4 and 5) allows authors to select paragraph text and apply heading-like styling. Restrict the allowed formats in the text format configuration (admin/config/content/formats) to prevent authors from using <p> with font-size or bold styling. Use CKEditor's Heading plugin to enforce semantic heading use."},"guardrails_overrides":{"must_not":["Do not convert a <p> to a heading element purely because it is styled large — verify it semantically introduces a new section before changing the element.","Do not change the heading level of the new element without verifying it fits the existing heading hierarchy."],"verify":["Confirm the element introduces a new section of content (not a decorative or stylistic element) before converting it to a heading.","Confirm the heading level chosen fits the document outline without skipping levels."]},"related_rules":[{"id":"heading-order","reason":"After converting p-as-heading to real headings, verify the heading hierarchy is correct — new headings must fit the existing order."},{"id":"page-has-heading-one","reason":"If converting a p-as-heading introduces a new h1, verify it is the only h1 on the page."}]},"page-has-heading-one":{"category":"semantics","fix":{"description":"Search for an `<h1>` in the frontend source files first. If found, fix it there. If no `<h1>` exists in the source — because content is authored in a CMS, database, or backend — mark this finding as **Out of scope — content is not managed in frontend source** and do not propose a code fix. Report it to the user instead.","code":"<h1>Wireless Noise-Cancelling Headphones</h1>"},"false_positive_risk":"low","framework_notes":{"react":"In Next.js App Router, place the h1 directly in page.tsx, not in a client component that renders conditionally or inside a Suspense loading state — axe evaluates the initial HTML payload before client hydration fills the loading boundary.","vue":"In Nuxt, ensure the page-level h1 is in the <template> of the page component so it is included in the server-rendered HTML. Avoid placing the h1 exclusively inside an async component that renders after the initial paint.","angular":"With Angular Universal (SSR), the h1 must be part of the component template, not inserted via JavaScript after hydration. Verify the h1 is visible in the pre-rendered HTML using View Source.","svelte":"In SvelteKit, ensure every page has exactly one <h1>. Place it in the +page.svelte component (not +layout.svelte, since the h1 should be page-specific). The layout should define the page structure; individual pages define their h1.","astro":"In .astro files, each page should have exactly one <h1> that describes the page content. Place it in the page component, not the layout, since the heading should be unique per page."},"fix_difficulty_notes":["In SPAs and SSR frameworks, the `h1` may be injected client-side after the initial DOM snapshot axe evaluates — ensure it is server-side rendered or present in the initial HTML payload.","In Next.js, place the `h1` directly in the page component, not behind a loading state."],"related_rules":[{"id":"heading-order","reason":"Fixing the missing h1 anchors the heading hierarchy and may cascade-resolve heading-order violations."},{"id":"p-as-heading","reason":"If converting a p-as-heading introduces a new h1, verify it is the only h1 on the page."},{"id":"document-title","reason":"Page title and h1 together describe the same page — fix both to give screen reader users consistent context."}]},"presentation-role-conflict":{"category":"aria","fix":{"description":"Ensure elements with role='presentation' or role='none' do not have global ARIA attributes or tabindex that would conflict with their presentational purpose. These conflicts cause inconsistent behavior across screen readers.","code":"<!-- Before: conflicting attributes on a presentational element -->\n<table role=\"presentation\" aria-label=\"Layout table\" tabindex=\"0\">\n  <tr><td>Content</td></tr>\n</table>\n\n<!-- After: remove conflicting attributes -->\n<table role=\"presentation\">\n  <tr><td>Content</td></tr>\n</table>\n\n<!-- Or remove the presentational role if ARIA/tabindex are needed -->\n<table aria-label=\"Data summary\" tabindex=\"0\">\n  <tr><td>Content</td></tr>\n</table>"},"false_positive_risk":"low","framework_notes":{"react":"In React, components that spread props onto a root element may inadvertently add aria-label, aria-describedby, or tabIndex to an element with role='presentation'. Audit the rendered DOM to ensure presentational elements have no global ARIA attributes.","vue":"In Vue, attribute inheritance (inheritAttrs: true by default) can pass global ARIA attributes from a parent component down to a child with role='presentation'. Set inheritAttrs: false on presentational wrapper components.","angular":"In Angular, host bindings on components with role='presentation' may add tabindex or aria-label via @HostBinding. Audit host bindings and remove any that conflict with the presentational role.","svelte":"In Svelte, role='presentation' or role='none' removes an element's semantics from the accessibility tree. If the element has interactive children or a tabindex, the role creates a conflict — AT ignores the element but its children are still reachable.","astro":"In .astro files, role='presentation' on an element with focusable children creates an AT conflict. The role hides the element but children remain interactive — restructure to avoid the conflict."},"fix_difficulty_notes":"When role='presentation' or role='none' is set, the element is removed from the accessibility tree. Adding global ARIA attributes (aria-label, aria-describedby, aria-live) or tabindex creates a conflict: the element tries to be both invisible and interactive to AT. The fix is to either remove the conflicting attributes (if the element is truly presentational) or remove role='presentation' (if the element needs to be accessible). Screen readers resolve this conflict differently — some honor the role, others honor the ARIA attributes.","related_rules":[{"id":"aria-prohibited-attr","reason":"Both rules address ARIA attributes that should not be present on the element — fix together."}],"guardrails_overrides":{"must":["Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"region":{"category":"structure","fix":{"description":"Wrap all visible content in semantic landmark elements.","code":"<header>\n  <a href=\"/\">Acme Corp</a>\n  <nav aria-label=\"Primary\">...</nav>\n</header>\n<main>\n  <h1>Shop all products</h1>\n</main>\n<footer>\n  <p>&copy; 2026 Acme Corp</p>\n</footer>"},"false_positive_risk":"medium","framework_notes":{"react":"Use semantic JSX elements: <header>, <main>, <nav>, <aside>, <footer> instead of <div> wrappers. In Next.js App Router, landmarks naturally fall into layout.tsx (header/footer) and page.tsx (main content).","vue":"Use semantic HTML5 elements in Vue templates — they work identically to plain HTML. In Nuxt, place <header> and <footer> in the layout component and wrap <slot /> in <main>.","angular":"Angular adds a custom element wrapper (<app-root>, <app-header>) — ensure the semantic landmark element (<header>, <main>) is inside the component template, not expected to be provided by the custom wrapper.","svelte":"In SvelteKit, define landmarks in +layout.svelte: <header>, <main> wrapping <slot />, <footer>. Svelte renders standard HTML — landmarks work identically to plain HTML. Ensure components don't add extra wrapper <div>s that orphan content outside landmarks.","astro":"Define landmarks in your base layout (BaseLayout.astro): <header>, <main> wrapping <slot />, <footer>. Astro islands render inside the layout's landmark structure — island content is automatically inside the correct landmark."},"cms_notes":{"shopify":"Shopify themes define landmarks in layout/theme.liquid. Dawn uses <header>, <main id='MainContent'>, and a footer section. Sections injected via {{ content_for_layout }} land inside <main>. Custom snippets rendered outside the main layout structure can create orphan content.","wordpress":"Classic themes define landmarks in header.php (<header>), footer.php (<footer>), and wrap the_content() in <main>. Block themes use template parts for header/footer. Sidebar widgets in <aside> are standard. Verify no content renders between </header> and <main> without a landmark.","drupal":"Olivero defines landmarks in page.html.twig using Drupal's region system. Content outside defined regions (e.g., custom block placements) can create orphan content. Ensure all regions in the .info.yml file map to semantic landmark elements in the page template."},"fix_difficulty_notes":["Decorative separators, spacer divs, and background containers do not need to be inside landmarks — only meaningful visible content requires landmark wrapping.","Review each flagged element before adding a landmark."],"guardrails_overrides":{"must_not":["Do not wrap decorative elements (spacers, background divs, separator lines) in landmark regions — only meaningful visible content requires landmark wrapping.","Do not add role='region' without also adding an aria-label or aria-labelledby — an unlabelled role='region' does not create a named landmark."],"verify":["Confirm the orphan content is meaningful visible content that users would want to navigate to directly."]},"related_rules":[{"id":"landmark-one-main","reason":"Adding a <main> landmark is typically the primary fix for orphan content."},{"id":"skip-link","reason":"Proper landmark regions reduce the need for skip links but do not replace them — both mechanisms should coexist."}]},"role-img-alt":{"category":"text-alternatives","fix":{"description":"Add an accessible name via aria-label or aria-labelledby to every element with role='img', including SVGs, CSS-styled elements, and custom image components that use role='img' to convey visual meaning.","code":"<!-- SVG with role='img' and aria-label -->\n<svg role=\"img\" aria-label=\"Company logo\" viewBox=\"0 0 100 100\">\n  <circle cx=\"50\" cy=\"50\" r=\"40\" fill=\"#333\" />\n</svg>\n\n<!-- Decorative SVG: use role='presentation' or aria-hidden -->\n<svg role=\"presentation\" aria-hidden=\"true\" viewBox=\"0 0 100 100\">\n  <circle cx=\"50\" cy=\"50\" r=\"40\" fill=\"#333\" />\n</svg>\n\n<!-- Div with role='img' (e.g., CSS background image) -->\n<div role=\"img\" aria-label=\"Sunset over mountains\"\n  style=\"background-image: url('sunset.jpg'); width: 300px; height: 200px;\"></div>"},"false_positive_risk":"low","framework_notes":{"react":"In React, inline SVGs should have role='img' and aria-label on the root <svg> element. For SVG icon components, accept an aria-label prop and apply it to the SVG. Decorative SVGs should have aria-hidden='true'. Libraries like @heroicons/react and lucide-react handle this correctly when passing aria-label.","vue":"In Vue, SVG components should accept an aria-label prop. Use role='img' on the root <svg> and v-bind:aria-label. Decorative icons should use aria-hidden='true'. Nuxt Image generates <img> tags (not role='img') — this rule applies to custom SVG and CSS image components.","angular":"In Angular, SVG icon components (including MatIcon) should have role='img' and an accessible name. MatIcon supports [attr.aria-label] directly. For custom SVG components, bind [attr.aria-label]='imageLabel' and set role='img' on the host element.","svelte":"In Svelte, inline SVG components should accept an aria-label prop: <svg role='img' aria-label={label}>. For decorative SVGs, use aria-hidden='true'. Svelte's compiler warns about missing alt/aria-label on <img> but does not warn about <svg> — enforce this via code review or eslint-plugin-svelte.","astro":"In .astro files, inline SVGs rendered in the template need role='img' and aria-label manually. Astro's <Image /> component handles <img> tags, not SVGs. For SVG icons inside framework islands, the island framework's rules apply."},"cms_notes":{"shopify":"Shopify themes use SVG icons extensively via {% render 'icon-cart' %} snippets. These snippets typically render <svg> without role='img' or aria-label. Add aria-hidden='true' for decorative icons, or pass an aria-label variable from the including template for meaningful icons.","wordpress":"WordPress social icons block and navigation block use SVGs. Core blocks include aria-hidden='true' on decorative icons. Custom blocks using inline SVGs must add role='img' and aria-label. The wp_kses_post() sanitizer allows SVG ARIA attributes by default.","drupal":"Drupal's icon modules and themes render SVGs in Twig. Use {{ attributes.setAttribute('role', 'img').setAttribute('aria-label', label|t) }} on the <svg> element. Decorative icons should use aria-hidden='true' via {{ attributes.setAttribute('aria-hidden', 'true') }}."},"fix_difficulty_notes":"The most common trigger: inline SVGs without an accessible name. Every SVG that conveys meaning should have role='img' and aria-label. Decorative SVGs (icons next to text, dividers, backgrounds) should have aria-hidden='true' instead. CSS background images conveying meaning need a wrapper with role='img' and aria-label — the background-image itself is invisible to AT.","related_rules":[{"id":"image-alt","reason":"Both rules require images to have accessible names — fix all image alternatives together."},{"id":"svg-img-alt","reason":"svg-img-alt specifically targets SVG elements with role='img' — they overlap with this rule."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label.","Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).","Do not add composite widget roles unless the full keyboard interaction model is implemented."],"verify":["Confirm computed accessible name matches expected spoken phrase.","Confirm role, state, and name are exposed correctly in accessibility tooling."]}},"scope-attr-valid":{"category":"tables","fix":{"description":"Ensure the scope attribute is used correctly on tables: scope must only appear on <th> elements and its value must be 'row', 'col', 'rowgroup', or 'colgroup'.","code":"<!-- Correct: scope on <th> elements -->\n<table>\n  <thead>\n    <tr>\n      <th scope=\"col\">Name</th>\n      <th scope=\"col\">Email</th>\n      <th scope=\"col\">Role</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th scope=\"row\">Jane Doe</th>\n      <td>jane@example.com</td>\n      <td>Admin</td>\n    </tr>\n  </tbody>\n</table>\n\n<!-- Invalid: scope on <td> -->\n<!-- <td scope=\"row\">Jane</td> -->"},"false_positive_risk":"low","framework_notes":{"react":"In React table components, ensure scope is only passed to <th> elements, not <td>. When using dynamic rendering (mapping over columns), conditionally apply scope based on whether the cell is a header: scope={isHeader ? 'col' : undefined}.","vue":"In Vue, bind :scope only on <th> elements: <th :scope=\"isRowHeader ? 'row' : 'col'\">. Do not use scope on <td> — it is invalid HTML and ignored by screen readers.","angular":"In Angular Material mat-table, headers are rendered via mat-header-cell. Add scope='col' to column headers and scope='row' to row headers manually — Angular Material does not set scope automatically.","svelte":"In Svelte, the scope attribute on <th> must be 'row', 'col', 'rowgroup', or 'colgroup'. Svelte does not validate attribute values — verify manually.","astro":"In .astro files, scope on <th> must use valid values (row, col, rowgroup, colgroup). This is rendered to static HTML — incorrect values are not caught at build time."},"fix_difficulty_notes":"The scope attribute tells screen readers which data cells a header applies to. scope='col' means the header applies to the cells below it; scope='row' means it applies to cells to its right. Using scope on <td> is invalid HTML — move the scope to the appropriate <th>. For complex tables with multi-level headers, use the headers attribute on <td> elements instead of scope.","guardrails_overrides":{"must_not":["Do not add scope to <td> elements — scope is only valid on <th>. Move the scope attribute to the <th> for that column or row.","Do not use scope='col' on a row header or scope='row' on a column header — verify the header's actual orientation before assigning a scope value."],"verify":["Confirm scope is only present on <th> elements, not <td>, in the rendered HTML."]},"related_rules":[{"id":"td-headers-attr","reason":"For complex tables where scope is insufficient, the headers attribute on <td> provides explicit header associations."},{"id":"th-has-data-cells","reason":"Headers must have data cells associated with them — fix scope and header-data relationships together."},{"id":"empty-table-header","reason":"Scope on an empty <th> is meaningless — ensure headers have text content before adding scope."}]},"scrollable-region-focusable":{"category":"keyboard","managed_by_libraries":["swiper","embla-carousel","splide"],"fix":{"description":"Make scrollable regions keyboard-accessible by adding tabindex=\"0\" and a descriptive label.","code":"<div tabindex=\"0\" role=\"region\" aria-label=\"Product comparison table\" style=\"overflow: auto;\">\n  <table>\n    <caption>Feature comparison</caption>\n    <thead><tr><th>Feature</th><th>Basic</th><th>Pro</th></tr></thead>\n    <tbody><tr><td>Storage</td><td>5 GB</td><td>100 GB</td></tr></tbody>\n  </table>\n</div>"},"false_positive_risk":"medium","framework_notes":{"react":"Use a ref to check if the element actually overflows before adding tabIndex={0}. In React: const ref = useRef(); if (ref.current.scrollHeight > ref.current.clientHeight) add tabIndex. Avoid adding tabIndex to containers managed by virtual scroll libraries (react-window, react-virtual) — they handle keyboard internally.","vue":"Use a template ref and check scrollHeight > clientHeight in onMounted before binding :tabindex='0'. CSS overflow containers created by v-show or transition wrappers may be flagged falsely — verify the element has genuine scroll content.","angular":"Use @ViewChild and check nativeElement.scrollHeight > nativeElement.clientHeight in ngAfterViewInit. CDK ScrollingModule (VirtualScrollViewport) handles keyboard natively — do not add tabindex to its host element.","svelte":"In Svelte, scrollable containers (overflow:auto/scroll) must be keyboard-accessible via tabindex='0' and have an accessible name via aria-label or role='region' with aria-label.","astro":"In .astro files, scrollable regions are rendered in static HTML. Add tabindex='0' and aria-label to make them keyboard-accessible. For scrollable content inside framework islands, manage focus within the island."},"fix_difficulty_notes":"This rule fires on any element with overflow:auto or overflow:scroll — including CSS clip containers, masked elements, and carousels that overflow visually but have no actual scrollable content. Before adding tabindex='0', confirm the element is genuinely scrollable (has overflow content) and that keyboard users need to scroll it. Adding tabindex='0' to a non-scrollable container adds unnecessary tab stops.","cms_notes":{"shopify":"Dawn's product media slider and slideshow section use Swiper.js with overflow:hidden on the wrapper and overflow:visible on the slide track. axe may flag the slide wrapper. Swiper renders its own keyboard-accessible navigation via the keyboard option — set keyboard: { enabled: true } in the Swiper config and do not add tabindex='0' to the track element.","wordpress":"WordPress themes using the SplideJS, Swiper, or Owl Carousel libraries may trigger this rule on carousel wrappers. The Splide and Swiper libraries have built-in keyboard navigation — enable it via the keyboard or a11y configuration options rather than adding manual tabindex. The WooCommerce product gallery uses Flexslider, which needs separate a11y configuration.","drupal":"Drupal's Views carousels (using Slick or Splide) may render scrollable wrapper elements. Slick Carousel (slick_carousel module) has an accessibility option in its configuration — enable it to add proper keyboard navigation and ARIA attributes rather than manually adding tabindex."},"guardrails_overrides":{"must_not":["Do not add tabindex='0' to elements that have overflow CSS but no actual scrollable content — verify the element genuinely overflows before making it focusable.","Do not add tabindex='0' alone without also ensuring the scrollable region has an accessible name (aria-label) so screen reader users understand what they are navigating."],"verify":["Confirm the element actually scrolls (has overflow content that exceeds its dimensions) before treating this as a violation requiring tabindex='0'."]},"related_rules":[{"id":"aria-hidden-focus","reason":"Both affect keyboard focus — audit all focusability violations together to avoid conflicts."},{"id":"focus-order-semantics","reason":"Scrollable regions may need tabindex='0' for keyboard access but also need an appropriate role."},{"id":"nested-interactive","reason":"Nested interactive elements inside scroll containers create keyboard traps — fix both together."}]},"select-name":{"category":"forms","preferred_relationship_checks":["aria-labelledby","explicit-label","label","select-name","aria-label","implicit-label"],"fix":{"description":"Associate every <select> element with a visible <label>.","code":"<label for=\"country\">Country</label>\n<select id=\"country\" name=\"country\">\n  <option value=\"us\">United States</option>\n</select>"},"false_positive_risk":"low","framework_notes":{"react":"Use htmlFor on <label> pointing to the select's id. For custom select components (react-select, Headless UI Listbox), pass the accessible name via their label prop or aria-labelledby — these components use the combobox/listbox ARIA pattern internally.","vue":"Native <select> uses standard <label for='id'>. For custom select components (Headless UI Listbox, Floating Vue Select), pass a label via their label prop — the component handles aria-labelledby internally.","angular":"In Angular Material, <mat-select> is labeled via <mat-label> inside <mat-form-field>. For standalone <select> elements, use <label [for]='selectId'>Label</label>.","svelte":"Use standard <label for='id'> with native <select>. For custom select components (Svelte Select, Melt UI), verify they expose a label prop or accept aria-labelledby. Svelte's compiler warns about missing labels on interactive elements.","astro":"In .astro files, use standard HTML <label for='id'> with <select>. For select elements inside framework islands, the island framework's label rules apply."},"cms_notes":{"shopify":"Cart and product variant selectors in Shopify themes often use visually hidden labels. Verify the <label> is present in the DOM (not just a placeholder). In Dawn, variant selectors use <label class='visually-hidden'>. Custom themes must replicate this pattern.","wordpress":"WordPress form plugins (Contact Form 7, WPForms, Gravity Forms) generate <select> with labels. Verify plugin-generated markup includes proper <label for='...'> associations. The Comment form's sort dropdown often lacks a label.","drupal":"Drupal's Form API generates labels for select elements when #title is set. In Views exposed filters, select filters automatically get labels from the filter title. Custom Twig form templates must preserve the <label> element — do not remove it for visual reasons."},"fix_difficulty_notes":"Custom dropdown replacements (div/button combinations) are the main challenge — they bypass native label association entirely. If the team uses a custom dropdown, it must implement role='listbox', aria-expanded, and aria-labelledby pointing to the visible label. Migrating to native <select> is the simplest fix but may face design pushback. When that happens, ensure the custom component's ARIA contract is fully implemented.","related_rules":[{"id":"label","reason":"The same label association pattern applies — fix label rule to resolve both."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"server-side-image-map":{"category":"text-alternatives","fix":{"description":"Replace server-side image maps (using ismap on <img>) with client-side image maps (<map> + <area>) or alternative navigation that does not depend on precise pointer coordinates.","code":"<!-- Before: server-side image map (inaccessible) -->\n<a href=\"/map-handler\">\n  <img src=\"navigation.png\" ismap alt=\"Site navigation\">\n</a>\n\n<!-- After: client-side image map with alt text per area -->\n<img src=\"navigation.png\" usemap=\"#nav-map\" alt=\"Site navigation\">\n<map name=\"nav-map\">\n  <area shape=\"rect\" coords=\"0,0,100,50\" href=\"/home\" alt=\"Home\">\n  <area shape=\"rect\" coords=\"100,0,200,50\" href=\"/about\" alt=\"About\">\n  <area shape=\"rect\" coords=\"200,0,300,50\" href=\"/contact\" alt=\"Contact\">\n</map>"},"false_positive_risk":"low","framework_notes":{"react":"Server-side image maps are extremely rare in React applications. If the ismap attribute is present on an <img>, replace the entire pattern with individual <Link> components styled with CSS Grid or positioned over the image. This is more maintainable and accessible.","vue":"In Vue, replace server-side image maps with positioned <router-link> components or a client-side <map>. Server-side image maps send cursor coordinates to the server, which is incompatible with SPA routing.","angular":"In Angular, replace the ismap pattern with Angular Router links positioned over the image, or use a client-side <map> with <area> elements. Server-side coordinate handling is incompatible with Angular's client-side routing.","svelte":"Server-side image maps (<img ismap>) are inaccessible — replace with client-side image maps (<map>/<area>) or interactive SVGs. Server-side maps are rare in modern Svelte apps.","astro":"In .astro files, server-side image maps should not be used. Replace with client-side <map>/<area> or interactive SVG elements with proper ARIA labels."},"fix_difficulty_notes":"Server-side image maps send mouse click coordinates to the server, which determines the action. This is completely inaccessible to keyboard users (no coordinates are sent with Enter key) and screen reader users (no alternative text for regions). The fix: replace with a client-side image map (<map>/<area>) with alt text per area, or better yet, replace with individual links positioned via CSS.","related_rules":[{"id":"area-alt","reason":"If replacing with a client-side image map, ensure every <area> has alt text."}]},"skip-link":{"category":"keyboard","fix":{"description":"Ensure all skip links have a focusable target. A skip link (typically 'Skip to main content') must point to an element that exists in the DOM and can receive focus, usually the <main> element with an id attribute.","code":"<!-- Skip link in the header: -->\n<body>\n  <a href=\"#main-content\" class=\"skip-link\">Skip to main content</a>\n  <header>...</header>\n  <main id=\"main-content\" tabindex=\"-1\">\n    <h1>Page title</h1>\n    ...\n  </main>\n  <footer>...</footer>\n</body>\n\n<!-- CSS for visually hidden skip link (visible on focus): -->\n<!--\n.skip-link {\n  position: absolute;\n  left: -9999px;\n  top: auto;\n  width: 1px;\n  height: 1px;\n  overflow: hidden;\n}\n.skip-link:focus {\n  position: static;\n  width: auto;\n  height: auto;\n  overflow: visible;\n  padding: 0.5rem 1rem;\n  background: #000;\n  color: #fff;\n  z-index: 9999;\n}\n-->"},"false_positive_risk":"medium","framework_notes":{"react":"In Next.js App Router, add the skip link in the root layout.tsx before <header>. Set tabIndex={-1} on <main id='main-content'> so it can receive focus when the skip link is activated. Some browsers require tabindex='-1' for non-interactive elements to be focusable via fragment navigation.","vue":"In Nuxt, add the skip link in layouts/default.vue before <header>. Add tabindex='-1' and id='main-content' to the <main> element. Ensure the skip link is the first focusable element in the DOM.","angular":"In Angular, add the skip link in app.component.html before <header>. Use [tabIndex]='-1' on <main id='main-content'>. Angular's router may re-render the main content area on navigation — ensure the id persists across route changes.","svelte":"In SvelteKit, add the skip link in +layout.svelte as the first child element. Set tabindex='-1' on the <main> target. SvelteKit's client-side navigation does not break skip links since the layout persists across routes.","astro":"Place the skip link in BaseLayout.astro as the first element in <body>. Since Astro renders static HTML, the skip link target is always present. Add tabindex='-1' to <main> for browsers that require it for fragment navigation."},"cms_notes":{"shopify":"Dawn includes a skip link targeting #MainContent. Custom themes must ensure the target element (id='MainContent') exists and has tabindex='-1'. The skip link must be in layout/theme.liquid, not in a section — sections may not render on all pages.","wordpress":"The Underscores (_s) starter theme includes a working skip link in header.php. Many premium themes remove or break it. Verify the target element (#content or #main) exists, has tabindex='-1', and receives focus on activation. Block themes need the skip link in the header template part.","drupal":"Drupal renders a skip link via the 'Skip to main content' region. Olivero includes it by default. Custom themes must ensure the skip-link region is rendered in page.html.twig and the target (typically <main>) has id='main-content' and tabindex='-1'."},"fix_difficulty_notes":"The skip link target must meet two conditions: (1) the element with the matching id must exist in the DOM, and (2) it must be focusable. Native interactive elements are focusable by default; non-interactive elements like <main> or <div> require tabindex='-1' to receive programmatic focus. In SPAs, the target element may not exist during initial render if content is loaded asynchronously — ensure the target is rendered before the skip link can be activated.","related_rules":[{"id":"bypass","reason":"Skip links are the primary mechanism for satisfying the bypass blocks requirement (WCAG 2.4.1)."},{"id":"landmark-one-main","reason":"The skip link target should be the <main> landmark — ensure it exists and has the correct id."},{"id":"region","reason":"Proper landmark regions reduce the need for skip links but do not replace them — both mechanisms should coexist."}],"guardrails_overrides":{"must":["If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."],"must_not":["Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."],"verify":["Confirm link purpose remains clear out of context and in the accessibility tree."]}},"summary-name":{"category":"name-role-value","fix":{"description":"Add discernible text content to every <summary> element so screen readers can announce its purpose. The <summary> serves as the visible heading and toggle control for a <details> disclosure widget.","code":"<!-- Before: empty summary -->\n<details>\n  <summary></summary>\n  <p>Additional information here.</p>\n</details>\n\n<!-- After: summary with descriptive text -->\n<details>\n  <summary>More information about shipping</summary>\n  <p>We offer free shipping on orders over $50.</p>\n</details>"},"false_positive_risk":"low","framework_notes":{"react":"In React, <summary> elements with dynamic content like <summary>{title}</summary> render empty if title is undefined. Guard with: {title && <details><summary>{title}</summary>...</details>}. Accordion components (Radix Collapsible, Headless UI Disclosure) manage this automatically.","vue":"In Vue, <summary>{{ title }}</summary> renders empty if title is falsy. Use v-if='title' on the <details> or provide a fallback string. Headless UI and PrimeVue accordion components handle this internally.","angular":"In Angular, <summary>{{ title }}</summary> renders empty if title is undefined. Use *ngIf='title' on the <details> element or provide a default string. Angular CDK Accordion manages accessible names automatically.","svelte":"In Svelte, <summary> elements inside <details> must have visible text content that describes the disclosed section. Svelte does not warn about empty <summary> — add descriptive text.","astro":"In .astro files, <summary> must contain visible text in the static HTML. This serves as the accessible name for the disclosure widget."},"fix_difficulty_notes":"The fix is to add descriptive text content to the <summary> element. In CMS-driven content, the issue often occurs when an author creates a <details> block but leaves the summary empty. The text should describe what the disclosure widget reveals when expanded — not a generic label like 'Details' or 'More'.","related_rules":[{"id":"button-name","reason":"<summary> acts as a toggle button — it requires an accessible name by the same principle as button-name."},{"id":"empty-heading","reason":"In CMS content, empty <summary> and empty headings often occur together — authors leave both fields blank. Fix both in the same content audit."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"svg-img-alt":{"category":"text-alternatives","fix":{"description":"Add an accessible name to informative SVGs using role='img' and aria-label. For decorative SVGs, use aria-hidden='true'.","code":"<!-- Informative SVG (icon conveying meaning): -->\n<svg role=\"img\" aria-label=\"Shopping cart — 3 items\" focusable=\"false\">\n  <!-- svg paths -->\n</svg>\n\n<!-- Decorative SVG (visual only, adjacent text explains it): -->\n<svg aria-hidden=\"true\" focusable=\"false\">\n  <!-- svg paths -->\n</svg>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, SVG components commonly strip accessibility attributes. Add role='img' and aria-label directly on the <svg> element: <svg role='img' aria-label='Close' aria-hidden={undefined}>. Icon libraries like Heroicons and Lucide expose aria-hidden and aria-label props.","vue":"In Vue, pass aria-hidden='true' or aria-label as attributes on the <svg> component. Most Vue icon libraries (unplugin-icons, vue-feather) accept these as standard HTML attributes.","angular":"In Angular Material, <mat-icon> renders an SVG or ligature — it sets aria-hidden by default. For standalone SVG components, use [attr.aria-label]='label' and [attr.aria-hidden]='isDecorative'.","svelte":"In Svelte, <svg> elements that convey meaning need role='img' and aria-label or <title> as the first child. Decorative SVGs should have aria-hidden='true'. Svelte's compiler warns about <img> without alt but not <svg> without labels.","astro":"In .astro files, meaningful <svg> elements need role='img' and an accessible name. Astro's <Image /> component handles <img> tags only — SVGs must be labeled manually."},"fix_difficulty_notes":"Most SVGs in UI are decorative (icons next to visible button text, background illustrations). axe may flag them as missing an alt even when the adjacent text is sufficient. The decision is: does this SVG convey meaning that is NOT expressed in adjacent visible text? If yes → aria-label. If no → aria-hidden='true'. Never add aria-label that duplicates adjacent text — this creates redundant announcements.","cms_notes":{"shopify":"Shopify themes use {% render 'icon-cart' %}, {% render 'icon-close' %}, and similar snippets that render raw <svg> without aria attributes. For decorative icons (with accompanying visible button text), add aria-hidden='true' to the snippet's <svg> root. For standalone icon buttons (no visible text), pass an aria_label variable from the including template to the snippet.","wordpress":"WordPress core's Social Icons block (Gutenberg) adds aria-hidden='true' to SVG icons by default. Custom blocks using inline SVG must add role='img' and aria-label for informative icons, or aria-hidden='true' for decorative ones. The SVG Sanitizer used in wp_kses_post allows aria attributes.","drupal":"Drupal themes render SVG icons via Twig include. Use {{ attributes.setAttribute('aria-hidden', 'true') }} for decorative icons, or {{ attributes.setAttribute('role', 'img').setAttribute('aria-label', label|t) }} for informative icons. Icon modules like Iconify for Drupal apply aria-hidden automatically when used as decorative."},"related_rules":[{"id":"image-alt","reason":"The same alt text requirement applies to <img> — fix all alt text violations together."},{"id":"image-redundant-alt","reason":"When adding aria-label to SVGs, avoid duplicating visible adjacent text."},{"id":"input-image-alt","reason":"The same alt text requirement applies to <input type=\"image\"> — fix all alt text violations together."},{"id":"role-img-alt","reason":"svg-img-alt specifically targets SVG elements with role='img' — they overlap with this rule."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"tabindex":{"category":"keyboard","fix":{"description":"Remove positive tabindex values. Use tabindex=\"0\" to include in natural tab order, tabindex=\"-1\" to exclude.","code":"<!-- Include in natural tab order: -->\n<div role=\"button\" tabindex=\"0\">Focusable element</div>\n<!-- Programmatically focusable only: -->\n<div tabindex=\"-1\">Focus via script only</div>"},"false_positive_risk":"low","framework_notes":{"react":"In JSX, the attribute is camelCase: tabIndex={0} or tabIndex={-1}. Never use positive integers. For programmatically managed focus (e.g., opening a modal), call element.focus() instead of relying on tabIndex values greater than 0.","vue":"Use :tabindex='0' or tabindex='-1' in Vue templates. Do not expose a tabindex prop that accepts positive integers — validate the value at the component level.","angular":"Use [tabIndex]='value' for dynamic binding, ensuring only 0 or -1 are bound. The Angular CDK FocusTrap handles sequential focus management within dialogs without requiring positive tabindex values.","svelte":"In Svelte, avoid tabindex values greater than 0 — they disrupt the natural tab order. Use tabindex='0' for custom interactive elements and tabindex='-1' for programmatic focus targets only.","astro":"In .astro files, tabindex values render to static HTML. Never use tabindex > 0. For custom interactive elements, use tabindex='0' and add keyboard event handlers via a framework island."},"fix_difficulty_notes":"Positive tabindex values (tabindex='1', tabindex='2') create a separate focus sequence that runs before the natural DOM order. All positive-tabindex elements are visited first, then everything else. This almost always breaks focus flow. Remove all positive tabindex values and reorder the DOM instead if a different focus sequence is needed.","related_rules":[{"id":"focus-order-semantics","reason":"Both rules address focus order issues — fix tabindex values and semantic roles together."}],"guardrails_overrides":{"must_not":["Do not assign tabindex > 0 — this creates a separate focus sequence that runs before natural DOM order and breaks keyboard navigation.","Do not use positive tabindex as a workaround for DOM order issues — reorder the DOM instead."],"verify":["Confirm no tabindex values greater than 0 remain in the affected file.","Tab through the modified element to confirm it appears in logical, predictable focus order."]}},"table-duplicate-name":{"category":"tables","fix":{"description":"Remove the summary attribute or change the caption text so the table caption and summary do not contain the same text.","code":"<!-- Remove summary entirely (deprecated in HTML5) -->\n<table>\n  <caption>Sales data by region and quarter — columns are quarters Q1–Q4, rows are regions</caption>\n  ...\n</table>\n\n<!-- Or if summary must remain, use different text: -->\n<table summary=\"Use arrow keys to navigate rows and columns.\">\n  <caption>Sales data by region and quarter</caption>\n  ...\n</table>"},"false_positive_risk":"low","framework_notes":{"react":"In React table components, avoid passing both caption and summary props with the same content. Remove the summary attribute entirely — it is deprecated.","vue":"In Vue, do not bind :summary on <table>. Use <caption> for all table descriptions.","angular":"In Angular, remove [attr.summary] bindings from table components. Migrate to <caption> with descriptive text or aria-describedby pointing to an adjacent description.","svelte":"In Svelte, remove the deprecated summary attribute from <table> elements. Use <caption> as the sole table description. If you must keep both a <caption> and a summary, ensure their text is different.","astro":"In .astro files, remove the deprecated summary attribute from <table> elements. Use <caption> as the sole table description. The summary attribute is a legacy HTML4 pattern that should not appear in modern Astro templates."},"fix_difficulty_notes":"The summary attribute is deprecated in HTML5 and should not be used in new code. The preferred pattern is to put all necessary description in the <caption> element. If legacy code uses both, the simplest fix is to remove the summary attribute entirely. For complex tables requiring navigation instructions, use aria-describedby pointing to a visible description paragraph adjacent to the table.","related_rules":[{"id":"table-fake-caption","reason":"If both a <caption> and aria-label exist, they must not duplicate each other."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"table-fake-caption":{"category":"tables","fix":{"description":"Replace any first-row fake caption (a <td> spanning all columns) with a proper <caption> element as the first child of <table>. Screen readers do not associate a spanning <td> with the table as a label.","code":"<!-- Before: fake caption using first row -->\n<table>\n  <tr>\n    <td colspan=\"3\"><strong>Quarterly Sales</strong></td>\n  </tr>\n  <tr>\n    <th>Region</th><th>Q1</th><th>Q2</th>\n  </tr>\n  <tr>\n    <td>North</td><td>$100k</td><td>$120k</td>\n  </tr>\n</table>\n\n<!-- After: proper caption element -->\n<table>\n  <caption>Quarterly Sales</caption>\n  <thead>\n    <tr>\n      <th>Region</th><th>Q1</th><th>Q2</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>North</td><td>$100k</td><td>$120k</td>\n    </tr>\n  </tbody>\n</table>"},"false_positive_risk":"medium","framework_notes":{"react":"In React table components, add a <caption> element as the first child of <table>. UI libraries (Tanstack Table, AG Grid React) may not render a <caption> by default — add it manually in the table wrapper or use the library's caption/title slot.","vue":"In Vue, add <caption> as the first child of the <table> element in your template. Vuetify's v-data-table uses a title slot — configure it to render as a proper <caption> for data tables.","angular":"In Angular Material, mat-table does not include a <caption> element by default. Add a <caption> element inside the <table mat-table> element. For CDK Table, include the <caption> in the table template.","svelte":"In Svelte, do not use <td colspan> as a table caption. Use the proper <caption> element inside <table> for the table's accessible name.","astro":"In .astro files, tables should use <caption> for their title, not a spanning <td> in the first row."},"fix_difficulty_notes":"The <caption> element must be the first child of <table>. It is announced by screen readers as the table's name, enabling users to understand the table's purpose before navigating its cells. CSS can be used to style or visually reposition the caption (caption-side: bottom). Never use visibility:hidden or display:none — use the sr-only/visually-hidden pattern if the caption must be visible only to AT.","related_rules":[{"id":"table-duplicate-name","reason":"If both a <caption> and aria-label exist, they must not duplicate each other."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"target-size":{"category":"keyboard","fix":{"description":"Increase small interactive elements to a minimum target size of 24×24 CSS pixels (WCAG 2.5.8). Use 44×44 px or larger for touch interfaces.","code":"/* Minimum WCAG 2.2 AA target size */\n.btn, a, [role=\"button\"] {\n  min-width: 24px;\n  min-height: 24px;\n}\n\n/* Recommended for touch: */\n.btn {\n  min-width: 44px;\n  min-height: 44px;\n  padding: 0.5rem 1rem;\n}"},"false_positive_risk":"medium","framework_notes":{"react":"In React, icon-only buttons from component libraries (shadcn/ui, Radix, Chakra) often render below 24px. Add min-w-6 min-h-6 (Tailwind) or min-width/min-height in CSS. For touch targets, use min-w-11 min-h-11 (44px). Radix's IconButton defaults to small sizes — override via className.","vue":"In Vue, Vuetify's icon buttons default to 36px (sufficient), but custom icon buttons may not. Ensure min-width and min-height are set. PrimeVue's Button with icon-only mode may render small — verify with DevTools.","angular":"Angular Material's mat-icon-button defaults to 40px (sufficient). Custom icon buttons or mat-mini-fab (40px) meet the minimum. Verify third-party component libraries meet the 24px minimum — inspect computed size in DevTools.","svelte":"In Svelte, there are no built-in size constraints on interactive elements. Ensure all buttons, links, and inputs have min-width: 24px and min-height: 24px. For touch interfaces, use 44px. Apply sizes in a global stylesheet to catch all interactive elements.","astro":"In .astro files, target sizes depend entirely on CSS. Ensure icon-only buttons and small links in the base layout meet the 24px minimum. Framework islands inherit page CSS — verify the computed size of interactive elements inside hydrated islands."},"fix_difficulty_notes":"WCAG 2.5.8 provides an exception for inline text links within a sentence (e.g., 'see our privacy policy') where sufficient spacing around the link satisfies the criterion. axe may flag these — verify whether the exception applies before adding padding that could break the text flow.","guardrails_overrides":{"must_not":["Do not add padding to inline text links within a paragraph to meet the target size — the WCAG 2.5.8 inline exception allows these to be smaller if surrounding spacing is sufficient.","Do not increase font-size to pad target size without confirming the design allows it — use min-width/min-height with padding instead."],"verify":["Confirm the element is a standalone interactive control (not an inline link within text) before applying the target size fix.","Measure the computed size of the interactive element in DevTools — axe uses the bounding box, not just the text content area."]},"related_rules":[]},"td-has-header":{"category":"tables","fix":{"description":"Associate every non-empty <td> in a multi-row/multi-column data table with a <th> header cell. Use <th> elements for column and row headers, and add scope or headers attributes for complex table structures.","code":"<!-- Simple table: use <th> with scope -->\n<table>\n  <caption>Employee Directory</caption>\n  <thead>\n    <tr>\n      <th scope=\"col\">Name</th>\n      <th scope=\"col\">Department</th>\n      <th scope=\"col\">Extension</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>Jane Doe</td>\n      <td>Engineering</td>\n      <td>1234</td>\n    </tr>\n  </tbody>\n</table>\n\n<!-- Complex table with row and column headers -->\n<table>\n  <caption>Quarterly Revenue</caption>\n  <thead>\n    <tr><th></th><th scope=\"col\">Q1</th><th scope=\"col\">Q2</th></tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th scope=\"row\">North</th><td>$100k</td><td>$120k</td>\n    </tr>\n  </tbody>\n</table>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, dynamic table components must render <th> elements for headers, not <td> with styling. Use scope='col' on column headers and scope='row' on row headers. Tanstack Table renders headers as <th> by default — verify the rendered output.","vue":"In Vue, ensure the table header row uses <th> not <td>. Vuetify's v-data-table renders column headers as <th> automatically. For custom tables, add scope='col' to each <th> in the <thead>.","angular":"Angular Material's mat-table uses mat-header-cell, which renders as <th> with role='columnheader'. Verify the rendered HTML includes proper scope attributes. For native HTML tables in Angular, add scope='col' or scope='row' to <th> elements.","svelte":"In Svelte data table components, ensure every <td> is associated with a <th> via the table structure or the headers attribute. Complex tables with merged cells need explicit headers attributes.","astro":"In .astro files, table cells must be associated with header cells. For simple tables, proper <th>/<td> structure is sufficient. For complex tables, use the headers attribute."},"fix_difficulty_notes":"This rule triggers on 'large' tables (more than 3 rows and 3 columns) where data cells are not associated with headers. The most common fix: convert the first row from <td> to <th scope='col'> and the first column from <td> to <th scope='row'>. For complex tables with multi-level headers, use the headers attribute on <td> to explicitly reference <th id> values. Avoid merged cells (colspan/rowspan) when possible — they complicate header association significantly.","guardrails_overrides":{"must_not":["Do not add role='presentation' or role='none' to the table to suppress this violation — this removes the table semantics and harms AT users who rely on table navigation."],"verify":["Confirm the table is a data table (not a layout table) before applying header fixes — layout tables should use role='presentation' instead.","Confirm the table is not in an empty/loading state that is causing axe to find no data cells — guard tables to only display headers when data is present."]},"related_rules":[{"id":"th-has-data-cells","reason":"th-has-data-cells verifies headers have associated data; td-has-header verifies data cells have associated headers — fix both together."},{"id":"td-headers-attr","reason":"For complex tables, the headers attribute on <td> must reference valid <th> id values."}]},"td-headers-attr":{"category":"tables","fix":{"description":"Ensure every ID referenced in a td's headers attribute matches an existing th element in the same table.","code":"<table>\n  <thead>\n    <tr>\n      <th id=\"col-name\">Name</th>\n      <th id=\"col-dept\">Department</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td headers=\"col-name\">Alice</td>\n      <td headers=\"col-dept\">Engineering</td>\n    </tr>\n  </tbody>\n</table>"},"false_positive_risk":"low","framework_notes":{"react":"In React, generate table IDs programmatically: const colId = `col-${column.key}`; <th id={colId}> and <td headers={colId}>. Ensure IDs are unique if multiple table instances render on the same page.","vue":"In Vue, bind unique IDs: :id='`col-${col.key}`' on <th> and :headers='`col-${col.key}`' on <td>. Use a table-scoped unique prefix if multiple tables exist.","angular":"In Angular, generate IDs in the component: colId = (col: Column) => `col-${col.key}`; and bind [attr.id]='colId(col)' on th and [attr.headers]='colId(col)' on td.","svelte":"In Svelte, the headers attribute on <td> must reference valid <th> IDs in the same table. When using dynamic table rendering, ensure header IDs are consistent with cell references.","astro":"In .astro files, the headers attribute on <td> must reference <th> elements by id within the same table. Verify references in the rendered static HTML."},"fix_difficulty_notes":"The headers attribute is only needed for complex tables where a single cell spans multiple headers or the column/row relationship is ambiguous. For simple tables (one header row, one header column), use <th scope='col'> and <th scope='row'> instead — it is simpler and better supported across AT. Only use the headers attribute when scope is insufficient.","guardrails_overrides":{"must_not":["Do not add the headers attribute to simple tables — use <th scope='col'> and <th scope='row'> instead, which have broader AT support.","Do not reference ids that belong to <th> elements in a different table — the headers attribute must reference <th> within the same table."],"verify":["Confirm every id referenced in a headers attribute exists in the DOM and belongs to a <th> element in the same table."]},"related_rules":[{"id":"th-has-data-cells","reason":"Fix td-headers-attr and th-has-data-cells together — they are complementary table structure rules."},{"id":"empty-table-header","reason":"The headers attribute references <th> elements by id — empty headers make these references meaningless."},{"id":"scope-attr-valid","reason":"For complex tables where scope is insufficient, the headers attribute on <td> provides explicit header associations."},{"id":"td-has-header","reason":"For complex tables, the headers attribute on <td> must reference valid <th> id values."}]},"th-has-data-cells":{"category":"tables","fix":{"description":"Ensure every <th> element has at least one associated data cell (<td>). Remove header cells for empty columns or convert them to <td> if they contain data rather than labels.","code":"<table>\n  <thead>\n    <tr>\n      <th scope=\"col\">Name</th>\n      <th scope=\"col\">Role</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>Alice</td>\n      <td>Engineer</td>\n    </tr>\n  </tbody>\n</table>"},"false_positive_risk":"medium","framework_notes":{"react":"In React, render a fallback when the data array is empty: if (!rows.length) return <p>No results found.</p>. Do not render the <table> with headers and an empty <tbody>.","vue":"In Vue, use v-if='rows.length' on the <table> element. Provide an empty-state <p> or <div> with v-else outside the table.","angular":"In Angular, use *ngIf='rows.length' on the <table> element and provide an alternative empty-state template with *ngIf='!rows.length'.","svelte":"In Svelte, every <th> must have associated data cells (<td>) in the table. Empty rows or columns with only headers trigger this violation — remove unused headers.","astro":"In .astro files, <th> elements must be associated with <td> cells in the rendered table. Headers without data cells are meaningless and should be removed."},"fix_difficulty_notes":"This rule commonly fires on dynamically rendered tables that show an empty state (loading spinner or 'No data' row). axe flags the <th> elements as having no data cells when the table body is empty or renders a colspan'd message. Guard the table to only display headers when data is present, or use a non-table element for the empty state.","guardrails_overrides":{"must_not":["Do not remove <th> elements that are legitimately waiting for data — guard the table to hide headers during empty state instead."],"verify":["Confirm the table is not in a loading or empty state during the scan — re-test with actual data rows present.","Confirm the <td> cells that correspond to the flagged <th> are in the same table scope, not in a sibling or child table."]},"related_rules":[{"id":"td-headers-attr","reason":"Fix table structure rules together — td-headers-attr and th-has-data-cells are complementary."},{"id":"empty-table-header","reason":"Headers without text and headers without associated data cells are related structural issues — fix together."},{"id":"scope-attr-valid","reason":"Headers must have data cells associated with them — fix scope and header-data relationships together."},{"id":"td-has-header","reason":"th-has-data-cells verifies headers have associated data; td-has-header verifies data cells have associated headers — fix both together."}]},"valid-lang":{"category":"language","fix":{"description":"Use a valid BCP 47 language code on any element with a lang attribute.","code":"<p lang=\"es\">Hola mundo</p>\n<blockquote lang=\"fr\">Citation en français</blockquote>"},"false_positive_risk":"low","framework_notes":{"react":"Add the lang attribute to HTML elements in JSX: <p lang='es'>Hola</p>. Works identically to plain HTML — no special React syntax needed.","vue":"Use lang='es' as a standard attribute in Vue templates. For dynamic language content, bind it: <p :lang='contentLang'>{{ text }}</p>.","angular":"Use [attr.lang]='locale' for dynamic language switching on inline content, or lang='es' as a static attribute for fixed foreign-language passages.","svelte":"In Svelte, any element with a lang attribute must use a valid BCP 47 tag. This applies to inline language overrides like <span lang='fr'>Bonjour</span>.","astro":"In .astro files, all lang attributes (on any element) must use valid BCP 47 tags. This includes the root <html lang> and any inline language overrides."},"fix_difficulty_notes":"This rule checks inline lang attributes on child elements (e.g., <p lang='es'>), not the root <html>. The most common mistake is copying locale codes from i18n libraries (e.g., 'en_US' with underscore) — only hyphenated BCP 47 tags are valid (e.g., 'en-US', 'es', 'fr-CA'). Verify each value against https://www.iana.org/assignments/language-subtag-registry/.","cms_notes":{"shopify":"Shopify's Translate & Adapt app and third-party translation apps (Langify, Weglot) inject translated content as page overlays or replace DOM text. Weglot wraps translated content in <span> elements with a lang attribute — ensure it uses valid BCP 47 codes (e.g., 'fr' not 'fr_FR'). Verify via the Weglot dashboard's language code settings.","wordpress":"WPML and Polylang inject lang attributes on translated content blocks. WPML uses ISO 639-1 codes with underscore separators (e.g., 'fr_FR') in PHP — the Twig/HTML output must convert these to hyphenated BCP 47 format. Use WPML's wpml_active_languages API to retrieve properly formatted language tags.","drupal":"Drupal's Language module tags content blocks with lang attributes from the content's language assignment. Language IDs configured in /admin/config/regional/language must use valid BCP 47 tags. Custom Twig templates that output {{ node.langcode.value }} directly may produce underscore-format codes — convert using str_replace('_', '-', langcode)."},"related_rules":[{"id":"html-has-lang","reason":"The root <html> lang attribute must be set before child lang attributes are meaningful."},{"id":"html-lang-valid","reason":"The same BCP 47 validity requirement applies to the root lang attribute."}]},"video-caption":{"category":"text-alternatives","fix":{"description":"Add a <track kind='captions'> inside every <video> element. Captions must cover all speech and meaningful audio.","code":"<video controls>\n  <source src=\"presentation.mp4\" type=\"video/mp4\">\n  <track kind=\"captions\" src=\"presentation.vtt\" srclang=\"en\" label=\"English\" default>\n  <track kind=\"captions\" src=\"presentation-es.vtt\" srclang=\"es\" label=\"Español\">\n</video>"},"false_positive_risk":"low","framework_notes":{"react":"In React, include <track> as a child of <video>. React warns if <track> lacks a key prop when rendered in a list. Use the crossOrigin prop (camelCase) if serving captions from a different domain.","vue":"In Vue, nest <track> inside <video> in the template. For dynamically loaded captions, use :src='captionUrl'. Note that Vue does not reload <track> on src change alone — recreate the video element when switching sources.","angular":"In Angular, include static or dynamic <track> elements inside the <video> template. For dynamically switching caption languages, use [attr.src] binding and reload the video source programmatically.","svelte":"In Svelte, <video> elements must have <track kind='captions'> for synchronized captions. Svelte does not warn about missing video captions — add them manually.","astro":"In .astro files, <video> elements need <track kind='captions'> in the static HTML. For video players inside framework islands, ensure the island component includes caption tracks."},"fix_difficulty_notes":"axe cannot verify whether existing captions are accurate or synchronized — it only detects the presence of a <track kind='captions'> element. A <track> pointing to an empty or inaccurate VTT file technically passes axe but still violates WCAG 1.2.2. Always review caption content manually. For YouTube/Vimeo embeds inside <iframe>, this rule does not apply — the embedded player's caption controls are the platform's responsibility.","cms_notes":{"shopify":"Shopify's video section renders <video> elements using the native HTML5 player. Dawn does not add <track> elements by default. Add a section schema setting for a caption file URL and include <track kind='captions' src='{{ section.settings.caption_src }}' srclang='en' label='English' default> in the section template when the setting is non-empty.","wordpress":"WordPress's Video block renders a native <video> element. The block editor does not natively support <track> — use a plugin like Able Player or Video.js WordPress Plugin for accessible captioning. For self-hosted videos, add a 'Captions' field to the media attachment and render it in the block template.","drupal":"Drupal's Media module for local video does not automatically add <track> elements. Use the Video.js player integration (videojs_media module) which supports WebVTT caption tracks via the Media source configuration. Alternatively, add <track> manually in the video--*.html.twig template using a file field on the media entity."},"related_rules":[{"id":"audio-caption","reason":"Both require media captions — fix all media accessibility violations together."},{"id":"no-autoplay-audio","reason":"Auto-playing video with audio needs captions — address media accessibility holistically."}],"guardrails_overrides":{"must":["If visible text exists, preserve label-in-name: accessible name must include the visible label."],"must_not":["Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."],"verify":["Confirm computed accessible name matches expected spoken phrase."]}},"cdp-autoplay-media":{"category":"multimedia","fix":{"description":"Remove the autoplay attribute from media elements, or ensure they are muted and provide visible controls so users can pause or stop playback.","code":"<!-- Video: remove autoplay or add muted + controls -->\n<video controls muted>\n  <source src=\"video.mp4\" type=\"video/mp4\">\n  <track kind=\"captions\" src=\"video.vtt\" srclang=\"en\" label=\"English\" default>\n</video>\n\n<!-- Audio: remove autoplay and add controls -->\n<audio controls>\n  <source src=\"audio.mp3\" type=\"audio/mpeg\">\n</audio>\n\n<!-- If autoplay is required (e.g. background video), always mute it -->\n<video autoplay muted loop playsinline aria-hidden=\"true\">\n  <source src=\"background.mp4\" type=\"video/mp4\">\n</video>"},"false_positive_risk":"low","framework_notes":{"react":"In React, remove the autoplay prop or replace with autoPlay={false}. For background videos that must autoplay, add muted and aria-hidden={true}. Never autoplay audio — it is disorienting for screen reader users.","vue":"In Vue, remove the autoplay attribute from <video> or <audio> templates. For declarative video backgrounds, bind :autoplay=\"false\" or omit the attribute. Muted background videos should use autoplay muted playsinline.","angular":"In Angular, remove autoplay from the template or set [attr.autoplay]=\"null\" to force removal. For video players driven by a VideoService, expose a controls toggle in the component API.","svelte":"In Svelte, remove autoplay from the <video> or <audio> element. Svelte does not add autoplay by default — track it at the component level. Muted background videos should use autoplay muted playsinline.","astro":"In .astro files, remove the autoplay attribute from static <video>/<audio> HTML. For framework island video players, configure autoplay=false in the component props interface."},"cms_notes":{"shopify":"Dawn theme video sections include an autoplay toggle in section settings. Disable it via the theme editor or set the autoplay option to false in the section JSON schema. Background video sections should always have muted set.","wordpress":"Gutenberg Video block has an Autoplay toggle in the block settings sidebar. Disable it. For embedded videos via shortcodes or page builders, locate the autoplay parameter and set it to 0 or false.","drupal":"Media fields with video display formatters may expose an autoplay setting in the field formatter configuration. Disable in Structure > Content Types > Manage Display."},"fix_difficulty_notes":"Removing autoplay is a single attribute change. The main complexity is identifying all media elements across templates, CMS-generated content, and third-party embeds. Third-party iframes (YouTube, Vimeo) require appending autoplay=0 to the embed URL.","related_rules":[{"id":"audio-caption","reason":"Autoplaying audio also needs captions if it conveys information."},{"id":"video-caption","reason":"Autoplaying video must have captions."}],"guardrails_overrides":{"must_not":["Do not add autoplay muted as a \"fix\" for audio elements — muted audio serves no purpose and still violates the spirit of WCAG 1.4.2."],"verify":["Confirm no media element starts playing on page load without user interaction.","If muted background video is used, confirm it has aria-hidden=\"true\" and conveys no meaningful information."]}},"cdp-missing-main-landmark":{"category":"structure","fix":{"description":"Add a <main> landmark element wrapping the primary page content so screen reader users can navigate directly to the main area.","code":"<a class=\"skip-link\" href=\"#main-content\">Skip to main content</a>\n<header>...</header>\n<nav aria-label=\"Primary\">...</nav>\n\n<main id=\"main-content\">\n  <h1>Page Title</h1>\n  <!-- primary page content -->\n</main>\n\n<footer>...</footer>"},"false_positive_risk":"low","framework_notes":{"react":"Place <main id=\"main-content\"> in the root layout component (app/layout.tsx in Next.js App Router). Do not place <main> in individual page components — it will be missing for routes that render before the layout mounts.","vue":"Add <main id=\"main-content\"> to the root layout component (App.vue or layouts/default.vue in Nuxt), wrapping <router-view /> or <slot />.","angular":"Add <main id=\"main-content\"> in app.component.html wrapping <router-outlet>. This ensures the landmark is present for all routes.","svelte":"In SvelteKit, wrap <slot /> in +layout.svelte with <main id=\"main-content\">. Never place <main> in individual +page.svelte files.","astro":"Place <main id=\"main-content\"> in your base layout (layouts/BaseLayout.astro) wrapping <slot />. Astro pre-renders to static HTML so the landmark is always present."},"cms_notes":{"shopify":"Dawn theme uses <main id=\"MainContent\"> in layout/theme.liquid. If building a custom theme, wrap {{ content_for_layout }} in <main>.","wordpress":"Classic themes should wrap the_content() in <main> inside page.php/single.php. Block themes use <main> in templates/index.html.","drupal":"Olivero includes <main> in page.html.twig. Custom themes must ensure page.html.twig wraps {{ page.content }} in <main id=\"main-content\">."},"fix_difficulty_notes":"Adding <main> is a low-effort structural change. The risk is accidentally creating two <main> elements if the layout and a child component both add one — verify with axe after the fix.","related_rules":[{"id":"bypass","reason":"The skip link target (#main-content) should reference the <main> landmark."},{"id":"cdp-missing-skip-link","reason":"Skip link and main landmark are complementary — fix both together."},{"id":"landmark-one-main","reason":"axe equivalent check — ensure consistency."},{"id":"region","reason":"Adding <main> may resolve orphan-content region violations."}],"guardrails_overrides":{"must_not":["Do not add <main> to individual page components if the root layout already wraps content in <main> — this creates a duplicate-main violation.","Do not use role=\"main\" on a <div> if a <main> element already exists on the page."],"verify":["Confirm exactly one <main> element exists in the rendered DOM after the fix."]}},"cdp-missing-skip-link":{"category":"keyboard","fix":{"description":"Add a visible-on-focus skip link as the very first focusable element in the page so keyboard users can bypass repetitive navigation.","code":"<!-- CSS -->\n.skip-link {\n  position: absolute;\n  left: -9999px;\n  top: 0;\n  z-index: 9999;\n  padding: 8px 16px;\n  background: #000;\n  color: #fff;\n}\n.skip-link:focus {\n  left: 0;\n}\n\n<!-- HTML (first element in <body>) -->\n<a class=\"skip-link\" href=\"#main-content\">Skip to main content</a>\n<header>...</header>\n<main id=\"main-content\">\n  ...\n</main>"},"false_positive_risk":"medium","framework_notes":{"react":"In Next.js, add the skip link as the first element in the root layout (app/layout.tsx), before the <header>. Style it with CSS to appear only on :focus. The target #main-content must reference the <main id=\"main-content\"> in the same layout.","vue":"In Nuxt, add the skip link at the very top of layouts/default.vue, before the <header>. The target #main-content must be on the <main> element wrapping <slot />.","angular":"Add the skip link as the first element inside app.component.html, before <app-header>. The target #main-content must match the id on the <main> element rendered adjacent to <router-outlet>.","svelte":"In SvelteKit, add the skip link as the first element in +layout.svelte. Use afterNavigate() to reset focus to the skip link target on route changes, since SvelteKit handles transitions client-side.","astro":"Place the skip link in your base layout (layouts/BaseLayout.astro) as the first element in <body>. Since Astro pre-renders to HTML, the skip link is always in the DOM without hydration delays."},"cms_notes":{"shopify":"Dawn theme includes a skip link in layout/theme.liquid. If building a custom theme, add <a href=\"#MainContent\" class=\"skip-to-content-link\">Skip to content</a> before the header section.","wordpress":"Most WordPress themes include a skip link in header.php. The Underscores (_s) starter theme includes one by default. If missing, add it as the first element inside <body> in header.php.","drupal":"Olivero includes a skip link by default. Custom themes should add it in page.html.twig as the first element inside <body>."},"fix_difficulty_notes":"The skip link must be visible on focus — hiding it with display:none or visibility:hidden prevents keyboard users from activating it. Use the off-screen CSS pattern (position:absolute; left:-9999px) and bring on-screen on :focus. The target anchor (#main-content) must be a real element in the DOM.","related_rules":[{"id":"bypass","reason":"axe equivalent — skip links are the primary mechanism for satisfying WCAG 2.4.1."},{"id":"cdp-missing-main-landmark","reason":"The skip link target must point to a <main> landmark."}],"guardrails_overrides":{"must":["Place the skip link as the very first focusable element in the DOM, before any navigation or header markup."],"must_not":["Do not hide the skip link with display:none or visibility:hidden.","Do not point the href to a non-existent or unmatched id."],"verify":["Confirm the skip link is the first element reached by pressing Tab from a fresh page load.","Confirm activating the skip link moves focus to the <main> content target."]}}}};
+export default {
+  "rules": {
+    "accesskeys": {
+      "category": "keyboard",
+      "fix": {
+        "description": "Ensure every accesskey attribute value is unique across the page. Duplicate accesskey values create unpredictable keyboard shortcuts — only one element will receive activation, and which one varies by browser.",
+        "code": "<!-- Each accesskey must be unique: -->\n<button accesskey=\"s\">Save</button>\n<button accesskey=\"d\">Delete</button>\n<a href=\"/help\" accesskey=\"h\">Help</a>\n\n<!-- Avoid duplicates: -->\n<!-- <button accesskey=\"s\">Save</button> -->\n<!-- <button accesskey=\"s\">Submit</button> — CONFLICT -->"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, accessKey is a camelCase JSX prop: <button accessKey='s'>. Track assigned keys in a constants file to prevent duplicates across components. Consider avoiding accesskey entirely — it conflicts with browser and screen reader shortcuts on most platforms.",
+        "vue": "In Vue, use accesskey as a plain HTML attribute: <button accesskey='s'>. Maintain a centralized mapping of assigned keys to avoid collisions when multiple components declare accesskeys independently.",
+        "angular": "In Angular, bind with [attr.accesskey]='key' or use the plain accesskey attribute. Centralize key assignments in a service or constants file to prevent conflicts between lazy-loaded feature modules.",
+        "svelte": "In Svelte, use accesskey as a standard HTML attribute: <button accesskey='s'>. Svelte does not transform or validate accesskeys — maintain a centralized key mapping to prevent duplicates across components.",
+        "astro": "In .astro files, use the standard HTML accesskey attribute. Since Astro assembles pages from multiple components, track accesskey assignments in a shared constants file to prevent cross-component duplicates."
+      },
+      "fix_difficulty_notes": "The simplest fix is to remove duplicate accesskey values and assign unique keys. However, accesskey has fundamental usability problems: key combinations vary by OS and browser (Alt+key on Windows, Ctrl+Opt+key on macOS), and they frequently conflict with assistive technology shortcuts. Many accessibility experts recommend avoiding accesskey altogether in favor of skip links and landmark navigation.",
+      "related_rules": [
+        {
+          "id": "bypass",
+          "reason": "Skip links and landmark navigation are the recommended keyboard shortcut alternatives to accesskey — evaluate both together."
+        }
+      ],
+      "pm": {
+        "summary": "Duplicate keyboard shortcuts create unpredictable behavior, confusing keyboard users",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "quick-win"
+      }
+    },
+    "area-alt": {
+      "category": "text-alternatives",
+      "fix": {
+        "description": "Add a descriptive alt attribute to every <area> element inside the image map, describing the clickable region's destination or function. Without it, screen readers announce the raw href or nothing at all.",
+        "code": "<img src=\"floor-plan.png\" alt=\"Office floor plan\" usemap=\"#office-map\">\n<map name=\"office-map\">\n  <area shape=\"rect\" coords=\"0,0,100,100\" href=\"/room-a\" alt=\"Conference Room A\">\n  <area shape=\"circle\" coords=\"200,200,50\" href=\"/room-b\" alt=\"Break Room B\">\n  <area shape=\"poly\" coords=\"300,0,400,100,350,200\" href=\"/room-c\" alt=\"Open Workspace C\">\n</map>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Image maps are rarely used in React apps. If you must use one, pass alt as a prop on each <area> element. Consider replacing the image map with individual clickable components positioned via CSS Grid — this is more maintainable and accessible.",
+        "vue": "In Vue, bind alt directly on <area> elements inside <map>. Prefer replacing image maps with positioned <button> or <a> elements overlaid on an image via CSS — image maps are fragile on responsive layouts.",
+        "angular": "In Angular, use [attr.alt]='areaLabel' on each <area> element. Image maps do not resize with responsive layouts — consider replacing with an SVG-based interactive graphic using role='img' and embedded links.",
+        "svelte": "In Svelte, <area> elements work as standard HTML. Add alt text directly: <area alt='Section description'>. Svelte's compiler warns about missing alt on <img> but not on <area> — validate manually.",
+        "astro": "In .astro files, <area> elements render as standard HTML. Add alt text directly. Image maps are rarely used in modern Astro projects — consider replacing with CSS/SVG-based interactive regions."
+      },
+      "fix_difficulty_notes": "Image maps are a legacy HTML pattern that does not scale well to responsive layouts — coordinates are pixel-based and break on different viewport sizes. The best long-term fix is to replace the image map with an SVG graphic containing <a> elements, or positioned HTML elements over a background image. If you must keep the image map, ensure every <area> has a descriptive alt attribute.",
+      "related_rules": [
+        {
+          "id": "image-alt",
+          "reason": "The parent <img> of the image map also needs alt text — fix both together."
+        },
+        {
+          "id": "server-side-image-map",
+          "reason": "If replacing with a client-side image map, ensure every <area> has alt text."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm link purpose remains clear out of context and in the accessibility tree."
+        ]
+      },
+      "pm": {
+        "summary": "Image map regions without descriptions are invisible to screen reader users",
+        "impact": "Non-text content is invisible to assistive technology, excluding users who depend on text descriptions. Violates WCAG 2.1 AA perceivable requirements. Affects screen reader users and users on slow connections.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-allowed-attr": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Remove or replace ARIA attributes that are not supported by the element's role. Each ARIA role defines a specific set of allowed states and properties — using unsupported attributes causes unpredictable screen reader behavior.",
+        "code": "<!-- aria-checked is NOT allowed on role='textbox' -->\n<!-- Before: -->\n<div role=\"textbox\" aria-checked=\"true\" contenteditable=\"true\">Text</div>\n<!-- After: remove the unsupported attribute -->\n<div role=\"textbox\" contenteditable=\"true\">Text</div>\n\n<!-- aria-expanded IS allowed on role='button' -->\n<button aria-expanded=\"false\" aria-controls=\"menu-list\">Menu</button>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Use eslint-plugin-jsx-a11y with the role-supports-aria-props rule to catch unsupported ARIA attributes at build time. When spreading props onto elements (e.g., {...rest}), unsupported ARIA attributes from parent components can leak through — filter them explicitly.",
+        "vue": "In Vue, ARIA attributes pass through to the DOM without validation. Use eslint-plugin-vuejs-accessibility to flag unsupported role/attribute combinations in templates. When using v-bind='$attrs', unwanted ARIA attributes from parent components can propagate.",
+        "angular": "In Angular, no built-in validation catches unsupported ARIA attribute/role combinations. Enable @angular-eslint rules for ARIA validation. When using @HostBinding for ARIA attributes, verify the host element's role supports each bound attribute.",
+        "svelte": "Svelte passes ARIA attributes directly to the DOM. Verify that the ARIA attribute is valid for the element's role. Use eslint-plugin-svelte with the a11y rules enabled to catch invalid ARIA attribute pairings at lint time.",
+        "astro": "In .astro files, ARIA attributes are passed through to the static HTML output. For ARIA attributes on elements inside framework islands, each framework's rules apply. Validate the rendered HTML output with axe."
+      },
+      "fix_difficulty_notes": "The fix is straightforward — remove the unsupported attribute or switch to a role that supports it. The WAI-ARIA spec (https://www.w3.org/TR/wai-aria/#role_definitions) lists 'Supported States and Properties' for each role. The most common violation: aria-expanded on an element whose role does not support it (e.g., role='textbox'). If the attribute conveys meaningful state, the role is likely wrong — not the attribute.",
+      "related_rules": [
+        {
+          "id": "aria-prohibited-attr",
+          "reason": "Both rules enforce correct ARIA attribute usage per role — fix them together to avoid repeated passes."
+        },
+        {
+          "id": "aria-required-attr",
+          "reason": "After removing unsupported attributes, verify the required attributes for the role are still present."
+        },
+        {
+          "id": "aria-roles",
+          "reason": "An invalid role makes all attribute checks unreliable — fix the role first."
+        },
+        {
+          "id": "aria-conditional-attr",
+          "reason": "aria-allowed-attr checks which attributes a role supports; aria-conditional-attr checks whether the attribute value is semantically valid for that role — fix both in one pass."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Invalid ARIA attributes cause assistive technology to misinterpret UI controls",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-allowed-role": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Remove or change the role attribute so it is appropriate for the element. Certain HTML elements restrict which ARIA roles can be applied — for example, <input type='text'> cannot have role='button'. Use a native element that matches the desired role instead.",
+        "code": "<!-- Invalid: role='button' on a text input -->\n<!-- <input type=\"text\" role=\"button\"> -->\n\n<!-- Valid: use a <button> for button semantics -->\n<button type=\"button\">Click me</button>\n\n<!-- Valid: role='search' on a <form> is allowed -->\n<form role=\"search\">\n  <label for=\"q\">Search</label>\n  <input type=\"search\" id=\"q\">\n</form>\n\n<!-- Valid: role='presentation' on a layout <table> -->\n<table role=\"presentation\">\n  <tr><td>Layout content</td></tr>\n</table>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, component abstractions may apply roles dynamically via props spread. Audit the rendered DOM to confirm the role is valid for the host element. Libraries like Radix UI choose host elements that match the ARIA role — prefer them over manually assigning roles to arbitrary elements.",
+        "vue": "In Vue, dynamic :role bindings may produce invalid pairings at runtime. Ensure computed role values match the host element type. Use browser DevTools to inspect the rendered element and confirm the role is allowed.",
+        "angular": "In Angular, avoid [attr.role] bindings that assign roles incompatible with the host element. Angular CDK components select the correct host element for the given role — use them instead of manually overriding roles on arbitrary elements.",
+        "svelte": "Svelte does not validate ARIA roles at compile time. Use eslint-plugin-svelte with a11y rules to catch invalid role/element pairings. The role must be appropriate for the host HTML element — e.g., role='button' on a <div> is valid but role='button' on an <a> is not.",
+        "astro": "In .astro templates, roles are rendered as-is to static HTML. Astro does not validate ARIA semantics — use axe-core or similar tools to verify role/element compatibility in the build output."
+      },
+      "fix_difficulty_notes": "The ARIA in HTML specification (https://www.w3.org/TR/html-aria/) defines which roles are allowed on each HTML element. The most common violation is adding a role that conflicts with the element's implicit semantics — for example, role='heading' on a <button>. The fix is usually to change the element to one that naturally supports the desired role, rather than forcing a role onto an incompatible element.",
+      "related_rules": [
+        {
+          "id": "aria-roles",
+          "reason": "aria-roles validates the role value itself; aria-allowed-role validates whether that role is appropriate for the host element."
+        },
+        {
+          "id": "aria-required-attr",
+          "reason": "After ensuring the role is allowed, verify all required ARIA attributes for that role are present."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Invalid ARIA roles break the accessibility tree, hiding elements from assistive tech",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-braille-equivalent": {
+      "category": "aria",
+      "fix": {
+        "description": "Add a non-braille equivalent alongside each braille ARIA attribute: pair aria-braillelabel with aria-label, aria-labelledby, or visible text content, and pair aria-brailleroledescription with aria-roledescription. Braille attributes are supplements, not replacements.",
+        "code": "<!-- Before: braille label without a non-braille equivalent -->\n<button aria-braillelabel=\"Sv\">Save</button>\n<!-- This is actually valid because the button has visible text 'Save' -->\n\n<!-- Invalid: aria-brailleroledescription without aria-roledescription -->\n<div role=\"region\" aria-brailleroledescription=\"rgn\">...</div>\n<!-- After: add the non-braille equivalent -->\n<div role=\"region\" aria-roledescription=\"content region\" aria-brailleroledescription=\"rgn\">...</div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Braille ARIA attributes (ariaBraillelabel, ariaBrailleroledescription) are niche — only use them when you have confirmed braille display users need abbreviated labels. Always ensure the non-braille equivalent (aria-label or aria-roledescription) is set first.",
+        "vue": "In Vue, use aria-braillelabel and aria-brailleroledescription as standard HTML attributes. They are only useful for braille display optimization — do not add them unless you have a specific braille user need and the non-braille equivalent is already in place.",
+        "angular": "In Angular, bind [attr.aria-braillelabel] and [attr.aria-brailleroledescription] only when a non-braille equivalent is already present. These attributes are specialized for braille display users and are rarely needed in typical applications.",
+        "svelte": "Svelte passes aria-brailleroledescription and aria-braillelabel to the DOM as-is. Ensure a non-braille equivalent (aria-roledescription or aria-label) is always present alongside the braille variant.",
+        "astro": "In .astro files, braille ARIA attributes are passed through to static HTML. This is a rare rule — it only applies to elements that specifically target braille display users."
+      },
+      "fix_difficulty_notes": "This rule is rarely triggered because aria-braillelabel and aria-brailleroledescription are specialized attributes used almost exclusively by applications targeting braille display users. The fix is simple: ensure a non-braille accessible name or role description exists alongside the braille variant. If you did not intentionally add braille attributes, they may have been introduced by a third-party library — check your dependencies.",
+      "related_rules": [
+        {
+          "id": "aria-roledescription",
+          "reason": "aria-brailleroledescription must be paired with aria-roledescription — fix both together to ensure the non-braille equivalent is present."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Incorrect braille attributes provide wrong information to braille display users",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-command-name": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Give every element with role='button', role='link', or role='menuitem' an accessible name via visible text content, aria-label, or aria-labelledby.",
+        "code": "<!-- ARIA button with visible text -->\n<div role=\"button\" tabindex=\"0\">Save changes</div>\n\n<!-- ARIA link with aria-label (icon-only) -->\n<span role=\"link\" tabindex=\"0\" aria-label=\"View documentation\">\n  <svg aria-hidden=\"true\">...</svg>\n</span>\n\n<!-- ARIA menuitem with text content -->\n<li role=\"menuitem\">Copy to clipboard</li>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, custom button components using role='button' instead of native <button> must expose an aria-label prop. Prefer native <button> elements — they have implicit roles and built-in keyboard support. For menu items in Radix UI or Headless UI, ensure the MenuItem component receives text content or an aria-label.",
+        "vue": "In Vue, custom interactive components with ARIA roles must pass accessible names to the root element. Use native <button> and <a> elements whenever possible — they provide implicit accessible names from text content.",
+        "angular": "In Angular, components using role='button' should accept an ariaLabel input and bind it with [attr.aria-label]. Prefer native HTML elements — Angular CDK's CdkButton directive adds keyboard support to native buttons without requiring custom ARIA roles.",
+        "svelte": "Svelte renders ARIA roles and names as standard HTML attributes. For elements with role='button', role='link', or role='menuitem', ensure an accessible name via aria-label or visible text content.",
+        "astro": "In .astro files, ARIA command roles render to static HTML. Ensure every element with a command role has visible text or aria-label. For interactive elements inside framework islands, the island framework's rules apply."
+      },
+      "fix_difficulty_notes": "The most common cause is icon-only buttons or links built with ARIA roles instead of native elements. The simplest fix is to add aria-label. The best fix is to replace the ARIA role with a native element (<button>, <a>) which receives its accessible name from text content automatically. For menu items, the text content of the <li> or <div role='menuitem'> serves as the accessible name.",
+      "related_rules": [
+        {
+          "id": "button-name",
+          "reason": "button-name covers native <button> elements — fix all button naming violations together."
+        },
+        {
+          "id": "link-name",
+          "reason": "link-name covers native <a> elements — fix all interactive element naming together."
+        },
+        {
+          "id": "aria-tooltip-name",
+          "reason": "Tooltip triggers often lack accessible names — fix both to ensure the trigger and tooltip are consistently named."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Command elements (buttons, links, menus) without names are unusable for screen reader users",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-conditional-attr": {
+      "category": "aria",
+      "fix": {
+        "description": "Replace mismatched ARIA state attributes with the correct attribute for the element's role. For example, replace aria-checked on a role='option' element with aria-selected, and set aria-expanded to true only when the controlled content is actually visible.",
+        "code": "<!-- Before: aria-selected on role='checkbox' (should be aria-checked) -->\n<div role=\"checkbox\" aria-selected=\"true\" tabindex=\"0\">Accept terms</div>\n<!-- After: use the correct attribute for the role -->\n<div role=\"checkbox\" aria-checked=\"true\" tabindex=\"0\">Accept terms</div>\n\n<!-- Before: aria-checked on role='option' (should be aria-selected) -->\n<li role=\"option\" aria-checked=\"true\">Item 1</li>\n<!-- After: -->\n<li role=\"option\" aria-selected=\"true\">Item 1</li>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, custom selectable list components often misuse aria-checked on role='option' elements — use aria-selected instead. For toggle buttons, use role='switch' with aria-checked, not role='button' with aria-pressed mixed with aria-checked.",
+        "vue": "In Vue, custom dropdown or listbox components may apply aria-checked to options — replace with aria-selected. Use the WAI-ARIA authoring practices as a reference for correct attribute/role pairings.",
+        "angular": "In Angular CDK, ListKeyManager-based components should use aria-selected on role='option' items. Custom implementations sometimes incorrectly mix aria-checked with listbox roles — consult the ARIA spec for the correct attribute per role.",
+        "svelte": "Svelte passes all ARIA attributes to the DOM without validation. Ensure conditional ARIA attributes (aria-checked, aria-selected, aria-expanded, aria-pressed) are only used on elements with the correct role.",
+        "astro": "In .astro files, ARIA attributes are rendered to static HTML. Conditional attributes like aria-expanded must match the element's role — validate against the WAI-ARIA spec."
+      },
+      "fix_difficulty_notes": "This rule catches mismatches between ARIA attributes and role semantics — the attribute exists in ARIA but is not valid for the specific role. The fix requires consulting the WAI-ARIA spec to find the correct attribute for the element's role. Common mismatches: aria-checked on role='option' (use aria-selected), aria-pressed on role='switch' (use aria-checked), aria-expanded on role='checkbox' (not supported).",
+      "related_rules": [
+        {
+          "id": "aria-allowed-attr",
+          "reason": "aria-conditional-attr checks semantic validity of attribute values; aria-allowed-attr checks whether the attribute itself is permitted on the role — fix both in one pass."
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "reason": "After fixing the attribute choice, verify the value is a valid token."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "ARIA attributes conflict with element state, causing confusing announcements",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-deprecated-role": {
+      "category": "aria",
+      "fix": {
+        "description": "Replace deprecated ARIA roles with their modern equivalents. Deprecated roles may be ignored by assistive technologies or produce unexpected behavior.",
+        "code": "<!-- Before: deprecated role='directory' -->\n<ul role=\"directory\">...</ul>\n<!-- After: use role='list' or remove the redundant role -->\n<ul>...</ul>\n\n<!-- Before: deprecated role='doc-biblioentry' used outside DPUB context -->\n<li role=\"doc-biblioentry\">...</li>\n<!-- After: use standard roles -->\n<li role=\"listitem\">...</li>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, deprecated roles are passed as string props without any compile-time warning. Add eslint-plugin-jsx-a11y to catch deprecated role values. When upgrading component libraries, check changelogs for ARIA role changes — deprecated roles may have been valid in older ARIA specs.",
+        "vue": "In Vue, deprecated roles pass through to the DOM without validation. Use eslint-plugin-vuejs-accessibility to detect deprecated values in templates.",
+        "angular": "In Angular, no built-in validation catches deprecated ARIA roles. Enable @angular-eslint ARIA rules to flag deprecated role values at compile time.",
+        "svelte": "Svelte does not warn about deprecated ARIA roles at compile time. Roles like 'directory', 'doc-biblioentry', and 'doc-endnote' are deprecated — replace with current equivalents from the ARIA 1.2 spec.",
+        "astro": "In .astro files, deprecated roles render to static HTML without warnings. Use axe-core or eslint-plugin-jsx-a11y (for JSX islands) to catch deprecated roles in the build output."
+      },
+      "fix_difficulty_notes": "The most commonly deprecated role is 'directory' (deprecated in ARIA 1.2, replaced by 'list'). Other deprecated roles include certain DPUB-ARIA roles when used outside digital publishing contexts. The fix is usually straightforward: replace the deprecated role with its modern equivalent or remove it if the native HTML element provides the correct semantics implicitly.",
+      "related_rules": [
+        {
+          "id": "aria-roles",
+          "reason": "Both rules validate role attribute values — fix all role violations together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Deprecated ARIA roles may stop working in future browser versions",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-dialog-name": {
+      "category": "aria",
+      "preferred_relationship_checks": [
+        "aria-labelledby",
+        "aria-label"
+      ],
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Ensure every element with role='dialog' or role='alertdialog' has an accessible name via aria-label or aria-labelledby pointing to a visible heading inside the dialog.",
+        "code": "<!-- Using aria-labelledby (preferred — references visible heading): -->\n<div role=\"dialog\" aria-labelledby=\"dialog-title\" aria-modal=\"true\">\n  <h2 id=\"dialog-title\">Confirm deletion</h2>\n  <p>Are you sure you want to delete this item?</p>\n  <button>Cancel</button>\n  <button>Delete</button>\n</div>\n\n<!-- Using aria-label (when no visible heading exists): -->\n<div role=\"alertdialog\" aria-label=\"Session expiring\" aria-modal=\"true\">\n  <p>Your session will expire in 2 minutes.</p>\n  <button>Extend session</button>\n</div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, modal libraries (Radix Dialog, Headless UI Dialog, React Aria) require a Title or aria-label prop and wire it to aria-labelledby automatically. If building a custom dialog, ensure the aria-labelledby value matches the id of the heading rendered inside the portal.",
+        "vue": "In Vue, Headless UI and PrimeVue dialogs accept a title slot that auto-generates the aria-labelledby association. For custom dialogs using Teleport, verify the aria-labelledby id resolves correctly in the teleported DOM context.",
+        "angular": "Angular CDK Dialog and Angular Material MatDialog accept an aria-label or ariaLabelledBy config option. Always provide one. For custom dialogs, bind [attr.aria-labelledby]='titleId' on the role='dialog' element.",
+        "svelte": "In Svelte, custom dialog components must include aria-label or aria-labelledby on the element with role='dialog'. Libraries like Svelte Headless UI and Melt UI handle this automatically when a title prop is provided.",
+        "astro": "In .astro files, dialog elements need aria-label or aria-labelledby. For modal islands using React/Vue/Svelte, the framework's dialog component rules apply within the island."
+      },
+      "fix_difficulty_notes": "The preferred approach is aria-labelledby pointing to a visible heading inside the dialog — this keeps the accessible name synchronized with what sighted users see. Use aria-label only when the dialog has no visible title. For alertdialog, also add aria-describedby pointing to the message body so screen readers announce both the title and the alert content.",
+      "related_rules": [
+        {
+          "id": "aria-required-attr",
+          "reason": "Dialogs require aria-modal and aria-labelledby as required attributes — verify both are present when fixing dialog naming."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Dialogs without accessible names leave screen reader users disoriented about context",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-hidden-body": {
+      "category": "aria",
+      "fix": {
+        "description": "Remove aria-hidden='true' from the <body> element. Setting aria-hidden on the document body hides the entire page from assistive technologies, making it completely inaccessible.",
+        "code": "<!-- Before: entire page hidden from AT -->\n<body aria-hidden=\"true\">\n  ...\n</body>\n\n<!-- After: remove aria-hidden from body -->\n<body>\n  ...\n</body>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "This typically occurs when a modal library applies aria-hidden='true' to the body (or the React root) and fails to remove it when the modal closes. Libraries like React Modal (react-modal) manage this automatically via the appElement prop — ensure it is set correctly. If using a custom modal, clean up aria-hidden in the modal's unmount/close lifecycle.",
+        "vue": "In Vue, this can happen when a dialog plugin sets aria-hidden='true' on document.body during open and fails to remove it on close (e.g., due to an error during the close transition). Always use a finally block or watch handler to guarantee cleanup.",
+        "angular": "In Angular, Angular CDK Dialog and Material Dialog manage aria-hidden on sibling elements, not on <body> itself. If you see aria-hidden on <body>, a third-party library or custom modal implementation is likely the cause — trace it via DOM mutation breakpoints in DevTools.",
+        "svelte": "Svelte apps render inside the <body> — never set aria-hidden='true' on <body> or the root container. If hiding content during modal display, apply aria-hidden to a specific wrapper, not the body.",
+        "astro": "Astro renders full HTML pages — never set aria-hidden='true' on <body>. For modals that need to hide background content, apply aria-hidden to the main content wrapper, not the body element."
+      },
+      "fix_difficulty_notes": "This is almost always a bug, not an intentional design choice. The most common cause: a modal dialog sets aria-hidden='true' on the body or app root during open, and the cleanup code fails to run (due to an error, race condition, or missing unmount handler). The fix is to ensure the modal's close/destroy logic always removes aria-hidden from the body. Use the inert attribute (now widely supported) as a modern alternative to aria-hidden for hiding background content behind modals.",
+      "related_rules": [
+        {
+          "id": "aria-hidden-focus",
+          "reason": "Both involve aria-hidden misuse — if aria-hidden is on the body, all focusable elements are affected."
+        },
+        {
+          "id": "hidden-content",
+          "reason": "Revealing hidden content (hidden-content) may affect body-level aria-hidden state — verify both together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Entire page is hidden from assistive technology — complete access blocker",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-hidden-focus": {
+      "category": "aria",
+      "fix": {
+        "description": "Remove aria-hidden=\"true\" from elements that can receive focus, or exclude them from the tab order.",
+        "code": "<!-- Option 1: Remove aria-hidden -->\n<button>Visible button</button>\n<!-- Option 2: Keep hidden but remove from tab order -->\n<span aria-hidden=\"true\" tabindex=\"-1\">Decorative text</span>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React portals (modals, dialogs, tooltips), aria-hidden='true' is commonly applied to the app root during open state. Ensure portals render outside the aria-hidden subtree (e.g., appended to <body>). Libraries like Radix UI handle this correctly via the inert attribute and portal rendering.",
+        "vue": "In Vue with Teleport, the teleported content renders outside the component's DOM subtree — verify the Teleport target element (e.g., #teleport-target or body) is not inside an aria-hidden container.",
+        "angular": "Angular CDK Overlay (used by Material dialogs and menus) renders at the body level, outside aria-hidden scopes. Verify that aria-hidden is applied to the correct host element — not to a container that includes the CDK overlay outlet.",
+        "svelte": "Svelte does not have a built-in portal mechanism. Libraries like svelte-portal or the Svelte <svelte:body> target render content at the body level. Ensure modal/dialog content rendered through portals is outside any aria-hidden='true' ancestor.",
+        "astro": "Astro islands hydrate independently — applying aria-hidden='true' to a parent in the base layout will hide all islands within it. For modals, render the dialog island at the body level using a framework portal inside the island component."
+      },
+      "cms_notes": {
+        "shopify": "Shopify themes commonly set aria-hidden='true' on the page content when a drawer menu or cart drawer opens. Ensure the drawer itself is not nested inside the aria-hidden container. Dawn's implementation uses a separate <aside> for drawers outside the main content wrapper.",
+        "wordpress": "WordPress lightbox and modal plugins often apply aria-hidden='true' to #page or .site but may leave focusable elements inside. Verify the plugin's implementation removes focus from hidden content or uses the inert attribute.",
+        "drupal": "Drupal's off-canvas dialog (used in Layout Builder) applies aria-hidden='true' to the main content. The dialog renders via Drupal.dialog() outside the hidden container. Custom modules using dialog should follow the same pattern via Drupal.behaviors."
+      },
+      "fix_difficulty_notes": "Setting aria-hidden='true' on a parent hides all its descendants from AT but does not remove their keyboard focusability. Interactive children (buttons, links, inputs) inside an aria-hidden container will still receive Tab focus, creating 'ghost focus'. Apply tabindex='-1' to each interactive descendant, or restructure so no focusable elements exist inside the aria-hidden container.",
+      "related_rules": [
+        {
+          "id": "scrollable-region-focusable",
+          "reason": "Both affect keyboard focus — audit all focusability violations together to avoid conflicts."
+        },
+        {
+          "id": "aria-hidden-body",
+          "reason": "Both involve aria-hidden misuse — if aria-hidden is on the body, all focusable elements are affected."
+        },
+        {
+          "id": "hidden-content",
+          "reason": "Revealing hidden content (hidden-content) can expose focusable elements that need aria-hidden-focus review."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Focusable elements hidden from screen readers create ghost interactions for keyboard users",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "medium"
+      }
+    },
+    "aria-input-field-name": {
+      "category": "aria",
+      "preferred_relationship_checks": [
+        "aria-labelledby",
+        "label",
+        "aria-label"
+      ],
+      "fix": {
+        "description": "Add an accessible name to ARIA input fields (role='textbox', role='searchbox', role='spinbutton', role='slider', role='combobox') via aria-label or aria-labelledby.",
+        "code": "<!-- ARIA textbox with aria-labelledby: -->\n<span id=\"search-label\">Search</span>\n<div role=\"textbox\" contenteditable=\"true\"\n  aria-labelledby=\"search-label\"\n  aria-multiline=\"false\">\n</div>\n\n<!-- Prefer native input (simpler, better AT support): -->\n<label for=\"search\">Search</label>\n<input type=\"search\" id=\"search\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Rich text editors (Draft.js, Slate, Quill) use contenteditable divs with role='textbox'. Ensure the editor component exposes an aria-label prop and applies it to the root contenteditable element. For standard inputs, always use <label htmlFor='id'>.",
+        "vue": "WYSIWYG editor components (Tiptap, Quill) wrap role='textbox' elements. Pass aria-label via the component's label prop. For standard inputs, use <label :for='id'>.",
+        "angular": "Angular CDK or ProseMirror-based editors use contenteditable with ARIA roles. Bind [attr.aria-label]='editorLabel' on the root element. For standard inputs, use mat-label or <label [for]='id'>.",
+        "svelte": "In Svelte, custom input components (combobox, searchbox, spinbutton) must expose an accessible name via aria-label or aria-labelledby. Verify that wrapper components pass through ARIA naming attributes to the underlying input.",
+        "astro": "In .astro files, ARIA input field roles are rendered to static HTML. For custom input components inside framework islands, ensure the island component exposes aria-label or aria-labelledby."
+      },
+      "fix_difficulty_notes": "The best fix is almost always to replace the ARIA input with a native HTML input — native elements have implicit roles, built-in keyboard support, and do not require manual ARIA attribute management. Use ARIA input roles only when a native equivalent is technically impossible (e.g., a rich text editor with contenteditable).",
+      "related_rules": [
+        {
+          "id": "label",
+          "reason": "If a native input can replace the ARIA input, the standard label association pattern resolves both."
+        },
+        {
+          "id": "aria-toggle-field-name",
+          "reason": "Fix all ARIA field naming violations together — they share the same accessible name patterns."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Input fields without accessible names prevent form completion for screen reader users",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-meter-name": {
+      "category": "aria",
+      "fix": {
+        "description": "Add an accessible name to every element with role='meter' via aria-label, aria-labelledby, or the title attribute. Without a name, screen readers announce the value but not what is being measured.",
+        "code": "<!-- Using aria-label -->\n<div role=\"meter\" aria-valuenow=\"75\" aria-valuemin=\"0\" aria-valuemax=\"100\"\n  aria-label=\"Battery level\">\n  75%\n</div>\n\n<!-- Using aria-labelledby -->\n<span id=\"disk-label\">Disk usage</span>\n<div role=\"meter\" aria-valuenow=\"42\" aria-valuemin=\"0\" aria-valuemax=\"100\"\n  aria-labelledby=\"disk-label\">\n  42%\n</div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, custom meter components should accept an aria-label or label prop and apply it to the element with role='meter'. Prefer the native <meter> element when possible — it has implicit semantics and is styled via ::-webkit-meter-bar pseudo-elements.",
+        "vue": "In Vue, pass aria-label or aria-labelledby to the root element of custom meter components. The native <meter> element works in Vue templates and provides built-in AT support without ARIA attributes.",
+        "angular": "In Angular, bind [attr.aria-label]='meterLabel' on custom meter components. Angular Material does not include a meter component — if using MatProgressBar as a meter, ensure role='meter' is set alongside the accessible name.",
+        "svelte": "In Svelte, <div role='meter'> must have aria-label or aria-labelledby. Svelte does not validate ARIA naming — add labels explicitly. Consider using the native <meter> element instead, which supports <label>.",
+        "astro": "In .astro files, role='meter' elements must have aria-label or aria-labelledby in the static HTML. Prefer the native <meter> element when possible."
+      },
+      "fix_difficulty_notes": "The native <meter> element is the preferred approach — it provides implicit semantics, does not require role='meter', and has built-in accessible value announcements. Use role='meter' only when the native element cannot be styled to match design requirements. When using role='meter', all three value attributes (aria-valuenow, aria-valuemin, aria-valuemax) are required alongside the accessible name.",
+      "related_rules": [
+        {
+          "id": "aria-progressbar-name",
+          "reason": "Meters and progress bars share the same accessible name requirements — fix both together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Progress meters without labels are meaningless to screen reader users",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-progressbar-name": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "react-aria",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Add an accessible name to every element with role='progressbar' via aria-label, aria-labelledby, or the title attribute. Without a name, screen readers announce the progress value but not what process it represents.",
+        "code": "<!-- Using aria-label -->\n<div role=\"progressbar\" aria-valuenow=\"60\" aria-valuemin=\"0\" aria-valuemax=\"100\"\n  aria-label=\"File upload progress\">\n  60%\n</div>\n\n<!-- Using aria-labelledby -->\n<span id=\"download-label\">Downloading update</span>\n<progress id=\"download\" max=\"100\" value=\"30\" aria-labelledby=\"download-label\">\n  30%\n</progress>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, use the native <progress> element when possible — it has implicit role='progressbar'. For custom progress bars (e.g., animated SVG rings), ensure the wrapper has role='progressbar', aria-valuenow, and aria-label. Libraries like Radix UI Progress expose these props automatically.",
+        "vue": "In Vue, the native <progress> element works in templates and provides built-in AT support. For custom progress components (e.g., Vuetify's v-progress-linear), pass the label prop or aria-label to ensure the component renders an accessible name.",
+        "angular": "Angular Material's MatProgressBar (mat-progress-bar) applies role='progressbar' automatically but does not set an accessible name by default. Add [attr.aria-label]='progressLabel' to the <mat-progress-bar> element.",
+        "svelte": "In Svelte, <div role='progressbar'> must have aria-label or aria-labelledby. For progress indicators, consider using the native <progress> element instead, which supports <label> association.",
+        "astro": "In .astro files, role='progressbar' elements must have aria-label in the static HTML. For dynamic progress bars inside framework islands, ensure the island component manages aria-valuenow and aria-label."
+      },
+      "fix_difficulty_notes": "The native <progress> element is the simplest solution — it has an implicit progressbar role and built-in AT value announcements. For indeterminate progress bars (no known completion percentage), omit aria-valuenow and set aria-valuemin and aria-valuemax — the screen reader will announce 'busy' or 'loading'. Custom animated progress indicators (CSS-only or SVG) are the hardest to fix — they require explicit ARIA attributes on a wrapping element.",
+      "related_rules": [
+        {
+          "id": "aria-meter-name",
+          "reason": "Meters and progress bars share the same accessible name requirements — fix both together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Progress bars without labels leave users unaware of loading or completion status",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-prohibited-attr": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify",
+        "swiper"
+      ],
+      "fix": {
+        "description": "The violation message identifies the exact prohibited combination. Two distinct cases: (1) aria-label on an element with NO role — add a landmark or semantic role that permits aria-label (e.g. role='region', role='navigation', role='complementary'); (2) aria-label on role='none' or role='presentation' — these roles strip all semantics so aria-label has no effect: either assign a real role or remove both attributes.",
+        "code": "<!-- Case 1: aria-label on element with NO role → add a semantic role -->\n<!-- Before: -->\n<div aria-label=\"Hero slides\">...</div>\n<!-- After: add a role that permits aria-label -->\n<div role=\"region\" aria-label=\"Hero slides\">...</div>\n\n<!-- Case 2: aria-label on role='none' or role='presentation' → remove aria-label -->\n<!-- Before: -->\n<div role=\"none\" aria-label=\"Decorative wrapper\">...</div>\n<!-- After: -->\n<div role=\"none\">...</div>\n\n<!-- Case 3: wrong ARIA state for a role (e.g. aria-checked on plain button) -->\n<!-- Before: -->\n<button aria-checked=\"true\">Toggle</button>\n<!-- After: use role='switch' which supports aria-checked -->\n<button role=\"switch\" aria-checked=\"true\">Toggle</button>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, ARIA attributes are passed as JSX props — there is no compile-time check for prohibited combinations. Use eslint-plugin-jsx-a11y, which includes the role-supports-aria-props rule to catch these at build time.",
+        "vue": "In Vue, ARIA attributes are standard HTML attributes — no framework-level check exists. Use eslint-plugin-vue with vue/no-aria-hidden-on-focusable or similar lint rules.",
+        "angular": "In Angular, no built-in check prevents prohibited ARIA combinations. The Angular CDK a11y lint rules (via @angular-eslint) flag some cases — enable them in .eslintrc.",
+        "svelte": "Svelte does not warn about prohibited ARIA attributes at compile time. Attributes like aria-label on elements with role='presentation' or role='none' are prohibited — remove them. Use eslint-plugin-svelte for static analysis.",
+        "astro": "In .astro files, prohibited ARIA attributes render to static HTML without warnings. Validate the build output with axe-core to catch attributes that conflict with the element's role."
+      },
+      "fix_difficulty_notes": [
+        "Read the Observed Violation message — it names the exact prohibited combination.",
+        "Pattern 1: `aria-label` on a plain `<div>` or `<span>` with no role — add a semantic role that permits labelling (`role=\"region\"` for sections, `role=\"navigation\"` for nav-like containers, `role=\"complementary\"` for sidebars).",
+        "Pattern 2: `aria-label` on `role=\"none\"` or `role=\"presentation\"` — these roles explicitly remove the element from the accessibility tree, so any ARIA attribute is meaningless: remove the `aria-label`, or swap to a real role if labelling is needed.",
+        "Pattern 3: wrong ARIA state for a role (e.g. `aria-checked` on a plain button) — change the role to one that supports the attribute (`role=\"switch\"` for `aria-checked`). Consult https://www.w3.org/TR/wai-aria/#role_definitions for Inherited States and Properties per role."
+      ],
+      "related_rules": [
+        {
+          "id": "aria-required-attr",
+          "reason": "Often co-located — fix the role first, then verify required attributes are present and prohibited ones are removed."
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "reason": "After fixing prohibited attrs, check that remaining ARIA attribute values are valid tokens."
+        },
+        {
+          "id": "aria-roles",
+          "reason": "Often co-located — fix the role first, then verify required attributes are present and prohibited ones are removed."
+        },
+        {
+          "id": "aria-allowed-attr",
+          "reason": "Both rules enforce correct ARIA attribute usage per role — fix them together to avoid repeated passes."
+        },
+        {
+          "id": "presentation-role-conflict",
+          "reason": "Both rules address ARIA attributes that should not be present on the element — fix together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Prohibited ARIA attributes cause unpredictable assistive technology behavior",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-required-attr": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Add the missing required ARIA attribute(s) for the element's role. Common examples: role='combobox' requires aria-expanded and aria-controls; role='slider' requires aria-valuenow, aria-valuemin, and aria-valuemax; role='checkbox' requires aria-checked.",
+        "code": "<!-- combobox requires: aria-expanded + aria-controls -->\n<div role=\"combobox\" aria-expanded=\"false\" aria-controls=\"listbox-id\" aria-haspopup=\"listbox\">\n  <input type=\"text\" aria-autocomplete=\"list\">\n</div>\n<ul role=\"listbox\" id=\"listbox-id\">...</ul>\n\n<!-- scrollbar requires: aria-controls + aria-valuenow + aria-valuemin + aria-valuemax -->\n<div role=\"scrollbar\" aria-controls=\"scrollable-region\" aria-valuenow=\"0\" aria-valuemin=\"0\" aria-valuemax=\"100\"></div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Headless component libraries (Radix UI, Headless UI, Ark UI) handle required ARIA attributes internally — do not duplicate or override them. If building a custom ARIA widget from scratch, consult the WAI-ARIA spec for each role's required attributes before binding props.",
+        "vue": "Floating Vue, Headless UI for Vue, and Vuetify manage ARIA attributes internally. Only add ARIA attributes when building custom widgets. Binding incorrect or unsupported attributes can introduce new violations rather than fixing existing ones.",
+        "angular": "Angular CDK's a11y module (FocusTrap, ListKeyManager, ActiveDescendantKeyManager) manages required ARIA attributes for composite widgets. Use these utilities before building custom ARIA widgets from scratch.",
+        "svelte": "Svelte passes ARIA attributes to the DOM without validation. Missing required attributes (e.g., aria-checked on role='checkbox', aria-expanded on role='combobox') must be added manually. Use eslint-plugin-svelte for compile-time checks.",
+        "astro": "In .astro files, ARIA attributes are rendered to static HTML. Ensure all required ARIA attributes are present for the element's role. For dynamic ARIA states inside framework islands, the island framework manages them."
+      },
+      "fix_difficulty_notes": "Required attributes vary per role — consult https://www.w3.org/TR/wai-aria/#role_definitions. The most frequent mistake: using role='combobox' without aria-expanded, or role='slider' without aria-valuenow/aria-valuemin/aria-valuemax. When in doubt, prefer native HTML elements (e.g., <select> instead of role='listbox') which carry implicit semantics.",
+      "related_rules": [
+        {
+          "id": "aria-roles",
+          "reason": "An invalid role is often the root cause of missing required attributes — fix the role first."
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "reason": "After adding required attributes, verify their values are valid."
+        },
+        {
+          "id": "aria-prohibited-attr",
+          "reason": "After adding required attributes, verify no prohibited attributes remain for the fixed role."
+        },
+        {
+          "id": "aria-toggle-field-name",
+          "reason": "role=\"switch\" requires aria-checked — fix accessible name and required attributes together."
+        },
+        {
+          "id": "aria-allowed-attr",
+          "reason": "After removing unsupported attributes, verify the required attributes for the role are still present."
+        },
+        {
+          "id": "aria-allowed-role",
+          "reason": "After ensuring the role is allowed, verify all required ARIA attributes for that role are present."
+        },
+        {
+          "id": "aria-dialog-name",
+          "reason": "Dialogs with aria-modal='true' require proper focus trapping — fix naming and modal attributes together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Missing required ARIA attributes break the expected behavior of UI components",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-required-children": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Add the required child roles to composite ARIA elements. For example, give role='list' children with role='listitem', and give role='tablist' children with role='tab'.",
+        "code": "<!-- role='list' requires role='listitem' children -->\n<div role=\"list\">\n  <div role=\"listitem\">Item 1</div>\n  <div role=\"listitem\">Item 2</div>\n</div>\n\n<!-- role='tablist' requires role='tab' children -->\n<div role=\"tablist\" aria-label=\"Settings\">\n  <button role=\"tab\" aria-selected=\"true\" aria-controls=\"panel-1\">General</button>\n  <button role=\"tab\" aria-selected=\"false\" aria-controls=\"panel-2\">Advanced</button>\n</div>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, wrapper elements between the parent and child roles (e.g., a <div> between role='list' and role='listitem') break the required parent-child relationship. Use role='presentation' or role='none' on intermediate wrappers to make them semantically transparent. In tabbed interfaces, ensure role='tab' elements are direct children of role='tablist'.",
+        "vue": "In Vue, component wrapper elements can introduce extra DOM nodes between required role relationships. Use Vue 3 Fragments or <template> to avoid wrapper elements, or apply role='none' to intermediate wrappers.",
+        "angular": "In Angular, host elements of child components create extra DOM layers. Use the host property in @Component to set role='none' on the host element, or use attribute selectors on the host to eliminate extra wrappers.",
+        "svelte": "Svelte does not validate ARIA parent-child role relationships. Ensure composite roles (role='list' → role='listitem', role='tablist' → role='tab') have the correct child roles in the rendered DOM.",
+        "astro": "In .astro files, ARIA parent-child relationships must be correct in the rendered HTML. When composing components, verify that parent and child roles remain valid across component boundaries."
+      },
+      "fix_difficulty_notes": "The most common cause in component frameworks is an intermediate wrapper element between the parent and child roles. The wrapper breaks the ARIA relationship because the child role is no longer a direct descendant of the parent role in the accessibility tree. Solutions: (1) apply role='none' or role='presentation' to the wrapper, (2) restructure to eliminate the wrapper, or (3) use owned children via aria-owns (last resort). Reference: https://www.w3.org/TR/wai-aria/#mustContain.",
+      "related_rules": [
+        {
+          "id": "aria-required-parent",
+          "reason": "Required children and required parent are complementary checks — fix both together to ensure complete ARIA relationships."
+        },
+        {
+          "id": "aria-treeitem-name",
+          "reason": "Tree structures require correct nesting of treeitem within tree and group roles — fix hierarchy and naming together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "ARIA parent-child violations break composite widgets like menus and tabs",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "medium"
+      }
+    },
+    "aria-required-parent": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Nest each ARIA role inside its required parent role. For example, wrap role='listitem' inside role='list', and wrap role='tab' inside role='tablist'.",
+        "code": "<!-- role='listitem' must be inside role='list' -->\n<div role=\"list\">\n  <div role=\"listitem\">Item 1</div>\n  <div role=\"listitem\">Item 2</div>\n</div>\n\n<!-- role='tab' must be inside role='tablist' -->\n<div role=\"tablist\" aria-label=\"Account settings\">\n  <button role=\"tab\" aria-selected=\"true\">Profile</button>\n  <button role=\"tab\" aria-selected=\"false\">Security</button>\n</div>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, rendering role='listitem' elements via a component that does not render inside a role='list' parent is a common source. Ensure the parent component applies role='list' to its container. For Portalled content (e.g., menu items in a dropdown), the portal must render inside the role='menu' container, not at the body level.",
+        "vue": "In Vue, Teleport can break required parent-child ARIA relationships by moving child content to a different DOM location. If teleporting role='menuitem' elements, ensure the Teleport target is inside the role='menu' parent.",
+        "angular": "In Angular, CDK Overlay renders content at the body level — menu items in an overlay may lose their role='menu' parent. Use cdkConnectedOverlayOrigin or restructure so the overlay container has the required parent role.",
+        "svelte": "Svelte does not validate ARIA parent-child requirements. Elements with roles like 'listitem', 'tab', 'menuitem' must be direct children of their required parent role. Component wrappers that add extra <div>s can break this relationship.",
+        "astro": "In .astro files, ARIA parent requirements must be met in the rendered HTML. Astro component boundaries can insert wrapper elements — verify the final DOM structure preserves the required parent-child role hierarchy."
+      },
+      "fix_difficulty_notes": "The fix is to ensure the DOM hierarchy matches the required ARIA role hierarchy. In SPAs, this is complicated by portals, overlays, and dynamic rendering that can detach child roles from their required parents. If restructuring the DOM is not feasible, aria-owns on the parent can establish the relationship regardless of DOM position — but this is a last resort and has inconsistent screen reader support.",
+      "related_rules": [
+        {
+          "id": "aria-required-children",
+          "reason": "Required parent and required children are complementary checks — fix both together to ensure complete ARIA relationships."
+        },
+        {
+          "id": "aria-treeitem-name",
+          "reason": "Each treeitem must be a child of a tree or group role — fix parent role requirements alongside naming."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "ARIA elements without required parents are ignored by assistive technology",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "medium"
+      }
+    },
+    "aria-roledescription": {
+      "category": "aria",
+      "fix": {
+        "description": "Apply aria-roledescription only to elements that have an explicit or implicit ARIA role. Do not use it on elements with no role or with role='generic' (the implicit role of <div> and <span>).",
+        "code": "<!-- Before: aria-roledescription on a generic div -->\n<div aria-roledescription=\"slide\">Slide content</div>\n<!-- After: add an appropriate role -->\n<div role=\"group\" aria-roledescription=\"slide\" aria-label=\"Slide 1 of 5\">\n  Slide content\n</div>\n\n<!-- Valid: aria-roledescription on an element with an implicit role -->\n<button aria-roledescription=\"toggle switch\">Dark mode</button>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, carousel or slider components often add aria-roledescription='slide' to plain <div> children. Add role='group' or role='region' to the div first, then apply aria-roledescription. Libraries like Embla Carousel may need a custom render function to inject the role.",
+        "vue": "In Vue, ensure the element receiving aria-roledescription has an explicit role. Swiper.js and similar carousel libraries may apply aria-roledescription to wrapper <div> elements without adding a semantic role — override via slot props or custom wrappers.",
+        "angular": "In Angular, bind [attr.aria-roledescription] only on elements that already have a role. If using a carousel CDK, ensure the slide container has role='group' or role='region' before applying the roledescription.",
+        "svelte": "Svelte passes aria-roledescription to the DOM as-is. This attribute must only be used on elements with an explicit or implicit ARIA role. It customizes how AT announces the role — use only when the default role announcement is insufficient.",
+        "astro": "In .astro files, aria-roledescription renders to static HTML. Ensure it is paired with a valid role. This is a specialized attribute — most elements do not need it."
+      },
+      "fix_difficulty_notes": "aria-roledescription customizes the role announcement for screen readers (e.g., 'slide' instead of 'group'). It only works on elements that have a role in the accessibility tree. Elements with no role or role='generic' (implicit for <div>/<span>) are ignored by AT, so the roledescription has no effect. The fix: add an appropriate semantic role to the element before applying aria-roledescription.",
+      "related_rules": [
+        {
+          "id": "aria-roles",
+          "reason": "The host element needs a valid ARIA role before aria-roledescription has any effect — fix the role first."
+        },
+        {
+          "id": "aria-braille-equivalent",
+          "reason": "aria-brailleroledescription must pair with aria-roledescription — fix both when either is present."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Custom role descriptions on unsupported elements confuse assistive technology users",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-roles": {
+      "category": "aria",
+      "fix": {
+        "description": "Replace invalid ARIA role values with valid roles from the WAI-ARIA specification, or remove the role attribute if it is not needed.",
+        "code": "<!-- Invalid roles: -->\n<!-- role=\"text\" — not a valid ARIA role -->\n<!-- role=\"container\" — not a valid ARIA role -->\n<!-- role=\"button\" on a <button> — redundant, not a violation but unnecessary -->\n\n<!-- Valid replacements: -->\n<div role=\"region\" aria-labelledby=\"section-heading\">...</div>\n<span role=\"status\" aria-live=\"polite\">Saved successfully</span>\n<div role=\"alert\">Error: field is required</div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, ARIA roles are passed as the role prop. Use eslint-plugin-jsx-a11y (aria-role rule) to catch invalid role values at build time — there is no runtime validation.",
+        "vue": "In Vue, invalid role values are passed through to the DOM without validation. Use eslint-plugin-vuejs-accessibility to catch invalid role attributes in templates.",
+        "angular": "In Angular, @angular-eslint includes aria-role lint rules. Enable them in .eslintrc to validate role attribute values at compile time.",
+        "svelte": "Svelte does not validate ARIA role values at compile time. Invalid roles (typos, deprecated values) render silently. Use eslint-plugin-svelte or axe-core to catch invalid role values before deployment.",
+        "astro": "In .astro files, ARIA roles render to static HTML without validation. Typos in role values (e.g., role='buton' instead of role='button') will not be caught at build time — use axe-core."
+      },
+      "fix_difficulty_notes": "Common invalid roles: 'text' (not valid — use role='paragraph' or remove the role), 'input' (not valid — use native <input>), 'container' (not valid — use role='group'). Also watch for typos: 'dialouge' instead of 'dialog'. Adding a role that matches the element's implicit role (e.g., role='button' on <button>) is not a violation but is unnecessary — remove it for cleaner markup.",
+      "related_rules": [
+        {
+          "id": "aria-required-attr",
+          "reason": "After fixing an invalid role, verify the replacement role has all required ARIA attributes."
+        },
+        {
+          "id": "aria-prohibited-attr",
+          "reason": "After fixing the role, verify no ARIA attributes are prohibited for the new role."
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "reason": "After fixing the role, verify attribute values are valid tokens for the corrected role."
+        },
+        {
+          "id": "aria-allowed-attr",
+          "reason": "An invalid role makes all attribute checks unreliable — fix the role first."
+        },
+        {
+          "id": "aria-allowed-role",
+          "reason": "aria-roles validates the role value itself; aria-allowed-role validates whether that role is appropriate for the host element."
+        },
+        {
+          "id": "aria-deprecated-role",
+          "reason": "Both rules validate role attribute values — fix all role violations together."
+        },
+        {
+          "id": "aria-roledescription",
+          "reason": "A valid role must exist before adding a custom roledescription — fix aria-roles first."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Invalid ARIA roles make elements invisible or misrepresented to assistive technology",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-text": {
+      "category": "aria",
+      "fix": {
+        "description": "Ensure role='text' is used only on elements with no focusable descendants. role='text' tells assistive technology to treat the element's content as a single text string — if focusable children exist inside, they become unreachable.",
+        "code": "<!-- Valid: role='text' with no focusable descendants -->\n<p role=\"text\">\n  On sale: <span class=\"price\">$9.99</span>\n</p>\n\n<!-- Invalid: role='text' with a focusable link inside -->\n<!-- <p role=\"text\">Visit <a href=\"/store\">our store</a></p> -->\n\n<!-- Fix: remove role='text' when interactive children exist -->\n<p>Visit <a href=\"/store\">our store</a></p>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, role='text' is occasionally used on price or status components to prevent screen readers from splitting text across child spans. Ensure no <a>, <button>, or <input> elements exist inside the subtree. If interactive children are needed, remove role='text' and let the default content model apply.",
+        "vue": "In Vue, avoid using role='text' on wrapper components that accept slots — slot content may include interactive elements injected by consuming components. Validate the slot content at the template level or remove role='text' entirely.",
+        "angular": "In Angular, avoid role='text' on components with ng-content projections. Projected content may include interactive elements from parent templates, breaking the role='text' contract.",
+        "svelte": "In Svelte, role='text' can be used to prevent AT from splitting text interrupted by semantic elements. Ensure the element with role='text' contains only text content and no interactive children.",
+        "astro": "In .astro files, role='text' renders to static HTML. This role is used to prevent screen readers from splitting text content at semantic boundaries — use sparingly."
+      },
+      "fix_difficulty_notes": "role='text' is a convenience for preventing AT from splitting visually contiguous text into separate announcements (e.g., prices with styled currency symbols). It is not a WCAG requirement — if removing it causes no usability regression, removal is the safest fix. If role='text' is needed, audit all descendants to ensure none are focusable (no links, buttons, inputs, or elements with tabindex >= 0).",
+      "related_rules": [
+        {
+          "id": "nested-interactive",
+          "reason": "role='text' forbids focusable descendants — check for nested-interactive violations in the same element."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Elements with role=text contain focusable children, breaking reading flow",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "medium"
+      }
+    },
+    "aria-toggle-field-name": {
+      "category": "aria",
+      "preferred_relationship_checks": [
+        "aria-labelledby",
+        "explicit-label",
+        "label",
+        "aria-label",
+        "implicit-label"
+      ],
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Add an accessible name to toggle input fields (checkbox, radio, switch) via a <label>, aria-label, or aria-labelledby.",
+        "code": "<!-- Checkbox with associated label: -->\n<label for=\"subscribe\">\n  <input type=\"checkbox\" id=\"subscribe\"> Subscribe to newsletter\n</label>\n\n<!-- Custom ARIA switch with aria-label: -->\n<button role=\"switch\" aria-checked=\"false\" aria-label=\"Enable dark mode\">\n  <span class=\"toggle-knob\" aria-hidden=\"true\"></span>\n</button>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, custom toggle components must spread aria-label and aria-checked to the underlying element. For native checkboxes, use htmlFor on <label>. For switches: <button role='switch' aria-checked={isOn} aria-label='Enable notifications'>.",
+        "vue": "In Vue, custom toggle components must pass aria-label and aria-checked to the root element. For native checkboxes, use <label :for='id'> with matching :id on the <input>.",
+        "angular": "In Angular, use <label [for]='checkboxId'> for native checkboxes. For custom switches, bind [attr.aria-label]='label' and [attr.aria-checked]='isChecked' on the role='switch' element.",
+        "svelte": "In Svelte, custom toggle components (checkboxes, switches, radio buttons) must have aria-label or aria-labelledby. Ensure wrapper components pass accessible names through to the underlying interactive element.",
+        "astro": "In .astro files, toggle roles (checkbox, switch, radio) need aria-label or visible labels in the static HTML. For dynamic toggles inside framework islands, the island component manages the accessible name."
+      },
+      "fix_difficulty_notes": "Custom toggle switches built with role='switch' require both aria-label AND aria-checked. Missing either triggers a violation. For checkbox inputs, a label must be associated via for/id or by wrapping — visually adjacent text without a <label> element is not sufficient for AT.",
+      "related_rules": [
+        {
+          "id": "label",
+          "reason": "The same label association pattern resolves both label and aria-toggle-field-name violations."
+        },
+        {
+          "id": "aria-required-attr",
+          "reason": "role='switch' requires aria-checked — fix the accessible name and required attributes together."
+        },
+        {
+          "id": "aria-input-field-name",
+          "reason": "Fix all ARIA field naming violations together — they share the same accessible name patterns."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Toggle controls (switches, checkboxes) without names are unusable for screen reader users",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-tooltip-name": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "floating-ui",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Give every element with role='tooltip' an accessible name via text content, aria-label, or aria-labelledby. Without a name, the tooltip is invisible to screen reader users.",
+        "code": "<!-- Tooltip with text content (accessible name from content) -->\n<span role=\"tooltip\" id=\"password-hint\">\n  Password must be at least 8 characters\n</span>\n<input type=\"password\" aria-describedby=\"password-hint\">\n\n<!-- Tooltip with aria-label (for icon-based tooltips) -->\n<div role=\"tooltip\" aria-label=\"Copy to clipboard shortcut: Ctrl+C\">\n  <kbd>Ctrl</kbd>+<kbd>C</kbd>\n</div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, tooltip libraries (Radix Tooltip, Floating UI, React Tooltip) manage role='tooltip' and accessible names internally. If building a custom tooltip, ensure the tooltip element has text content or aria-label, and the trigger element references it via aria-describedby.",
+        "vue": "In Vue, Floating Vue (v-tooltip) and Headless UI manage tooltip semantics. For custom tooltips, bind role='tooltip' and ensure text content or :aria-label is present on the tooltip element.",
+        "angular": "In Angular, Angular CDK Overlay with MatTooltip handles role='tooltip' and accessible naming. For custom tooltips, ensure the overlay element has role='tooltip' and contains text content or [attr.aria-label].",
+        "svelte": "In Svelte, elements with role='tooltip' must have accessible text content or aria-label. Tooltip libraries for Svelte (like Tippy.js/svelte) should expose a label prop for the tooltip trigger.",
+        "astro": "In .astro files, role='tooltip' elements need text content or aria-label in the static HTML. For dynamic tooltips inside framework islands, the island framework's tooltip component rules apply."
+      },
+      "fix_difficulty_notes": "Tooltips should contain plain text that describes or supplements the trigger element. Complex interactive content inside a tooltip is an anti-pattern — use a dialog or popover instead. The tooltip's accessible name comes from its text content; aria-label is only needed when the tooltip contains non-text content (icons, formatted markup).",
+      "related_rules": [
+        {
+          "id": "aria-command-name",
+          "reason": "The trigger element for a tooltip often also needs an accessible name — fix both the tooltip and its trigger together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Tooltips without accessible names provide no information to screen reader users",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-treeitem-name": {
+      "category": "aria",
+      "fix": {
+        "description": "Ensure every element with role='treeitem' has an accessible name via its text content, aria-label, or aria-labelledby.",
+        "code": "<!-- Treeitem with visible text content (preferred): -->\n<ul role=\"tree\" aria-label=\"File browser\">\n  <li role=\"treeitem\" aria-expanded=\"false\">\n    Documents\n    <ul role=\"group\">\n      <li role=\"treeitem\">Resume.pdf</li>\n      <li role=\"treeitem\">Cover letter.docx</li>\n    </ul>\n  </li>\n</ul>\n\n<!-- Treeitem with aria-label (when icon-only): -->\n<li role=\"treeitem\" aria-label=\"Inbox (3 unread)\">\n  <svg aria-hidden=\"true\">...</svg>\n</li>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, tree components (React Aria TreeView, MUI TreeView, Ant Design Tree) manage treeitem names from a data prop. Ensure the label or name field is never empty. For custom tree implementations, pass aria-label to icon-only tree items.",
+        "vue": "In Vue, PrimeVue Tree and Vuetify Treeview derive treeitem names from the data model label field. Verify that all tree data nodes have a non-empty label. For custom trees, add aria-label to icon-only items.",
+        "angular": "In Angular, Angular Material Tree (mat-tree-node) does not automatically set an accessible name — the template must include visible text or an aria-label. Use [attr.aria-label]='node.name' on mat-tree-node elements.",
+        "svelte": "In Svelte, tree view components must ensure every role='treeitem' has visible text or aria-label. Custom tree implementations should follow the WAI-ARIA Tree View pattern for keyboard navigation and naming.",
+        "astro": "In .astro files, role='treeitem' elements need visible text or aria-label. Tree views are complex widgets — consider rendering them inside a framework island for proper keyboard and state management."
+      },
+      "fix_difficulty_notes": "Tree views are complex ARIA widgets requiring correct role hierarchy (tree > treeitem > group > treeitem), aria-expanded on parent nodes, and an accessible name on every treeitem. The most common violation is icon-only tree nodes (file browser icons, folder icons) missing aria-label. Add aria-label to every treeitem that lacks visible text content.",
+      "related_rules": [
+        {
+          "id": "aria-required-children",
+          "reason": "Tree structures require correct nesting of treeitem within tree and group roles — fix hierarchy and naming together."
+        },
+        {
+          "id": "aria-required-parent",
+          "reason": "Each treeitem must be a child of a tree or group role — fix parent role requirements alongside naming."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Tree items without names make hierarchical navigation impossible for screen readers",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-valid-attr": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Replace any misspelled or invented aria-* attribute names with valid ARIA attribute names from the WAI-ARIA specification. Invalid aria-* attributes are silently ignored by assistive technologies.",
+        "code": "<!-- Before: misspelled or invalid ARIA attributes -->\n<button aria-labelled=\"Save\">Save</button>  <!-- should be aria-label -->\n<div aria-role=\"alert\">Error</div>  <!-- aria-role is not valid; use role=\"alert\" -->\n\n<!-- After: corrected attributes -->\n<button aria-label=\"Save\">Save</button>\n<div role=\"alert\">Error</div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "React does not validate aria-* attribute names at compile time — misspelled attributes pass through to the DOM silently. Use eslint-plugin-jsx-a11y which includes the aria-props rule to catch invalid attribute names. Common typos: aria-labelled (should be aria-label), aria-role (should be role).",
+        "vue": "Vue does not validate aria-* attributes. Use eslint-plugin-vuejs-accessibility to catch misspelled ARIA attributes in templates. The most common mistake is aria-labelled instead of aria-label or aria-labelledby.",
+        "angular": "Angular does not validate aria-* attributes at compile time. Enable @angular-eslint ARIA rules to detect invalid attribute names. TypeScript does not type-check HTML attribute strings, so aria-* typos pass through uncaught.",
+        "svelte": "Svelte does not validate ARIA attribute names at compile time. Typos (e.g., aria-lable instead of aria-label) render silently to the DOM. Use eslint-plugin-svelte's a11y rules to catch invalid ARIA attribute names.",
+        "astro": "In .astro files, ARIA attributes render to static HTML without name validation. Typos in ARIA attribute names are invisible at build time — use axe-core or lint tools to catch them."
+      },
+      "fix_difficulty_notes": "This rule catches typos and invented attribute names. The fix is almost always correcting a misspelled attribute. Common mistakes: aria-labelled (should be aria-label or aria-labelledby), aria-role (not an ARIA attribute — use the role HTML attribute), aria-description (valid in ARIA 1.3 but not yet widely supported — use aria-describedby with a referenced element instead). Consult https://www.w3.org/TR/wai-aria/#state_prop_def for the complete list of valid aria-* attributes.",
+      "related_rules": [
+        {
+          "id": "aria-valid-attr-value",
+          "reason": "After fixing the attribute name, verify the value is also valid."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Misspelled ARIA attributes are silently ignored, leaving elements inaccessible",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "aria-valid-attr-value": {
+      "category": "aria",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Set a valid value for the ARIA attribute. Consult the WAI-ARIA spec for the list of allowed values.",
+        "code": "<!-- Common invalid → valid corrections: -->\n\n<!-- aria-live: must be 'off' | 'polite' | 'assertive' -->\n<div aria-live=\"polite\">...</div>  <!-- not aria-live=\"yes\" -->\n\n<!-- aria-expanded: must be 'true' | 'false' -->\n<button aria-expanded=\"false\">Menu</button>  <!-- not aria-expanded=\"0\" -->\n\n<!-- aria-haspopup: must be 'true' | 'false' | 'menu' | 'listbox' | 'tree' | 'grid' | 'dialog' -->\n<button aria-haspopup=\"menu\">Options</button>  <!-- not aria-haspopup=\"dropdown\" -->"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "React coerces aria-expanded={isOpen} to the string 'true'/'false' correctly. Do not use aria-expanded={isOpen ? '1' : '0'} or other non-token values. Use aria-expanded={undefined} to omit the attribute entirely when the role does not require it.",
+        "vue": "Use :aria-expanded='isOpen' — Vue renders boolean true/false as the strings 'true'/'false'. Do not use :aria-expanded='isOpen ? 1 : 0'. To omit the attribute, bind to null: :aria-expanded='null'.",
+        "angular": "Use [attr.aria-expanded]='isOpen' binding — Angular renders the boolean as the correct string. Setting [attr.aria-expanded]='null' removes the attribute entirely when not applicable.",
+        "svelte": "Svelte passes ARIA attribute values to the DOM without validation. Invalid values (e.g., aria-hidden='yes' instead of 'true', aria-live='aggressive' instead of 'assertive') render silently. Validate against the WAI-ARIA spec.",
+        "astro": "In .astro files, ARIA attribute values render to static HTML without validation. Use axe-core to catch invalid ARIA values in the rendered output."
+      },
+      "fix_difficulty_notes": "The most common mistake is using incorrect types for boolean attributes: aria-expanded='0' or aria-expanded='yes' instead of 'true'/'false'. In template engines, ensure dynamic state is coerced to the string 'true' or 'false', not a JavaScript boolean. React spreads boolean props correctly — aria-expanded={isOpen} renders 'true'/'false' — but aria-expanded={isOpen ? 1 : 0} does not.",
+      "related_rules": [
+        {
+          "id": "aria-required-attr",
+          "reason": "Required attributes must be present before their values can be validated — fix both together."
+        },
+        {
+          "id": "aria-roles",
+          "reason": "An invalid role produces invalid attribute values — fix the role before the attribute values."
+        },
+        {
+          "id": "aria-prohibited-attr",
+          "reason": "After removing prohibited attrs, verify remaining attribute values are valid tokens."
+        },
+        {
+          "id": "aria-conditional-attr",
+          "reason": "After fixing the attribute choice, verify the value is a valid token."
+        },
+        {
+          "id": "aria-valid-attr",
+          "reason": "After fixing the attribute name, verify the value is also valid."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Invalid ARIA values cause assistive technology to misrepresent element states",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "quick-win"
+      }
+    },
+    "audio-caption": {
+      "category": "text-alternatives",
+      "fix": {
+        "description": "Add a <track kind='captions'> element inside every <audio> element, or provide a text transcript linked adjacent to the player.",
+        "code": "<audio controls>\n  <source src=\"podcast.mp3\" type=\"audio/mpeg\">\n  <track kind=\"captions\" src=\"podcast.vtt\" srclang=\"en\" label=\"English captions\" default>\n</audio>\n\n<!-- Alternative: linked transcript -->\n<audio controls src=\"podcast.mp3\"></audio>\n<p><a href=\"podcast-transcript.html\">Read the full transcript</a></p>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, pass <track> as a child of the <audio> JSX element. React requires a key prop on <track> when rendered in a list. Use the default prop (boolean) to set the default caption track.",
+        "vue": "In Vue, nest <track> inside <audio> in the template. For dynamic caption src, bind :src='captionsSrc'. The default boolean attribute is passed as a plain HTML attribute without binding.",
+        "angular": "In Angular, the native <audio> element with nested <track> works in component templates. For dynamic caption URLs, use [attr.src]='captionsSrc' on the <track> element.",
+        "svelte": "In Svelte, add <track kind='captions'> inside <audio> elements. Svelte does not warn about missing captions on media elements — validate manually or with axe-core.",
+        "astro": "In .astro files, <audio> elements need <track kind='captions'> in the static HTML. For audio players inside framework islands, add tracks within the island component."
+      },
+      "fix_difficulty_notes": "Captions must be synchronized with the audio — a plain text page is a transcript, not captions. VTT (WebVTT) is the standard format for <track> elements and is supported in all modern browsers. Generating captions retroactively is effort-intensive; tools like Whisper (OpenAI), Adobe Premiere, or Rev.com can auto-generate VTT files that require human review before publishing.",
+      "related_rules": [
+        {
+          "id": "video-caption",
+          "reason": "Both require media captions — fix all media accessibility violations together."
+        },
+        {
+          "id": "no-autoplay-audio",
+          "reason": "Auto-playing audio also needs captions if it conveys information — fix both together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Audio content without captions excludes deaf and hard-of-hearing users",
+        "impact": "Non-text content is invisible to assistive technology, excluding users who depend on text descriptions. Violates WCAG 2.1 AA perceivable requirements. Affects screen reader users and users on slow connections.",
+        "effort": "strategic"
+      }
+    },
+    "autocomplete-valid": {
+      "category": "forms",
+      "fix": {
+        "description": "Add a valid autocomplete token to form inputs to assist users with autofill.",
+        "code": "<input type=\"email\" name=\"email\" autocomplete=\"email\">\n<input type=\"text\" name=\"name\" autocomplete=\"name\">\n<input type=\"tel\" name=\"phone\" autocomplete=\"tel\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Pass autocomplete as a string prop in JSX: <input autoComplete='email' />. Note: React uses camelCase autoComplete, which renders as the autocomplete HTML attribute. React Hook Form does not intercept it — set it directly on the input element.",
+        "vue": "Use autocomplete='email' as a plain HTML attribute in Vue templates. Vee-Validate passes the autocomplete attribute through to the native input via v-bind on the field component.",
+        "angular": "Use the autocomplete attribute in Angular Reactive Forms or Template-driven forms — Angular does not strip or override it. For Angular Material inputs, add autocomplete='email' to the <input> element inside <mat-form-field>.",
+        "svelte": "Use the standard HTML autocomplete attribute: <input autocomplete='email'>. Svelte passes all attributes through to the rendered element. For form libraries like Superforms, set autocomplete on the <input> directly, not through the library's config.",
+        "astro": "In .astro files, use the standard HTML autocomplete attribute. For form elements inside framework islands, each framework's syntax applies (e.g., autoComplete in React islands)."
+      },
+      "cms_notes": {
+        "shopify": "Shopify checkout forms handle autocomplete automatically. For custom theme forms (newsletter signup, contact), add autocomplete tokens to each input: autocomplete='email' for email, autocomplete='given-name' for first name. Dawn's forms include these by default.",
+        "wordpress": "WordPress login and comment forms include autocomplete by default. Form plugins (Gravity Forms, WPForms) may not set autocomplete tokens — check the plugin's field settings or add them via a custom filter. Use woocommerce_form_field_args to add autocomplete to WooCommerce checkout fields.",
+        "drupal": "Drupal's Form API supports #attributes['autocomplete'] on form elements. For login forms, Drupal core sets autocomplete='username' and autocomplete='current-password'. Custom forms built with Form API should explicitly set the autocomplete token via #attributes."
+      },
+      "fix_difficulty_notes": "Acceptable autocomplete tokens are strictly defined by the HTML Living Standard. Custom or invented values (e.g., autocomplete='my-app-email') are invalid even if they help password managers. Use only the tokens listed at https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#autofilling-form-controls:-the-autocomplete-attribute. Verify you are applying the token to the right field type — autocomplete='email' on a phone number field is invalid.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not use custom or invented autocomplete values — only use the tokens defined in the HTML Living Standard.",
+          "Do not apply autocomplete='off' as a fix — it disables autofill and harms usability for users who rely on password managers."
+        ],
+        "verify": [
+          "Confirm the autocomplete token matches the field's expected input type (e.g., 'email' on an email field, 'tel' on a phone field)."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "label",
+          "reason": "Properly labeled inputs should also have correct autocomplete tokens — fix label association and autocomplete together."
+        }
+      ],
+      "pm": {
+        "summary": "Incorrect autocomplete values prevent browsers from auto-filling forms, increasing abandonment",
+        "impact": "Form fields without proper labels prevent users from understanding what information is required, blocking submissions. Violates WCAG 2.1 AA input assistance requirements. Affects screen reader users and users with cognitive disabilities.",
+        "effort": "quick-win"
+      }
+    },
+    "avoid-inline-spacing": {
+      "category": "sensory",
+      "fix": {
+        "description": "Move text spacing properties (letter-spacing, word-spacing, line-height) from inline style attributes into a stylesheet so user CSS can override them. Hard-coded inline styles with !important prevent users with low vision from adjusting text spacing (WCAG 1.4.12).",
+        "code": "<!-- Before: inline spacing that cannot be overridden -->\n<p style=\"letter-spacing: 0.1em !important; line-height: 1.2 !important;\">Text content</p>\n\n<!-- After: move spacing to a stylesheet class (overridable by user CSS) -->\n<p class=\"body-text\">Text content</p>\n<!-- In CSS: -->\n<!-- .body-text { letter-spacing: 0.1em; line-height: 1.5; } -->"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, inline styles via the style prop (e.g., style={{ letterSpacing: '0.1em' }}) render as inline style attributes. Move these to CSS classes or CSS Modules. CSS-in-JS solutions (styled-components, Emotion) generate stylesheet rules that are overridable — they are preferable to inline styles for spacing properties.",
+        "vue": "In Vue, :style bindings render as inline styles and have the same issue. Move letter-spacing, word-spacing, and line-height to <style scoped> classes. Scoped styles generate class-based selectors that user stylesheets can override.",
+        "angular": "In Angular, [ngStyle] and [style.*] bindings render as inline styles. Move spacing properties to component stylesheets. Angular's ViewEncapsulation.Emulated generates scoped class selectors that are overridable by user CSS.",
+        "svelte": "In Svelte, style directives (style:letter-spacing='0.1em') render as inline styles. Move spacing properties to the component's <style> block or CSS classes instead. Scoped styles are overridable by user stylesheets.",
+        "astro": "In .astro files, inline style attributes render to static HTML. Move text spacing properties (letter-spacing, word-spacing, line-height) to the component's <style> block or external CSS."
+      },
+      "fix_difficulty_notes": "Inline styles with !important on spacing properties are the primary trigger. Inline styles without !important are technically overridable but still flagged by axe as a risk. The safest fix: move all text spacing (letter-spacing, word-spacing, line-height) to stylesheet classes. CMS-generated content and WYSIWYG editors are common sources of inline spacing styles — sanitize the output to remove inline spacing declarations.",
+      "cms_notes": {
+        "shopify": "Shopify's WYSIWYG rich text editor (theme editor and Metaobject editor) can inject inline letter-spacing and line-height via the Shopify HTML sanitizer. In Liquid, sanitize rich text output using the strip_html filter if spacing styles are injected. For sections with typed content, prevent inline styles by restricting the rich text schema to text blocks only.",
+        "wordpress": "WordPress's Classic Editor (TinyMCE) and Gutenberg's Typography panel both inject inline letter-spacing, word-spacing, and line-height via style attributes. In Gutenberg, these are set per-block. To fix at scale, use the remove_filter hook to strip inline style attributes from wp_kses_post output, or configure Gutenberg's theme.json to disable per-block typography controls.",
+        "drupal": "Drupal's CKEditor (4 and 5) can inject inline style attributes when authors use the Format or Style dropdowns. Restrict allowed HTML attributes in the text format's 'Limit allowed HTML tags' filter to exclude the style attribute. Use the 'Styles' plugin configuration to apply classes instead of inline styles."
+      },
+      "related_rules": [
+        {
+          "id": "css-orientation-lock",
+          "reason": "Both rules address WCAG 1.3.x/1.4.x adaptability — user ability to override visual presentation. Audit display adaptation constraints together."
+        },
+        {
+          "id": "meta-viewport-large",
+          "reason": "Restricting zoom (meta-viewport-large) and blocking text spacing overrides (avoid-inline-spacing) are both WCAG 1.4.x adaptability failures — fix as a group."
+        }
+      ],
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not strip ALL inline styles from the element — only remove the specific text spacing properties (letter-spacing, word-spacing, line-height). Other inline styles (color, background) are unrelated to this rule.",
+          "Do not move spacing into a !important declaration in CSS — user stylesheets must be able to override them."
+        ],
+        "verify": [
+          "Confirm the moved spacing properties in the stylesheet are not marked !important and can be overridden by a user stylesheet."
+        ]
+      },
+      "pm": {
+        "summary": "Inline spacing styles prevent users with dyslexia from customizing text readability",
+        "impact": "Content that flashes, moves, or auto-plays can trigger seizures or disorientation, creating serious health and legal liability. Violates WCAG 2.1 AA seizure and motion requirements. Affects users with vestibular disorders, seizure conditions, or low vision.",
+        "effort": "medium"
+      }
+    },
+    "blink": {
+      "category": "sensory",
+      "fix": {
+        "description": "Remove all <blink> elements from the page. The <blink> element is deprecated in HTML and causes content to flash, which is inaccessible to users with cognitive disabilities and can trigger seizures in users with photosensitive epilepsy.",
+        "code": "<!-- Before: blinking text -->\n<blink>Important announcement!</blink>\n\n<!-- After: use CSS animation with user preference respect -->\n<p class=\"announcement\">Important announcement!</p>\n<!-- In CSS: -->\n<!-- .announcement { animation: fade 2s ease-in-out; } -->\n<!-- @media (prefers-reduced-motion: reduce) { .announcement { animation: none; } } -->"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "The <blink> element is not a valid JSX element — React will render it as an unknown HTML tag. If encountered in legacy code, replace it with a styled <span> or <p>. If animation is needed, use CSS with prefers-reduced-motion support.",
+        "vue": "In Vue, <blink> renders as an unknown HTML element. Replace with a standard element and CSS animation that respects prefers-reduced-motion.",
+        "angular": "In Angular, <blink> is treated as an unknown element. Replace it with a standard element. If attention-grabbing styling is needed, use Angular animations with a prefers-reduced-motion media query check.",
+        "svelte": "The <blink> element is deprecated HTML — Svelte will render it but it should never be used. Replace with CSS animation that respects prefers-reduced-motion.",
+        "astro": "The <blink> element should never appear in .astro files. Replace with CSS animation that uses @media (prefers-reduced-motion: reduce) { animation: none; }."
+      },
+      "fix_difficulty_notes": "This is extremely easy to fix — simply replace <blink> with a standard HTML element. The <blink> element is obsolete in the HTML spec and is not supported by any modern browser. If you encounter it, it is in legacy code that needs updating. No modern browser renders the blink effect, but the element is still flagged because it indicates outdated, inaccessible intent.",
+      "related_rules": [
+        {
+          "id": "marquee",
+          "reason": "Both <blink> and <marquee> are deprecated elements that cause inaccessible animations — remove both together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."
+        ],
+        "must_not": [
+          "Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."
+        ],
+        "verify": [
+          "Confirm link purpose remains clear out of context and in the accessibility tree."
+        ]
+      },
+      "pm": {
+        "summary": "Blinking content can trigger seizures and is universally prohibited by WCAG",
+        "impact": "Content that flashes, moves, or auto-plays can trigger seizures or disorientation, creating serious health and legal liability. Violates WCAG 2.1 AA seizure and motion requirements. Affects users with vestibular disorders, seizure conditions, or low vision.",
+        "effort": "quick-win"
+      }
+    },
+    "button-name": {
+      "category": "name-role-value",
+      "preferred_relationship_checks": [
+        "aria-labelledby",
+        "aria-label",
+        "explicit-label",
+        "implicit-label",
+        "presentational-role"
+      ],
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Give every button an accessible name via visible text or aria-label.",
+        "code": "<!-- Via visible text: -->\n<button>Submit form</button>\n<!-- Icon button via aria-label: -->\n<button aria-label=\"Close dialog\"><svg aria-hidden=\"true\">...</svg></button>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Use aria-label prop: <button aria-label=\"Close dialog\">. Prefer visible text children whenever possible.",
+        "vue": "Use :aria-label or aria-label attribute — standard HTML semantics apply.",
+        "angular": "Use [attr.aria-label] binding or the CDK a11y AccessibilityModule for managed focus.",
+        "svelte": "Svelte's compiler warns about missing button names at build time. For icon buttons, use aria-label directly: <button aria-label='Close'>. If using an on:click on a non-button element, Svelte will also warn — prefer native <button> elements.",
+        "astro": "Buttons in Astro's static HTML render without JS — ensure the accessible name is in the HTML, not added via client-side scripts. For interactive island buttons (React/Vue/Svelte inside Astro), the framework's rules apply within the island."
+      },
+      "cms_notes": {
+        "shopify": "Icon buttons in Dawn and other themes often use {% render 'icon-close' %} snippets without aria-label. Add aria-label to the <button> in the section template, not the snippet — snippets lack context about the button's purpose.",
+        "wordpress": "In Gutenberg custom blocks, use the RichText component for button text or set aria-label in the block's save() function. Avoid adding labels only in edit() — they must be in the rendered HTML.",
+        "drupal": "In Twig templates, add aria-label via the Attribute object: <button{{ attributes.setAttribute('aria-label', 'Close'|t) }}>. Use Drupal's |t filter for translatable labels."
+      },
+      "fix_difficulty_notes": [
+        "Using `aria-label` on a button with visible text creates a label mismatch — voice control users speak the visible text, not the `aria-label`. If visible text exists, keep it and remove `aria-label`.",
+        "Only use `aria-label` for icon-only buttons with no visible text."
+      ],
+      "related_rules": [
+        {
+          "id": "input-button-name",
+          "reason": "The same accessible name requirement applies to <input type='button'/'submit'/'reset'> — fix all button naming violations together."
+        },
+        {
+          "id": "link-name",
+          "reason": "The same accessible name requirement applies to links — fix all interactive element naming together."
+        },
+        {
+          "id": "aria-command-name",
+          "reason": "button-name covers native <button> elements — fix all button naming violations together."
+        },
+        {
+          "id": "summary-name",
+          "reason": "summary acts as a toggle button — both must have accessible names for the disclosure widget to be operable."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Buttons without accessible names block screen reader and voice control users from key actions",
+        "impact": "Interactive elements without accessible names are invisible or unlabeled to assistive technology. Violates WCAG 2.1 AA name-role-value requirements. Affects screen reader and voice control users.",
+        "effort": "quick-win"
+      }
+    },
+    "bypass": {
+      "category": "keyboard",
+      "fix": {
+        "description": "Add a skip link at the very top of each page so keyboard users can bypass repetitive navigation.",
+        "code": "<a class=\"skip-link\" href=\"#main-content\">Skip to main content</a>\n<nav aria-label=\"Primary\">\n  <a href=\"/\">Home</a>\n  <a href=\"/shop\">Shop</a>\n  <a href=\"/about\">About</a>\n</nav>\n<main id=\"main-content\">\n  <h1>Welcome to our store</h1>\n</main>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In Next.js, add the skip link as the first element in the root layout (app/layout.tsx), before the <header> or navigation components. Style it with CSS to appear only on :focus. The target #main-content must reference the <main id='main-content'> in the same layout.",
+        "vue": "In Nuxt, add the skip link at the very top of layouts/default.vue, before the <header> component. The target #main-content must be on the <main> element wrapping <slot />.",
+        "angular": "Add the skip link as the first element inside app.component.html, before <app-header> or navigation. The target #main-content must match the id on the <main> element rendered inside the page — typically adjacent to <router-outlet>.",
+        "svelte": "In SvelteKit, add the skip link as the first element in +layout.svelte, before any <header> or navigation. SvelteKit handles page transitions client-side — use afterNavigate() to reset focus to the skip link target on route changes.",
+        "astro": "Place the skip link in your base layout (layouts/BaseLayout.astro) as the first element in <body>. Since Astro pre-renders static HTML, the skip link and its target are always in the DOM without hydration delays."
+      },
+      "cms_notes": {
+        "shopify": "Dawn theme includes a skip link in layout/theme.liquid. If building a custom theme, add <a href='#MainContent' class='skip-to-content-link'>Skip to content</a> before the header section. The target id='MainContent' should be on the <main> element wrapping {{ content_for_layout }}.",
+        "wordpress": "Most WordPress themes include a skip link in header.php. If missing, add it as the first element inside <body>. The Underscores (_s) starter theme includes a skip link by default. Block themes should include it in the header template part.",
+        "drupal": "Olivero includes a skip link by default. Custom themes should add it in page.html.twig as the first element inside <body>. Drupal's #skip-link region is designed for this purpose — ensure it is rendered before the page header region."
+      },
+      "fix_difficulty_notes": "The skip link must be visible on focus — hiding it with display:none or visibility:hidden prevents keyboard users from seeing or activating it. The correct pattern is to position it off-screen by default (position:absolute; left:-9999px) and bring it on-screen on :focus (left:0; top:0). The target anchor (#main-content) must be a real element — if it's missing or the href is broken, the skip link appears to work but focus doesn't actually move.",
+      "related_rules": [
+        {
+          "id": "landmark-one-main",
+          "reason": "The skip link target (#main-content) must point to the <main> landmark."
+        },
+        {
+          "id": "landmark-unique",
+          "reason": "Unique landmark labels enhance skip navigation — users can jump directly to a specific landmark."
+        },
+        {
+          "id": "skip-link",
+          "reason": "Skip links are the primary mechanism for satisfying the bypass blocks requirement (WCAG 2.4.1)."
+        },
+        {
+          "id": "accesskeys",
+          "reason": "Both are keyboard enhancement mechanisms — accesskey conflicts with the shortcuts bypass provides."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Place the skip link as the very first focusable element in the DOM, before any navigation or header markup."
+        ],
+        "must_not": [
+          "Do not hide the skip link with display:none or visibility:hidden — use the off-screen CSS pattern (position:absolute; left:-9999px) and bring on-screen on :focus.",
+          "Do not point the href to a non-existent or unmatched id."
+        ],
+        "verify": [
+          "Confirm the skip link is the first focusable element in keyboard tab order.",
+          "Confirm activating the skip link moves focus to the <main> content target."
+        ]
+      },
+      "pm": {
+        "summary": "No skip navigation forces keyboard users to tab through every element to reach main content",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "medium"
+      }
+    },
+    "color-contrast": {
+      "category": "color",
+      "fix": {
+        "description": "The Observed Violation contains the exact foreground hex, background hex, and failing ratio. Use those values as your starting point: input both into https://webaim.org/resources/contrastchecker/, darken the foreground (or lighten the background) until the ratio reaches ≥4.5:1 for normal text or ≥3:1 for large text (≥18pt / ≥14pt bold). Then locate the CSS token or utility class that sets that foreground color in the source and replace it with the compliant value.",
+        "code": "/* Step 1 — identify the failing pair from Observed Violation, e.g.: */\n/* foreground: #8e8a86 / background: #f8f8f8 / ratio: 3.22 — target ≥4.5:1 */\n\n/* Step 2 — find the CSS token or Tailwind class that sets the color */\n/* e.g. text-cloud → look up --color-cloud in CSS vars or tailwind.config.js */\n\n/* Step 3 — replace with a compliant value */\n.element {\n  color: #5e5b58; /* example: darkened value — verify ratio before committing */\n}\n/* Or update the CSS custom property at its definition point: */\n:root {\n  --color-cloud: #5e5b58; /* was #8e8a86 (3.22:1) → now verify ≥4.5:1 */\n}"
+      },
+      "false_positive_risk": "high",
+      "framework_notes": {
+        "react": "In Tailwind (including shadcn/ui), verify that HSL CSS custom properties resolve to accessible values in both light and dark themes. CSS-in-JS libraries (styled-components, Emotion) compute colors at runtime — axe audits the computed value, not the source variable.",
+        "vue": "In Vue with Tailwind or CSS Modules, verify contrast in the computed styles, not just the source CSS variables. Use DevTools color picker to confirm the rendered ratio.",
+        "angular": "In Angular Material, override theme colors via mat.define-theme() using contrast-checked color pairs. Avoid raw CSS overrides that bypass the Angular Material theming system's built-in contrast checks.",
+        "svelte": "Svelte's scoped styles compile to unique class names — contrast violations must be fixed in the component's <style> block, not global CSS. When using Tailwind with SvelteKit, verify that dark mode colors (dark:text-*) also meet contrast requirements.",
+        "astro": "Astro renders static HTML with inlined styles — contrast issues are baked into the build output. Fix colors in the source .astro component's <style> block or at the CSS variable definition level (e.g., :root in global.css)."
+      },
+      "cms_notes": {
+        "shopify": "Theme color settings are defined in settings_schema.json and applied via Liquid ({{ settings.color_text }}). Verify that the default color values meet 4.5:1 contrast. Merchants can override these — add contrast guidance in the setting description field.",
+        "wordpress": "Classic themes use the Customizer's color settings; block themes use theme.json's color.palette. Verify default palette contrast pairs. If using wp_add_inline_style(), ensure injected colors are contrast-checked.",
+        "drupal": "Olivero (Drupal's default theme) ships with WCAG 2.1 AA contrast. Custom themes should use CSS custom properties for colors and validate pairs in the color scheme configuration. Check sub-theme overrides in the .theme file."
+      },
+      "fix_difficulty_notes": [
+        "Each instance in Evidence from DOM is an INDEPENDENT element — fix every instance separately.",
+        "False positives are common on text rendered over gradient backgrounds, images, or when color is set dynamically via JavaScript or CSS variables resolved at runtime.",
+        "axe-core samples a single point of the background — text on gradients may appear to fail even when contrast is sufficient.",
+        "Verify each flagged instance visually using the browser DevTools color picker before fixing."
+      ],
+      "related_rules": [
+        {
+          "id": "link-in-text-block",
+          "reason": "Links distinguished only by color need sufficient contrast — both rules enforce color-based visual distinction."
+        }
+      ],
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not rely solely on adjusting opacity to fix contrast — opacity affects both foreground and background.",
+          "Do not apply a fix without verifying the computed contrast ratio using browser DevTools or https://webaim.org/resources/contrastchecker/"
+        ],
+        "verify": [
+          "Confirm ratio is ≥4.5:1 for normal text and ≥3:1 for large text (≥18pt or ≥14pt bold).",
+          "Re-check contrast under keyboard :focus state — focus indicators may reduce background contrast."
+        ]
+      },
+      "pm": {
+        "summary": "Low contrast text is unreadable for users with low vision — affects 1 in 4 adults",
+        "impact": "Insufficient contrast makes text unreadable for a significant portion of users, reducing engagement and conversions. Violates WCAG 2.1 AA distinguishable requirements. Affects users with low vision or color blindness (8% of men).",
+        "effort": "medium"
+      }
+    },
+    "css-orientation-lock": {
+      "category": "keyboard",
+      "fix": {
+        "description": "Remove CSS, manifest, or JavaScript rules that lock the display to a specific orientation (portrait or landscape) unless that orientation is essential. Users with motor disabilities may mount their device in a fixed position (WCAG 1.3.4).",
+        "code": "<!-- Avoid orientation-locking CSS like: -->\n<!-- @media (orientation: portrait) { body { transform: rotate(90deg); } } -->\n\n<!-- Instead, ensure content adapts to both orientations: -->\n<style>\n  .layout {\n    display: grid;\n    grid-template-columns: 1fr;\n  }\n  @media (orientation: landscape) {\n    .layout {\n      grid-template-columns: 1fr 1fr;\n    }\n  }\n</style>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React Native or PWAs, avoid using the Screen Orientation API to lock orientation programmatically (screen.orientation.lock('portrait')). In web.manifest, do not set 'orientation': 'portrait' unless the app genuinely requires it (e.g., a camera viewfinder). In Next.js or Remix, check the manifest.json if present.",
+        "vue": "In Vue PWAs (e.g., with @vite-pwa/nuxt), check the manifest for orientation locking. Do not use CSS transforms to force rotation on orientation change — this locks the visual layout even though the device is in a different orientation.",
+        "angular": "In Angular PWAs, check angular.json or manifest.webmanifest for the 'orientation' field. Remove it or set it to 'any'. Avoid using @media (orientation: portrait) with transforms that force landscape rendering.",
+        "svelte": "In SvelteKit, avoid CSS that locks orientation via @media (orientation: portrait) { display: none; } or similar. Content must be accessible in both orientations unless a specific orientation is essential (e.g., a piano app).",
+        "astro": "In .astro files, CSS orientation locks are baked into the static build. Ensure no CSS rules hide content based on orientation unless the orientation is essential for the content."
+      },
+      "fix_difficulty_notes": "Orientation locking can come from three sources: (1) CSS @media (orientation) rules with transforms, (2) the web app manifest 'orientation' field, (3) JavaScript Screen Orientation API calls. The WCAG exception applies when a specific orientation is 'essential' — e.g., a piano keyboard app, a bank check scanning interface. Most web content does not qualify for this exception. axe detects CSS-based locking; manifest and JavaScript-based locking require manual checks.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not remove orientation-related CSS without verifying the content does not have an 'essential orientation' use case (e.g., piano keyboard, check scanner, video fullscreen interface).",
+          "Do not assume axe has detected all orientation locking — also check the web app manifest 'orientation' field and any Screen Orientation API calls manually."
+        ],
+        "verify": [
+          "Confirm the layout is fully usable in both portrait and landscape orientations after removing the orientation lock."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "meta-viewport",
+          "reason": "Both rules restrict user control of the display — orientation locking and zoom blocking are the same class of WCAG 1.3.4/1.4.4 failure. Fix together."
+        },
+        {
+          "id": "avoid-inline-spacing",
+          "reason": "Both rules address WCAG adaptability requirements — users must be able to control their viewing environment. Audit together."
+        }
+      ],
+      "pm": {
+        "summary": "Locked screen orientation blocks users who mount devices in fixed positions",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "quick-win"
+      }
+    },
+    "definition-list": {
+      "category": "semantics",
+      "fix": {
+        "description": "Ensure <dl> elements contain only properly-ordered <dt> and <dd> elements (or wrapping <div> elements per HTML5). No other elements should be direct children of <dl>.",
+        "code": "<!-- Correct structure -->\n<dl>\n  <dt>Term 1</dt>\n  <dd>Definition 1</dd>\n  <dt>Term 2</dt>\n  <dd>Definition 2</dd>\n</dl>\n\n<!-- Also valid: wrapping in <div> (HTML5) -->\n<dl>\n  <div>\n    <dt>Term 1</dt>\n    <dd>Definition 1</dd>\n  </div>\n  <div>\n    <dt>Term 2</dt>\n    <dd>Definition 2</dd>\n  </div>\n</dl>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, rendering a list of definition items via .map() may introduce wrapper <div> elements at the wrong level. Ensure the <div> wraps a <dt>/<dd> pair, not individual items. Use React.Fragment (<></>) only when the fragment renders as a child of <dl> directly — fragments do not produce DOM nodes.",
+        "vue": "In Vue, v-for on <dl> children must produce <dt>/<dd> pairs or wrapping <div> elements. Use <template v-for> to loop without introducing extra wrapper elements at the wrong nesting level.",
+        "angular": "In Angular, *ngFor on definition list items must produce valid <dt>/<dd> children. Use <ng-container> to loop without adding extra DOM elements between <dl> and its children.",
+        "svelte": "In Svelte, <dl> elements must only contain <dt>, <dd>, and <div> children. Component wrappers that render extra elements inside <dl> will break the definition list structure.",
+        "astro": "In .astro files, <dl> structure must be correct in the rendered HTML. Astro component boundaries may insert wrapper elements — verify the final DOM preserves the <dl>/<dt>/<dd> hierarchy."
+      },
+      "fix_difficulty_notes": "The most common violation: a <span>, <p>, or other element placed as a direct child of <dl>. Only <dt>, <dd>, and <div> (as a grouping wrapper) are valid direct children. In component frameworks, extra wrapper elements from component hosts can break the structure — use role='none' or host element elimination to fix.",
+      "related_rules": [
+        {
+          "id": "dlitem",
+          "reason": "definition-list validates the parent; dlitem validates the children — fix both together."
+        },
+        {
+          "id": "list",
+          "reason": "Both validate list structures — audit all list semantics violations together."
+        }
+      ],
+      "pm": {
+        "summary": "Malformed definition lists break semantic navigation for screen readers",
+        "impact": "Incorrect semantic structure breaks navigation for assistive technology and degrades search engine indexing. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users and SEO crawlers.",
+        "effort": "quick-win"
+      }
+    },
+    "dlitem": {
+      "category": "semantics",
+      "fix": {
+        "description": "Ensure <dt> and <dd> elements are contained within a <dl> element. These elements have no semantic meaning outside of a definition list.",
+        "code": "<!-- Before: orphaned dt/dd -->\n<dt>Name</dt>\n<dd>Jane Doe</dd>\n\n<!-- After: wrapped in dl -->\n<dl>\n  <dt>Name</dt>\n  <dd>Jane Doe</dd>\n</dl>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, a component rendering <dt> and <dd> elements must be placed inside a parent component rendering <dl>. If the component is reused outside a <dl> context, the dt/dd elements will be orphaned. Add a runtime check or documentation noting the required parent.",
+        "vue": "In Vue, components rendering <dt>/<dd> must be used inside a <dl> wrapper. Vue does not validate HTML nesting — the orphaned dt/dd will render without error but fail accessibility audits.",
+        "angular": "In Angular, components rendering <dt>/<dd> must be placed inside a <dl>. Angular host elements between <dl> and <dt>/<dd> break the relationship — use attribute selectors or role='none' on the host.",
+        "svelte": "In Svelte, <dt> and <dd> elements must be inside a <dl> parent. Component composition that separates definition terms from their list container will trigger this violation.",
+        "astro": "In .astro files, <dt>/<dd> elements must be direct children of <dl> in the rendered HTML. When splitting definition list items across components, verify the parent-child relationship is preserved."
+      },
+      "fix_difficulty_notes": "The fix is straightforward: wrap orphaned <dt>/<dd> elements in a <dl>. In component frameworks, the issue often occurs when a definition list item component is rendered without its parent definition list component. Ensure the component API enforces the parent-child relationship.",
+      "related_rules": [
+        {
+          "id": "definition-list",
+          "reason": "dlitem validates children placement; definition-list validates parent structure — fix both together."
+        }
+      ],
+      "pm": {
+        "summary": "Definition list items outside proper structure are orphaned from their context",
+        "impact": "Incorrect semantic structure breaks navigation for assistive technology and degrades search engine indexing. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users and SEO crawlers.",
+        "effort": "quick-win"
+      }
+    },
+    "document-title": {
+      "category": "name-role-value",
+      "fix": {
+        "description": "Add a descriptive, unique <title> element to every page.",
+        "code": "<title>Product Details — My Store</title>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Use document.title in a useEffect, or react-helmet for declarative title management. In Next.js, use <title> inside <Head> from 'next/head' — it is server-side rendered.",
+        "vue": "Update document.title in vue-router's afterEach navigation guard, or use vue-meta / @vueuse/head for declarative management.",
+        "angular": "Inject the Title service from @angular/platform-browser and call this.title.setTitle() inside route guards or component ngOnInit.",
+        "svelte": "In SvelteKit, use <svelte:head><title>Page Title</title></svelte:head> in each +page.svelte. SvelteKit updates the <title> automatically on client-side navigation. For dynamic titles, bind the title to a reactive variable.",
+        "astro": "Pass a title prop to your base layout and render it in <head>: <title>{title}</title>. Since Astro generates static HTML per page, each page gets a unique pre-rendered title without JavaScript."
+      },
+      "cms_notes": {
+        "shopify": "Shopify themes set the title in layout/theme.liquid via <title>{{ page_title }} — {{ shop.name }}</title>. The {{ page_title }} Liquid variable is set automatically per page type (product, collection, etc.). Verify it renders meaningful titles, not just the shop name.",
+        "wordpress": "WordPress generates titles via wp_get_document_title() and the document_title_parts filter. Yoast SEO and similar plugins override the default. Block themes use <title>{{ wp_title }}</title> in html.html. Never hardcode the title in header.php.",
+        "drupal": "Drupal sets the page title via the title_resolver service and renders it in html.html.twig: <title>{{ head_title|safe_join(' | ') }}</title>. Custom modules can alter titles via hook_preprocess_html(). Verify that Views pages set proper titles."
+      },
+      "fix_difficulty_notes": "In SPAs, the <title> is often set only on initial load. After client-side route changes, the title must be updated programmatically — the browser tab title stays stale otherwise. Each page title should follow the pattern 'Page Name — Site Name' so users understand context without reading page content.",
+      "related_rules": [
+        {
+          "id": "page-has-heading-one",
+          "reason": "The page title and h1 should describe the same page — fix both together to ensure consistent context for screen reader users."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Pages without titles prevent users from identifying tabs and bookmarks",
+        "impact": "Interactive elements without accessible names are invisible or unlabeled to assistive technology. Violates WCAG 2.1 AA name-role-value requirements. Affects screen reader and voice control users.",
+        "effort": "quick-win"
+      }
+    },
+    "duplicate-id": {
+      "category": "parsing",
+      "fix": {
+        "description": "Search for duplicate id attribute values and rename them so every id is unique within the page. Update any referencing aria-labelledby, aria-controls, or href='#' attributes accordingly.",
+        "code": "<!-- Before: duplicate ids -->\n<nav id=\"main-nav\">...</nav>\n<footer id=\"main-nav\">...</footer>\n\n<!-- After: unique ids -->\n<nav id=\"primary-nav\">...</nav>\n<footer id=\"footer-nav\">...</footer>\n\n<!-- Update any referencing aria-labelledby / aria-controls / href=\"#\" accordingly -->"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Use the useId() hook (React 18+) to generate unique IDs per component instance: const id = useId(); return <label htmlFor={id}>.",
+        "vue": "Bind a unique key to IDs: <label :for=\"`field-${uid}`\"> where uid is a prop or generated value (e.g., Math.random().toString(36)).",
+        "angular": "Inject a counter service or use the CDK's uniqueId utility to generate stable, unique IDs per component instance.",
+        "svelte": "Svelte does not have a built-in useId() equivalent. Generate unique IDs using a module-level counter or crypto.randomUUID(). For SSR with SvelteKit, ensure IDs are deterministic by accepting them as props rather than generating at render time.",
+        "astro": "Since Astro pre-renders each page to static HTML, duplicate IDs typically come from reusing the same component multiple times. Pass unique id props to each instance, or use Astro.slots with unique naming."
+      },
+      "cms_notes": {
+        "shopify": "Shopify sections can be added multiple times to the same page, causing duplicate IDs. Use the {{ section.id }} Liquid variable to namespace all IDs within a section: id='heading-{{ section.id }}'. This is the most common cause of duplicate-id in Shopify themes.",
+        "wordpress": "WordPress widgets and reusable blocks can render the same HTML multiple times. Use wp_unique_id() to generate unique IDs in PHP. Gutenberg blocks should use useInstanceId() from @wordpress/compose for block-level unique IDs.",
+        "drupal": "Drupal's Html::getUniqueId() generates unique IDs per element. In Twig templates, use {{ attributes.setAttribute('id', 'block-' ~ block.id) }} instead of hardcoding IDs. Views that render the same twig template multiple times are a common source of duplicates."
+      },
+      "fix_difficulty_notes": "In component-based frameworks, duplicate IDs typically occur when the same component renders multiple times on the same page. Use framework-native ID generation: useId() in React 18+, a unique :id binding per instance in Vue, or a service-based ID generator in Angular.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not fix duplicate IDs by appending '-1', '-2', '-3' suffixes manually — this approach will fail when a third instance renders. Use a programmatic ID generator instead.",
+          "Do not update the ID without also updating all elements that reference it (aria-labelledby, aria-describedby, aria-controls, href='#id', htmlFor)."
+        ],
+        "verify": [
+          "Confirm all referencing attributes (aria-labelledby, aria-controls, htmlFor, href='#') point to the updated unique ID after the fix."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "duplicate-id-aria",
+          "reason": "Duplicate IDs break both element references and ARIA relationships — fix all ID uniqueness violations together."
+        }
+      ],
+      "pm": {
+        "summary": "Duplicate IDs break form labels, ARIA references, and fragment navigation",
+        "impact": "Duplicate IDs cause unpredictable behavior in assistive technology, potentially breaking form associations and ARIA references. Violates WCAG 2.1 AA parsing requirements. Affects assistive technology users across all categories.",
+        "effort": "medium"
+      }
+    },
+    "duplicate-id-aria": {
+      "category": "parsing",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "chakra",
+        "mantine",
+        "material-ui",
+        "polaris",
+        "react-aria",
+        "ariakit",
+        "shadcn",
+        "primevue",
+        "vuetify"
+      ],
+      "fix": {
+        "description": "Ensure all IDs referenced by ARIA attributes (aria-labelledby, aria-describedby, aria-controls, aria-owns) are unique. Duplicate IDs cause screen readers to reference the wrong element.",
+        "code": "<!-- Before: duplicate IDs break aria-labelledby -->\n<span id=\"label\">Username</span>\n<input aria-labelledby=\"label\" type=\"text\">\n<!-- ...later on same page... -->\n<span id=\"label\">Email</span>  <!-- duplicate! -->\n\n<!-- After: unique IDs -->\n<span id=\"username-label\">Username</span>\n<input aria-labelledby=\"username-label\" type=\"text\">\n<span id=\"email-label\">Email</span>\n<input aria-labelledby=\"email-label\" type=\"email\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Use React 18's useId() hook to generate unique IDs per component instance: const id = useId(); return <><span id={id}>Label</span><input aria-labelledby={id} /></>. Never hardcode IDs in components that render more than once.",
+        "vue": "In Vue, generate a unique ID per instance using a composable: const id = `field-${Math.random().toString(36).slice(2)}`; or use the useId() utility from VueUse. Bind with :id='id' and :aria-labelledby='id'.",
+        "angular": "In Angular, inject a counter service or use a module-level incrementing variable to generate stable unique IDs: private static idCounter = 0; readonly fieldId = `field-${++FieldComponent.idCounter}`;. Bind with [attr.id]='fieldId'.",
+        "svelte": "In Svelte, duplicate IDs referenced by aria-labelledby, aria-describedby, or aria-controls break ARIA associations. Use unique IDs per component instance — generate them with a module-level counter or accept them as props.",
+        "astro": "In .astro files, duplicate IDs across components break ARIA references. Pass unique id props to each component instance. Since Astro pre-renders to static HTML, verify IDs are unique in the build output."
+      },
+      "fix_difficulty_notes": "Unlike duplicate-id (which flags all duplicate IDs), this rule specifically targets IDs that are referenced by ARIA attributes — making it higher severity because the duplicate directly breaks an accessibility relationship. In component-based apps, this almost always occurs when the same component renders multiple times with a hardcoded ID in its template. Use framework ID generation utilities to ensure uniqueness per instance.",
+      "related_rules": [
+        {
+          "id": "duplicate-id",
+          "reason": "Duplicate IDs break both element references and ARIA relationships — fix all ID uniqueness violations together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Duplicate IDs referenced by ARIA cause wrong elements to be announced",
+        "impact": "Duplicate IDs cause unpredictable behavior in assistive technology, potentially breaking form associations and ARIA references. Violates WCAG 2.1 AA parsing requirements. Affects assistive technology users across all categories.",
+        "effort": "medium"
+      }
+    },
+    "empty-heading": {
+      "category": "semantics",
+      "fix": {
+        "description": "Add meaningful text content to the heading element, or remove it if it serves no structural purpose.",
+        "code": "<!-- Before: empty heading -->\n<h2></h2>\n\n<!-- After: heading with content -->\n<h2>Customer Reviews</h2>\n\n<!-- Or remove entirely if structural-only -->\n<!-- Use CSS pseudo-content for decorative dividers instead -->"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, a heading with dynamic content like <h2>{title}</h2> renders an empty heading if title is undefined, null, or an empty string. Guard with: {title && <h2>{title}</h2>} or provide a fallback string.",
+        "vue": "In Vue, <h2>{{ title }}</h2> renders an empty heading if title is falsy. Use a v-if guard: <h2 v-if='title'>{{ title }}</h2> or a computed fallback.",
+        "angular": "In Angular, <h2>{{ title }}</h2> renders empty if title is undefined. Use *ngIf='title' on the heading element, or provide a default value in the component.",
+        "svelte": "In Svelte, <h2>{title}</h2> renders an empty heading if title is undefined or empty. Use {#if title}<h2>{title}</h2>{/if} to conditionally render. Svelte does not warn about empty headings at compile time.",
+        "astro": "In .astro files, headings with empty props render empty tags in static HTML. Use conditional rendering: {title && <h2>{title}</h2>}. This is baked into the build output — axe catches it in the rendered page."
+      },
+      "cms_notes": {
+        "shopify": "Empty headings in Shopify commonly occur when a section schema includes a heading field but the merchant leaves it blank. In Liquid, guard with: {% if section.settings.heading != blank %}<h2>{{ section.settings.heading }}</h2>{% endif %}. Dawn theme already does this — custom themes often miss it.",
+        "wordpress": "WordPress WYSIWYG editors (Classic and Gutenberg) let authors insert empty headings easily. The Heading block prevents empty saves, but the Classic Editor does not. Theme templates that render archive/taxonomy titles should check for empty values before rendering the <h> tag.",
+        "drupal": "Drupal's block title field can be left empty. In block.html.twig, guard with: {% if label %}<h2{{ title_attributes }}>{{ label }}</h2>{% endif %}. Views page titles and exposed filter labels are also common sources of empty headings."
+      },
+      "fix_difficulty_notes": "Empty headings commonly occur in CMS-driven layouts where a heading tag is part of a section template but the author left the field blank. In component libraries, empty headings can also result from a conditional slot that renders nothing. Check both the template and the content source — the fix may be in the CMS content, not the code.",
+      "related_rules": [
+        {
+          "id": "heading-order",
+          "reason": "Empty headings disrupt the heading hierarchy — resolve them together."
+        },
+        {
+          "id": "summary-name",
+          "reason": "An unnamed summary is similar to an empty heading — both leave structural landmarks without labels."
+        }
+      ],
+      "pm": {
+        "summary": "Empty headings create confusing dead-ends for screen reader users navigating by heading",
+        "impact": "Incorrect semantic structure breaks navigation for assistive technology and degrades search engine indexing. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users and SEO crawlers.",
+        "effort": "quick-win"
+      }
+    },
+    "empty-table-header": {
+      "category": "tables",
+      "fix": {
+        "description": "Ensure all <th> elements contain discernible text. Empty table headers provide no context for the column or row data they describe, making tables unintelligible to screen reader users.",
+        "code": "<!-- Before: empty table header -->\n<table>\n  <tr>\n    <th></th>\n    <th>Q1</th>\n    <th>Q2</th>\n  </tr>\n  <tr>\n    <td>Revenue</td>\n    <td>$100k</td>\n    <td>$120k</td>\n  </tr>\n</table>\n\n<!-- After: add descriptive text or use <td> for non-header cells -->\n<table>\n  <tr>\n    <th>Metric</th>\n    <th>Q1</th>\n    <th>Q2</th>\n  </tr>\n  <tr>\n    <th scope=\"row\">Revenue</th>\n    <td>$100k</td>\n    <td>$120k</td>\n  </tr>\n</table>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React table components, ensure the header row maps over column definitions that always include a non-empty label. If a column is for checkboxes or actions, add a visually hidden label: <th><span className='sr-only'>Select</span></th>.",
+        "vue": "In Vue, data table components (PrimeVue DataTable, Vuetify v-data-table) auto-generate headers from column definitions. Verify the header/text field is defined for every column, including selection or action columns.",
+        "angular": "In Angular Material mat-table, mat-header-cell content is template-driven. Add visible or visually hidden text to every <th mat-header-cell> — do not leave any header cell empty.",
+        "svelte": "In Svelte data table components, ensure every <th> has text content. For checkbox or action columns, add visually hidden text: <th><span class='sr-only'>Select</span></th>.",
+        "astro": "In .astro files, <th> elements must have text content in the rendered HTML. For tables inside framework islands, the island framework's table component rules apply."
+      },
+      "fix_difficulty_notes": "The most common case is a checkbox column or an actions column with an empty <th>. The fix is to add a visually hidden label (e.g., 'Select all' for checkboxes, 'Actions' for action columns) so screen readers can announce the column purpose. If the <th> genuinely has no header role, change it to a <td> instead.",
+      "related_rules": [
+        {
+          "id": "th-has-data-cells",
+          "reason": "Headers without text and headers without associated data cells are related structural issues — fix together."
+        },
+        {
+          "id": "td-headers-attr",
+          "reason": "The headers attribute references <th> elements by id — empty headers make these references meaningless."
+        },
+        {
+          "id": "scope-attr-valid",
+          "reason": "Scope on an empty <th> is meaningless — ensure headers have text content before adding scope."
+        }
+      ],
+      "pm": {
+        "summary": "Empty table headers leave data columns unlabeled for screen reader users",
+        "impact": "Tables without proper headers and associations are incomprehensible to screen reader users, blocking access to tabular data. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users navigating data tables.",
+        "effort": "quick-win"
+      }
+    },
+    "focus-order-semantics": {
+      "category": "keyboard",
+      "fix": {
+        "description": "Ensure elements in the focus order have an appropriate role for interactive content. Non-interactive elements (e.g., <div>, <span>, <p>) with tabindex='0' should use a semantic interactive element or an appropriate ARIA role.",
+        "code": "<!-- Before: non-interactive element in the focus order -->\n<div tabindex=\"0\">Click to expand</div>\n\n<!-- After: use a semantic element -->\n<button type=\"button\">Click to expand</button>\n\n<!-- Or add an appropriate ARIA role if a native element is not viable -->\n<div role=\"button\" tabindex=\"0\" aria-expanded=\"false\">\n  Click to expand\n</div>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, custom interactive components often use <div tabIndex={0} onClick={handler}> — replace with <button> or add role='button' with onKeyDown handling for Enter and Space. Libraries like React Aria's useButton hook handle this automatically.",
+        "vue": "In Vue, replace <div tabindex='0' @click='handler'> with <button @click='handler'>. If a custom element is required, add role='button' and handle keydown events for Enter (13) and Space (32).",
+        "angular": "In Angular, replace <div tabindex='0' (click)='handler()'> with <button (click)='handler()'>. Angular CDK's CdkAriaLive and A11yModule provide utilities for making custom elements properly interactive.",
+        "svelte": "In Svelte, tabindex values greater than 0 disrupt natural focus order. Use tabindex='0' for elements that should be in the tab sequence and tabindex='-1' for elements that should only be focusable programmatically.",
+        "astro": "In .astro files, tabindex values render to static HTML. Avoid tabindex > 0 — it creates unpredictable focus order. For dynamic focus management, use framework islands with JavaScript focus control."
+      },
+      "fix_difficulty_notes": "Adding tabindex='0' to a non-interactive element makes it focusable but does not make it operable — keyboard users cannot activate it with Enter or Space unless explicit keydown handlers are added. The simplest fix is to use a native interactive element (<button>, <a>, <input>). If a custom element is required, add the correct ARIA role plus full keyboard event handling.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add tabindex='0' to a non-interactive element without also adding the correct ARIA role and full keyboard event handlers (Enter/Space activation).",
+          "Do not remove a tabindex to fix focus order without verifying the element is still reachable by keyboard."
+        ],
+        "verify": [
+          "Confirm the element can be activated by keyboard (Enter or Space) after any tabindex change.",
+          "Confirm the element's role is correctly exposed in the accessibility tree."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "tabindex",
+          "reason": "Both rules address focus order issues — fix tabindex values and semantic roles together."
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "reason": "Scrollable regions may need tabindex='0' for keyboard access but also need an appropriate role."
+        },
+        {
+          "id": "nested-interactive",
+          "reason": "Nested interactive elements corrupt focus order — fix nested-interactive first, then verify focus-order-semantics."
+        }
+      ],
+      "pm": {
+        "summary": "Elements in focus order without interactive roles confuse keyboard navigation",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "medium"
+      }
+    },
+    "form-field-multiple-labels": {
+      "category": "forms",
+      "fix": {
+        "description": "Remove duplicate label associations so each form field has exactly one associated <label>.",
+        "code": "<!-- One label per input: -->\n<label for=\"name\">Full name</label>\n<input id=\"name\" type=\"text\" name=\"name\">"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, multiple labeling sources are introduced accidentally when a component applies both htmlFor on a <label> and aria-label on the input itself. Choose exactly one labeling strategy per input — prefer a visible <label htmlFor='id'> and remove aria-label.",
+        "vue": "In Vue form component wrappers, ensure the component does not add internal aria-labels that conflict with a parent <label>. A common issue is a UI kit that adds aria-label='Input field' to every input by default — override this with an empty string or use the component's label prop instead.",
+        "angular": "In Angular Material, mat-label inside mat-form-field serves as the accessible label. Do not also add aria-label directly to the input — both will be announced, triggering this violation.",
+        "svelte": "In Svelte, wrapping an input inside a <label> AND also using for='id' creates a double association. Choose one: either wrap the input inside the label (implicit association) or use for/id (explicit association). Svelte's compiler may not warn about this.",
+        "astro": "In .astro files, this issue typically arises when a framework island component adds its own aria-label internally, and the surrounding Astro markup also includes a <label for='id'>. Check the island component's rendered output to identify the duplicate."
+      },
+      "cms_notes": {
+        "shopify": "Shopify themes sometimes apply both a Liquid-generated <label> and an aria-label on the same input (e.g., search forms in Dawn). Remove the aria-label when a visible <label> exists. Check search-related snippets for this pattern.",
+        "wordpress": "WordPress form plugins (WPForms, Gravity Forms) may add both a visible label and an aria-label. Check the plugin's accessibility settings — some have a toggle to prevent double labeling. Custom block forms should use a single labeling strategy.",
+        "drupal": "Drupal's Form API can produce multiple labels when both #title and #attributes['aria-label'] are set. Use only #title for visible labels. Views exposed filters sometimes add both a label and a title attribute, which can trigger this rule."
+      },
+      "fix_difficulty_notes": "aria-labelledby can legitimately reference multiple IDs to concatenate a compound label (e.g., aria-labelledby='label1 label2'). axe may flag this pattern. Review whether both sources are intentional — if so, it is valid and the finding is a false positive. Remove one reference only if the concatenated announcement is redundant.",
+      "related_rules": [
+        {
+          "id": "label",
+          "reason": "Multiple labels on an input conflict with the single-label association requirement — fix both together."
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "reason": "Multiple labels often cause the accessible name to diverge from visible text."
+        },
+        {
+          "id": "label-title-only",
+          "reason": "When adding a visible label, verify you are not creating a duplicate label association."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Form fields with multiple labels cause inconsistent announcements across screen readers",
+        "impact": "Form fields without proper labels prevent users from understanding what information is required, blocking submissions. Violates WCAG 2.1 AA input assistance requirements. Affects screen reader users and users with cognitive disabilities.",
+        "effort": "quick-win"
+      }
+    },
+    "frame-focusable-content": {
+      "category": "keyboard",
+      "fix": {
+        "description": "Do not set tabindex='-1' on <iframe> or <frame> elements that contain focusable content. This prevents keyboard users from accessing the content inside the frame.",
+        "code": "<!-- Before: iframe with focusable content blocked -->\n<iframe src=\"form.html\" tabindex=\"-1\" title=\"Registration form\"></iframe>\n\n<!-- After: remove tabindex=-1 so keyboard users can access the content -->\n<iframe src=\"form.html\" title=\"Registration form\"></iframe>\n\n<!-- If the iframe is decorative with no interactive content, tabindex=-1 is acceptable -->\n<iframe src=\"animation.html\" tabindex=\"-1\" title=\"Decorative animation\" aria-hidden=\"true\"></iframe>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, third-party embed components (e.g., YouTube, maps, payment forms) sometimes add tabindex='-1' to the iframe. Override by removing the tabindex prop or setting it to 0. If the embed library does not expose a tabindex prop, wrap the iframe and use a ref to remove the attribute after mount.",
+        "vue": "In Vue, check embedded iframe components for tabindex='-1'. Use a mounted hook to remove tabindex from the iframe element if the component does not expose it as a prop.",
+        "angular": "In Angular, check [tabindex] bindings on iframe elements. If using a third-party embed directive, override the tabindex via a host binding or AfterViewInit lifecycle hook.",
+        "svelte": "In Svelte, do not set tabindex='-1' on iframes that contain focusable content. If the iframe embeds interactive elements (forms, links, buttons), remove tabindex='-1' so keyboard users can tab into it. Only use tabindex='-1' on iframes that are purely decorative or have no interactive content.",
+        "astro": "In .astro files, <iframe> elements render to static HTML. Ensure iframes with focusable content have a title attribute. For iframes embedding external content, the external page's accessibility is the source's responsibility."
+      },
+      "fix_difficulty_notes": "tabindex='-1' on an iframe removes it from the sequential tab order but also prevents keyboard users from tabbing into the iframe's content. If the iframe contains any interactive content (forms, links, buttons), removing tabindex='-1' is the correct fix. If the iframe is purely decorative or contains no interactive content, tabindex='-1' combined with aria-hidden='true' is acceptable.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not remove tabindex='-1' from an iframe that is decorative (animation, background) with aria-hidden='true' — this combination is intentional and correct.",
+          "Do not remove tabindex='-1' from a cross-origin iframe containing only non-interactive content (e.g., an embedded map with no form fields or links)."
+        ],
+        "verify": [
+          "Confirm the iframe actually contains interactive content (forms, links, buttons) before removing tabindex='-1'.",
+          "Confirm aria-hidden is not also set to 'true' on the iframe — if it is, both tabindex='-1' and aria-hidden='true' may be intentional."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "frame-title",
+          "reason": "Iframes must be both keyboard-accessible and labeled — fix both together."
+        }
+      ],
+      "pm": {
+        "summary": "Focusable content trapped in inaccessible iframes is unreachable by keyboard",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "medium"
+      }
+    },
+    "frame-tested": {
+      "category": "keyboard",
+      "fix": {
+        "description": "Ensure <iframe> and <frame> elements contain the axe-core script for complete accessibility testing. This is a testing infrastructure rule — it informs you that content inside frames was not analyzed because axe-core was not injected into them.",
+        "code": "<!-- This is not an HTML fix — it is a testing configuration issue. -->\n<!-- Ensure your axe-core test runner is configured to test iframes: -->\n\n<!-- axe-core configuration: -->\n<!-- axe.run({ iframes: true }) -->\n\n<!-- For cross-origin iframes, axe-core cannot inject automatically. -->\n<!-- Load axe-core inside the iframe's own page: -->\n<iframe src=\"https://third-party.com/widget\" title=\"Chat widget\"></iframe>\n<!-- Inside the iframe page, include: -->\n<!-- <script src=\"axe-core/axe.min.js\"></script> -->"
+      },
+      "false_positive_risk": "high",
+      "framework_notes": {
+        "react": "In React apps using @axe-core/react, iframe testing is limited to same-origin frames. For cross-origin iframes (payment forms, chat widgets, embedded maps), document them as out-of-scope and ensure the third-party provider meets WCAG compliance independently.",
+        "vue": "In Vue apps using vue-axe or axe-core/puppeteer, enable the iframes option in axe configuration. Cross-origin iframes cannot be tested — request a VPAT or accessibility statement from the third-party provider.",
+        "angular": "In Angular apps using axe-core with Protractor or Cypress, configure runOnly with iframes: true for same-origin frames. Cross-origin iframes require separate testing arrangements with the frame content provider.",
+        "svelte": "In Svelte, <iframe> content is not tested by axe-core unless the iframe shares the same origin. This rule is informational — ensure iframe content is independently accessible.",
+        "astro": "In .astro files, <iframe> elements render to static HTML. Axe-core cannot evaluate cross-origin iframe content — verify accessibility of embedded content separately."
+      },
+      "fix_difficulty_notes": "This rule is informational — it means axe-core could not analyze content inside an iframe. Same-origin iframes can be tested by enabling the iframes option in axe configuration. Cross-origin iframes (third-party widgets, payment forms) cannot be injected with axe-core — they must be tested separately by the content provider. Do not treat this as an accessibility violation; treat it as a gap in test coverage.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not mark this finding as a violation requiring a code fix — it is a test coverage gap, not an accessibility failure.",
+          "Do not modify the iframe based on this finding alone; address frame-title violations separately."
+        ],
+        "verify": [
+          "Confirm whether the iframe is same-origin (can be tested with axe iframes option) or cross-origin (requires separate testing by the provider)."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "frame-title",
+          "reason": "Every iframe needs a title attribute regardless of whether its content can be tested — fix frame titles alongside test coverage gaps."
+        }
+      ],
+      "pm": {
+        "summary": "Iframes that could not be tested may contain untested accessibility violations",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "medium"
+      }
+    },
+    "frame-title": {
+      "category": "name-role-value",
+      "fix": {
+        "description": "Add a descriptive title attribute to every <iframe>.",
+        "code": "<iframe\n  title=\"Embedded map showing our store location\"\n  src=\"https://maps.example.com/embed\"\n></iframe>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "When embedding iframes (Google Maps, YouTube, Stripe), add the title prop directly: <iframe title='Google Maps — store location' src='...' />. Third-party React wrapper components that embed iframes should expose a title prop passthrough.",
+        "vue": "Use the title attribute directly: <iframe title='Payment form' :src='url' />. For third-party Vue components that embed iframes internally, check the component's props API for a title or label prop.",
+        "angular": "Use [title]='iframeTitle' binding for dynamic titles, or title='Embedded video' for static ones. For hidden tracking iframes generated by third-party scripts, set title='' programmatically to suppress screen reader announcement.",
+        "svelte": "In Svelte, <iframe> elements must have a title attribute: <iframe title='Video player' src='...'></iframe>. Svelte does not warn about missing iframe titles — add them manually.",
+        "astro": "In .astro files, <iframe> elements must include a title attribute in the static HTML. This describes the iframe's purpose for screen reader users."
+      },
+      "fix_difficulty_notes": "Hidden or off-screen iframes used for third-party scripts (analytics, chat SDKs, A/B testing) should use title='' (empty) to suppress screen reader announcement — not a descriptive title. Only visible, interactive iframes that users would encounter need a meaningful title.",
+      "cms_notes": {
+        "shopify": "Shopify apps inject iframes for reviews (Judge.me, Yotpo), live chat (Tidio, Gorgias), and payment UIs. These are typically third-party and cannot be modified directly — contact the app provider. For theme-owned iframes (e.g., YouTube embeds in sections), add title='{{ section.settings.video_description }}' using the section schema.",
+        "wordpress": "WordPress's embed block renders iframes for YouTube, Vimeo, and Google Maps via oEmbed. WordPress core adds the video title as the iframe title for YouTube/Vimeo embeds since 5.6. For Classic Editor embeds and older plugins, the title may be missing — update the embed shortcode or use the block editor.",
+        "drupal": "Drupal's Media module and oEmbed integration renders iframes for remote video. The oEmbed title is used as the iframe title by default. For custom iframe renders in Twig, add title='{{ media.name.value }}' via the template."
+      },
+      "related_rules": [
+        {
+          "id": "frame-focusable-content",
+          "reason": "Iframes must be both keyboard-accessible and labeled — fix both together."
+        },
+        {
+          "id": "frame-tested",
+          "reason": "Every iframe needs a title attribute regardless of whether its content can be tested — fix frame titles alongside test coverage gaps."
+        },
+        {
+          "id": "frame-title-unique",
+          "reason": "frame-title checks for the presence of a title; frame-title-unique checks for uniqueness — fix both together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Iframes without titles leave screen reader users unaware of embedded content purpose",
+        "impact": "Interactive elements without accessible names are invisible or unlabeled to assistive technology. Violates WCAG 2.1 AA name-role-value requirements. Affects screen reader and voice control users.",
+        "effort": "quick-win"
+      }
+    },
+    "frame-title-unique": {
+      "category": "name-role-value",
+      "fix": {
+        "description": "Give every <iframe> and <frame> a unique title attribute that distinguishes it from other frames on the same page. Duplicate titles confuse screen reader users navigating between frames.",
+        "code": "<!-- Before: duplicate iframe titles -->\n<iframe src=\"ad1.html\" title=\"Advertisement\"></iframe>\n<iframe src=\"ad2.html\" title=\"Advertisement\"></iframe>\n\n<!-- After: unique titles -->\n<iframe src=\"ad1.html\" title=\"Advertisement: Summer sale banner\"></iframe>\n<iframe src=\"ad2.html\" title=\"Advertisement: Free shipping promo\"></iframe>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, when rendering multiple iframes via .map(), include a unique identifier in the title prop (e.g., title={`Widget ${index + 1}`} or title={widget.name}). Avoid generic titles like 'iframe' or 'widget' repeated across instances.",
+        "vue": "In Vue, bind :title with unique descriptive text for each iframe rendered via v-for. Use the item's name or purpose in the title, not just a generic label.",
+        "angular": "In Angular, use [title]='uniqueFrameTitle' with a descriptive string per iframe instance. When rendering multiple iframes via *ngFor, include the item's identifier in the title.",
+        "svelte": "In Svelte, each <iframe> on the page must have a unique title. If rendering multiple iframes from a component, pass unique titles as props.",
+        "astro": "In .astro files, each <iframe> must have a distinct title attribute. When reusing iframe components, pass unique title props to each instance."
+      },
+      "fix_difficulty_notes": "The title must describe the purpose or content of the frame, not just its type. 'Advertisement' is valid for one ad iframe but becomes ambiguous when multiple ad iframes exist. Append a distinguishing qualifier (e.g., the ad campaign name, position, or content summary). For dynamically generated iframes (e.g., ad slots), the title should reflect the loaded content when possible.",
+      "related_rules": [
+        {
+          "id": "frame-title",
+          "reason": "frame-title checks for the presence of a title; frame-title-unique checks for uniqueness — fix both together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Duplicate iframe titles prevent users from distinguishing between embedded sections",
+        "impact": "Interactive elements without accessible names are invisible or unlabeled to assistive technology. Violates WCAG 2.1 AA name-role-value requirements. Affects screen reader and voice control users.",
+        "effort": "quick-win"
+      }
+    },
+    "heading-order": {
+      "category": "semantics",
+      "fix": {
+        "description": "Fix the heading hierarchy — no levels may be skipped.",
+        "code": "<!-- Valid heading hierarchy: -->\n<h1>Accessibility Audit Report</h1>\n<h2>Color Contrast Violations</h2>\n<h3>Product listing page</h3>\n<!-- Invalid: jumping from h1 to h3 skips h2 -->"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In component libraries (shadcn/ui, Radix), heading levels are often hardcoded (e.g., CardTitle always renders as h3). Use the 'as' prop to override the level based on context: <CardTitle as='h2'> when the component appears as a top-level section heading.",
+        "vue": "In Vue UI kits (Vuetify, Nuxt UI), check if heading components support a 'tag' prop to override the rendered element. Use semantic levels based on document structure, not visual size.",
+        "angular": "In Angular Material, headings inside mat-card and mat-expansion-panel are often rendered as <div> or <span>. Add the appropriate heading element explicitly inside the component template rather than relying on implicit heading structure.",
+        "svelte": "Svelte does not warn about heading order at compile time. Use an eslint plugin or axe-core integration to catch hierarchy issues. In component libraries (Skeleton UI, Svelte Headless UI), verify that heading levels can be overridden via props.",
+        "astro": "Astro assembles pages from multiple components — heading hierarchy issues arise when components assume a fixed heading level. Pass the heading level as a prop: <Section headingLevel={2}> and render dynamically with <h{headingLevel}> patterns."
+      },
+      "cms_notes": {
+        "shopify": "Shopify sections often hardcode heading levels (e.g., <h2> in featured-collection.liquid). When sections are reordered in the theme editor, the heading hierarchy breaks. Use the section schema to let merchants choose the heading level, or use CSS classes for sizing instead of heading elements.",
+        "wordpress": "Gutenberg's Heading block lets authors pick any level — there is no enforcement of hierarchy. Educate content authors or use a plugin like Flavor that warns about heading order violations in the editor. Theme templates that hardcode <h2> for widget titles also break hierarchy.",
+        "drupal": "Drupal Views titles default to <h2>, and block titles also default to <h2> — when multiple blocks appear on the same page, the hierarchy breaks. Override heading levels in block--*.html.twig or via the Views UI. Use the Block Title Level module to give editors control."
+      },
+      "fix_difficulty_notes": [
+        "Never use heading elements purely for visual sizing (e.g., `<h4>` because it renders smaller) — use CSS classes for font size. Heading level must reflect document structure, not visual hierarchy.",
+        "Resolve `page-has-heading-one` first — a missing `h1` often causes cascading `heading-order` violations."
+      ],
+      "related_rules": [
+        {
+          "id": "page-has-heading-one",
+          "reason": "Fixing the h1 establishes the root of the hierarchy — resolve it first."
+        },
+        {
+          "id": "empty-heading",
+          "reason": "Empty headings disrupt the heading hierarchy — resolve them together."
+        },
+        {
+          "id": "p-as-heading",
+          "reason": "After converting p-as-heading to real headings, verify they fit the existing heading hierarchy."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Resolve page-has-heading-one first — a missing h1 causes cascading heading-order violations."
+        ],
+        "must_not": [
+          "Do not change heading levels purely for visual sizing — use CSS classes for font size.",
+          "Do not adjust heading numbers alone without restructuring content hierarchy — the fix must reflect document structure, not just the numeric sequence."
+        ],
+        "verify": [
+          "Confirm no heading levels are skipped in the final DOM output.",
+          "Confirm the fix does not alter visual design — heading element changes must be purely structural."
+        ]
+      },
+      "pm": {
+        "summary": "Skipped heading levels break document outline navigation for screen readers",
+        "impact": "Incorrect semantic structure breaks navigation for assistive technology and degrades search engine indexing. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users and SEO crawlers.",
+        "effort": "quick-win"
+      }
+    },
+    "hidden-content": {
+      "category": "semantics",
+      "fix": {
+        "description": "Inform users about hidden content that was not evaluated by the accessibility scanner. Content hidden via display:none, visibility:hidden, or the hidden attribute is excluded from the accessibility tree and from automated testing — it may contain violations that surface only when revealed.",
+        "code": "<!-- Hidden content that axe cannot evaluate: -->\n<div id=\"modal\" hidden>\n  <h2>Login</h2>\n  <form>...</form>\n</div>\n\n<!-- When revealed, it must be accessible: -->\n<div id=\"modal\" role=\"dialog\" aria-labelledby=\"modal-title\" aria-modal=\"true\">\n  <h2 id=\"modal-title\">Login</h2>\n  <form>\n    <label for=\"email\">Email</label>\n    <input type=\"email\" id=\"email\" autocomplete=\"email\">\n  </form>\n</div>"
+      },
+      "false_positive_risk": "high",
+      "framework_notes": {
+        "react": "In React, conditionally rendered content ({showModal && <Modal />}) is not in the DOM until rendered — axe cannot test it. Test each UI state separately: run axe after opening modals, expanding accordions, and triggering dropdowns.",
+        "vue": "In Vue, v-if removes content from the DOM entirely, so axe cannot evaluate it. Use v-show for content that should be testable in all states, or run separate axe scans with each visibility state toggled on.",
+        "angular": "In Angular, *ngIf removes content from the DOM. Run axe-core scans after triggering each UI state (dialog open, dropdown expanded, tab panel visible) to ensure hidden content is covered.",
+        "svelte": "In Svelte, {#if condition} removes content from the DOM entirely — axe cannot test it. Test each UI state separately: run axe after opening modals, expanding accordions, and triggering dropdowns. Use {#if} for conditional rendering, not CSS display:none.",
+        "astro": "In .astro files, content hidden via CSS (display:none) is in the static HTML but excluded from axe testing. For dynamic visibility inside framework islands, test each state separately."
+      },
+      "fix_difficulty_notes": "This rule is informational, not a violation. It alerts you that some page content was hidden during the scan and therefore not tested. The fix is not to change the hidden content itself, but to ensure your test suite evaluates every visibility state. Run accessibility scans on all interactive states: modals open, accordions expanded, menus visible, toast notifications active.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not treat this finding as a code defect requiring a fix — it is a test coverage indicator.",
+          "Do not make the hidden content visible as a workaround; address actual violations found when re-testing in the visible state."
+        ],
+        "verify": [
+          "Confirm all interactive states (modals, drawers, accordions, tooltips) have been tested separately in visible state."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "aria-hidden-focus",
+          "reason": "Hidden content that becomes visible may contain focusable elements inside aria-hidden containers — test each state."
+        },
+        {
+          "id": "aria-hidden-body",
+          "reason": "If aria-hidden='true' is applied to the body or root during a hidden state, removing it on reveal must be verified."
+        }
+      ],
+      "pm": {
+        "summary": "Hidden content may contain accessibility violations that surface when revealed",
+        "impact": "Incorrect semantic structure breaks navigation for assistive technology and degrades search engine indexing. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users and SEO crawlers.",
+        "effort": "medium"
+      }
+    },
+    "html-has-lang": {
+      "category": "language",
+      "fix": {
+        "description": "Add a lang attribute to the <html> element so screen readers pronounce content correctly.",
+        "code": "<html lang=\"en\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In Next.js App Router, set lang in the root layout: export default function RootLayout() { return <html lang='en'>...</html>; } in app/layout.tsx. For i18n, derive the lang from the locale route segment.",
+        "vue": "In Nuxt, set lang in nuxt.config.ts: app: { head: { htmlAttrs: { lang: 'en' } } }. For multilingual Nuxt apps, @nuxtjs/i18n sets the lang attribute per locale automatically.",
+        "angular": "In Angular, set lang in index.html: <html lang='en'>. With Angular Universal (SSR), inject LOCALE_ID and set document.documentElement.lang in a server-side app initializer to support locale-specific rendering.",
+        "svelte": "In SvelteKit, set lang in app.html (the HTML template): <html lang='en'>. For i18n, use hooks.server.ts to dynamically set the lang attribute based on the request locale or route parameter.",
+        "astro": "Set lang in your base layout: <html lang='en'>. For multilingual sites with Astro i18n routing, pass the lang as a prop to the layout: <html lang={Astro.currentLocale ?? 'en'}>."
+      },
+      "cms_notes": {
+        "shopify": "Shopify sets the lang attribute in layout/theme.liquid via <html lang='{{ request.locale.iso_code }}'> for multi-language stores. Single-language stores should hardcode <html lang='en'> (or the appropriate language). The Shopify admin's language settings control {{ request.locale }}.",
+        "wordpress": "WordPress sets the lang attribute via the language_attributes() function in header.php. The site language is configured in Settings > General. Multilingual plugins (WPML, Polylang) override this per page. Never hardcode lang in the theme — always use language_attributes().",
+        "drupal": "Drupal sets the lang attribute in html.html.twig via {{ html_attributes }}, which includes lang from the active language. Multilingual configuration in admin/config/regional/language controls this. Sub-themes overriding html.html.twig must preserve {{ html_attributes }}."
+      },
+      "fix_difficulty_notes": "The lang attribute must be on the <html> element itself, not on a meta tag or the <body>. In framework app templates, the <html> tag is typically in an index.html or document template file outside of component scope — not in a React/Vue/Angular component. For multilingual SPAs, update document.documentElement.lang programmatically on each route change to reflect the current content language.",
+      "related_rules": [
+        {
+          "id": "html-lang-valid",
+          "reason": "Adding a lang attribute must use a valid BCP 47 language tag — fix both together."
+        },
+        {
+          "id": "valid-lang",
+          "reason": "Child elements with lang attributes must also use valid tags — audit all lang values at once."
+        },
+        {
+          "id": "html-xml-lang-mismatch",
+          "reason": "The lang attribute must be present before validating its agreement with xml:lang."
+        }
+      ],
+      "pm": {
+        "summary": "Missing page language causes screen readers to use wrong pronunciation rules",
+        "impact": "Missing or incorrect language attributes cause screen readers to mispronounce content and break auto-translation. Violates WCAG 2.1 AA readable requirements. Affects screen reader users and translation tool users.",
+        "effort": "quick-win"
+      }
+    },
+    "html-lang-valid": {
+      "category": "language",
+      "fix": {
+        "description": "Use a valid BCP 47 language tag on the <html> element.",
+        "code": "<!-- English -->\n<html lang=\"en\">\n<!-- French Canadian -->\n<html lang=\"fr-CA\">\n<!-- Brazilian Portuguese -->\n<html lang=\"pt-BR\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Same fix location as html-has-lang — set lang in app/layout.tsx: <html lang='en-US'>. Ensure the value is a valid BCP 47 tag, not a locale string from your i18n library (e.g., 'en_US' with underscore is invalid).",
+        "vue": "Same as html-has-lang — set in nuxt.config.ts htmlAttrs or in the HTML template. Verify the value against the BCP 47 registry before deploying.",
+        "angular": "Same as html-has-lang — set in index.html or via Angular Universal's locale injection. Confirm the value uses hyphen separators (en-US), not underscore (en_US).",
+        "svelte": "In SvelteKit, set a valid BCP 47 lang tag in app.html: <html lang='en'>. For i18n apps, validate that each locale maps to a valid BCP 47 tag (e.g., 'en-US' not 'english').",
+        "astro": "In .astro layouts, ensure <html lang='en'> uses a valid BCP 47 tag. For multilingual Astro sites, validate each locale's lang value against the BCP 47 standard."
+      },
+      "fix_difficulty_notes": "Common mistakes: using underscore separator ('en_US') instead of hyphen ('en-US'), or spelling out the full language name ('english') instead of the BCP 47 subtag ('en'). Verify against https://www.iana.org/assignments/language-subtag-registry/.",
+      "related_rules": [
+        {
+          "id": "html-has-lang",
+          "reason": "html-has-lang and html-lang-valid are often co-located — fix the lang attribute once to resolve both."
+        },
+        {
+          "id": "valid-lang",
+          "reason": "The same BCP 47 validity requirement applies to lang attributes on child elements."
+        },
+        {
+          "id": "html-xml-lang-mismatch",
+          "reason": "Both lang and xml:lang must contain valid BCP 47 language tags."
+        }
+      ],
+      "pm": {
+        "summary": "Invalid language code causes screen readers to apply wrong pronunciation",
+        "impact": "Missing or incorrect language attributes cause screen readers to mispronounce content and break auto-translation. Violates WCAG 2.1 AA readable requirements. Affects screen reader users and translation tool users.",
+        "effort": "quick-win"
+      }
+    },
+    "html-xml-lang-mismatch": {
+      "category": "language",
+      "fix": {
+        "description": "Align the lang and xml:lang attributes on the <html> element so both specify the same base language, or remove xml:lang entirely unless serving XHTML. A mismatch confuses assistive technologies about the page language.",
+        "code": "<!-- Before: mismatched language attributes -->\n<html lang=\"en\" xml:lang=\"fr\">\n\n<!-- After: matching language attributes -->\n<html lang=\"en\" xml:lang=\"en\">\n\n<!-- Best: remove xml:lang unless serving XHTML -->\n<html lang=\"en\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In Next.js, the lang attribute is set in next.config.js (i18n.defaultLocale) or in the root layout. xml:lang is only needed for XHTML — remove it in standard HTML5. If both exist, ensure they match the same locale.",
+        "vue": "In Nuxt, set the lang attribute in nuxt.config.ts (app.head.htmlAttrs.lang). Do not add xml:lang unless serving XHTML content type. If both are present, ensure they agree on the base language.",
+        "angular": "In Angular, set the lang attribute in index.html on the <html> element. Remove xml:lang unless the app is served as application/xhtml+xml. If both are needed, ensure they specify the same language.",
+        "svelte": "In SvelteKit, app.html typically has only lang (not xml:lang). If both are present (XHTML mode), they must match exactly. This is rare in modern Svelte projects.",
+        "astro": "In .astro layouts, if both lang and xml:lang are present on <html>, they must have identical values. This is rare in modern Astro projects since XHTML mode is uncommon."
+      },
+      "fix_difficulty_notes": "The simplest fix is to remove xml:lang — it is only required for XHTML served with an XML content type. Modern HTML5 documents should use only the lang attribute. If your CMS or framework generates both attributes, ensure the template or configuration sets them to the same value. The 'base language' comparison ignores subtags (e.g., 'en-US' and 'en-GB' have the same base language 'en').",
+      "related_rules": [
+        {
+          "id": "html-has-lang",
+          "reason": "The lang attribute must be present before validating its agreement with xml:lang."
+        },
+        {
+          "id": "html-lang-valid",
+          "reason": "Both lang and xml:lang must contain valid BCP 47 language tags."
+        }
+      ],
+      "pm": {
+        "summary": "Mismatched lang attributes cause inconsistent screen reader behavior",
+        "impact": "Missing or incorrect language attributes cause screen readers to mispronounce content and break auto-translation. Violates WCAG 2.1 AA readable requirements. Affects screen reader users and translation tool users.",
+        "effort": "quick-win"
+      }
+    },
+    "identical-links-same-purpose": {
+      "category": "name-role-value",
+      "fix": {
+        "description": "Ensure links with identical visible text lead to the same destination, or differentiate them with unique text or aria-label to clarify their distinct purposes.",
+        "code": "<!-- Before: two 'Read more' links with different destinations -->\n<a href=\"/article-1\">Read more</a>\n<a href=\"/article-2\">Read more</a>\n\n<!-- After: descriptive link text -->\n<a href=\"/article-1\">Read more about accessibility</a>\n<a href=\"/article-2\">Read more about inclusive design</a>\n\n<!-- Or: extend with aria-label (preserves visual design) -->\n<a href=\"/article-1\" aria-label=\"Read more about accessibility\">Read more</a>\n<a href=\"/article-2\" aria-label=\"Read more about inclusive design\">Read more</a>"
+      },
+      "false_positive_risk": "high",
+      "framework_notes": {
+        "react": "In React, card components with 'Read more' links should accept a linkLabel prop: <a href={href} aria-label={`Read more about ${title}`}>Read more</a>. This preserves visual design while adding screen reader context.",
+        "vue": "In Vue, pass the article or card title into the link: <a :href='url' :aria-label='`Read more about ${title}`'>Read more</a>.",
+        "angular": "In Angular, use [attr.aria-label]='\"Read more about \" + card.title' on the link element within the card component.",
+        "svelte": "In Svelte, links with the same accessible name should navigate to the same URL. If two 'Learn more' links go to different pages, make the link text unique: 'Learn more about pricing', 'Learn more about features'.",
+        "astro": "In .astro files, links with identical text must go to the same destination. Use descriptive, unique link text rather than generic 'Read more' or 'Click here' across different sections."
+      },
+      "fix_difficulty_notes": "axe uses heuristics to detect this — it flags links with identical text pointing to different URLs. False positives are common when 'Read more' links in a card grid are accompanied by a heading that provides context. WCAG 2.4.4 allows disambiguation through programmatic context (e.g., an aria-labelledby relationship between a card heading and its link). Check whether this is already satisfied before fixing. The simplest fix that avoids template changes is aria-label.",
+      "related_rules": [
+        {
+          "id": "link-name",
+          "reason": "Both rules require descriptive link text — fixing generic link names (link-name) also resolves identical-links-same-purpose violations."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."
+        ],
+        "must_not": [
+          "Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."
+        ],
+        "verify": [
+          "Confirm link purpose remains clear out of context and in the accessibility tree."
+        ]
+      },
+      "pm": {
+        "summary": "Links with same text but different destinations confuse screen reader users",
+        "impact": "Interactive elements without accessible names are invisible or unlabeled to assistive technology. Violates WCAG 2.1 AA name-role-value requirements. Affects screen reader and voice control users.",
+        "effort": "medium"
+      }
+    },
+    "image-alt": {
+      "category": "text-alternatives",
+      "fix": {
+        "description": "Add a descriptive alt attribute to every <img>. Use alt=\"\" for decorative images.",
+        "code": "<img src=\"photo.jpg\" alt=\"Brown leather hiking boots with red laces on a white background\">\n<!-- Decorative image (hidden from AT): -->\n<img src=\"divider.png\" alt=\"\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Use the alt prop directly on <img>: <img src={src} alt=\"Description\" />. For decorative images: alt=\"\".",
+        "vue": "Use :alt binding or plain alt attribute — standard HTML semantics apply.",
+        "angular": "Use [attr.alt] binding or plain alt attribute on <img> elements.",
+        "svelte": "Svelte's compiler enforces alt attributes on <img> elements at build time — missing alt triggers a warning (a11y-missing-attribute). Use alt='' for decorative images. This is one of Svelte's strongest built-in accessibility features.",
+        "astro": "Astro's <Image /> component from astro:assets requires the alt prop by default (TypeScript will error without it). For standard <img> tags in .astro files, add alt manually — Astro does not validate HTML attributes at build time."
+      },
+      "cms_notes": {
+        "shopify": "Product images use {{ image | image_url }} with product.featured_image.alt as alt text. If the merchant hasn't set alt text in the admin, it defaults to blank — add a fallback: alt='{{ image.alt | default: product.title }}' in your Liquid template.",
+        "wordpress": "WordPress stores alt text per attachment via update_post_meta($id, '_wp_attachment_image_alt', $value). The image block populates alt from the Media Library. Ensure custom image rendering via wp_get_attachment_image() preserves the stored alt attribute.",
+        "drupal": "Drupal's Image field requires alt text by default (configurable per field instance). In Twig templates, use {{ content.field_image }} which renders with the stored alt. If rendering manually, use {{ file_url(node.field_image.entity.uri.value) }} with alt={{ node.field_image.alt }}."
+      },
+      "fix_difficulty_notes": "axe-core confirms alt presence but cannot evaluate alt quality. An alt='photo.jpg' or alt='image' passes axe but violates 1.1.1. Always verify that alt text is descriptive and conveys the image's purpose. For decorative images, use alt='' (empty, not omitted — omitting alt causes some screen readers to announce the filename).",
+      "related_rules": [
+        {
+          "id": "input-image-alt",
+          "reason": "The same alt text requirement applies to <input type=\"image\"> — fix all alt text violations together."
+        },
+        {
+          "id": "svg-img-alt",
+          "reason": "SVGs used as images need equivalent alt text — audit both together."
+        },
+        {
+          "id": "image-redundant-alt",
+          "reason": "When adding alt text, avoid duplicating visible adjacent text — fixing one can trigger the other."
+        },
+        {
+          "id": "object-alt",
+          "reason": "The same text alternative requirement applies to <object> — audit both together."
+        },
+        {
+          "id": "area-alt",
+          "reason": "The parent <img> of the image map also needs alt text — fix both together."
+        },
+        {
+          "id": "role-img-alt",
+          "reason": "Both rules require images to have accessible names — fix all image alternatives together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Images without alt text are invisible to screen readers — most common WCAG violation",
+        "impact": "Non-text content is invisible to assistive technology, excluding users who depend on text descriptions. Violates WCAG 2.1 AA perceivable requirements. Affects screen reader users and users on slow connections.",
+        "effort": "quick-win"
+      }
+    },
+    "image-redundant-alt": {
+      "category": "text-alternatives",
+      "fix": {
+        "description": "Remove or shorten the alt text when it duplicates adjacent visible text. Use alt='' to mark the image as decorative when adjacent text fully explains it.",
+        "code": "<!-- Before: alt duplicates adjacent figcaption -->\n<figure>\n  <img src=\"chart.png\" alt=\"Bar chart showing Q1 2024 sales by region\">\n  <figcaption>Bar chart showing Q1 2024 sales by region</figcaption>\n</figure>\n\n<!-- After: empty alt — caption provides the description -->\n<figure>\n  <img src=\"chart.png\" alt=\"\">\n  <figcaption>Bar chart showing Q1 2024 sales by region</figcaption>\n</figure>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, CMS-driven content often auto-populates alt from the image title, which duplicates the adjacent heading. Use conditional alt: alt={caption ? '' : imageAlt} when a caption is present.",
+        "vue": "In Vue, compute the alt conditionally: :alt='caption ? \"\" : imageAlt'. Avoid binding the same string to both alt and a figcaption.",
+        "angular": "In Angular, use conditional binding: [attr.alt]='caption ? \"\" : imageAlt' to suppress redundant alt when a visible caption is present.",
+        "svelte": "In Svelte, avoid duplicating visible text in the alt attribute. If a card has <h2>Product Name</h2><img alt='Product Name'>, the alt is redundant — use alt='' or describe the image differently.",
+        "astro": "In .astro files, alt text that duplicates adjacent visible text is redundant. Use alt='' for decorative images next to their text equivalent, or describe the image's visual content instead."
+      },
+      "fix_difficulty_notes": "axe flags exact or near-exact matches between alt and adjacent text — but verify the adjacent text is truly sufficient before setting alt=''. For charts, the figcaption may describe the title but not the data values — the image alt may still be needed. In <figure>/<figcaption> pairs, the figcaption typically replaces the alt for descriptive images, but for complex diagrams, consider aria-describedby pointing to a detailed description.",
+      "related_rules": [
+        {
+          "id": "image-alt",
+          "reason": "When adding alt text, avoid duplicating visible adjacent text — fixing one can trigger the other."
+        },
+        {
+          "id": "svg-img-alt",
+          "reason": "When adding aria-label to SVGs, avoid duplicating visible adjacent text."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Redundant alt text causes screen readers to repeat information unnecessarily",
+        "impact": "Non-text content is invisible to assistive technology, excluding users who depend on text descriptions. Violates WCAG 2.1 AA perceivable requirements. Affects screen reader users and users on slow connections.",
+        "effort": "quick-win"
+      }
+    },
+    "input-button-name": {
+      "category": "forms",
+      "preferred_relationship_checks": [
+        "aria-labelledby",
+        "aria-label",
+        "explicit-label",
+        "implicit-label"
+      ],
+      "fix": {
+        "description": "Add a value attribute or aria-label to every <input type='button'>, <input type='submit'>, and <input type='reset'>.",
+        "code": "<!-- Input buttons use value as accessible name: -->\n<input type=\"submit\" value=\"Submit order\">\n<input type=\"reset\" value=\"Clear form\">\n<input type=\"button\" value=\"Load more results\">\n\n<!-- If value must stay empty for visual reasons, use aria-label: -->\n<input type=\"submit\" value=\"\" aria-label=\"Submit order\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, use the value prop: <input type='submit' value='Submit order' />. For modern React, prefer <button type='submit'>Submit order</button> — it supports child elements (icons, spans) and is more styleable.",
+        "vue": "In Vue, use value='Submit order' or :value='submitLabel' for dynamic labels. Prefer <button type='submit'> over <input type='submit'> for greater flexibility.",
+        "angular": "In Angular, use [value]='submitLabel' or a static value attribute. Angular Material's mat-button directives work on <button> — prefer <button> for all interactive controls.",
+        "svelte": "In Svelte, <input type='submit'> and <input type='button'> need a value attribute for their accessible name. For icon-only inputs, use aria-label instead.",
+        "astro": "In .astro files, <input type='button'> and <input type='submit'> must have a value attribute. This renders to static HTML — ensure the value is descriptive."
+      },
+      "fix_difficulty_notes": "For <input type='submit'> and <input type='reset'>, browsers provide default labels ('Submit' and 'Reset') when value is omitted — axe may or may not flag these depending on context. Prefer explicit value attributes over browser defaults, as default labels are not consistently translated across locales. Prefer <button type='submit'> over <input type='submit'> for new code — it is more flexible.",
+      "cms_notes": {
+        "shopify": "Dawn theme's add-to-cart form uses <button type='submit'> not <input type='submit'>. If you see this violation it is likely in a legacy custom section or a third-party app's injected form. In theme forms, add value='{{ 'products.product.add_to_cart' | t }}' to any remaining <input type='submit'> elements.",
+        "wordpress": "Contact Form 7 and older WordPress form plugins historically used <input type='submit'>. CF7 now uses <button> by default. Classic plugin-generated forms may still use <input type='submit' value=''> with value set dynamically via PHP filters — hook into wpcf7_form_tag_data_normalize to set a valid value.",
+        "drupal": "Drupal's Form API renders submit buttons as <input type='submit'> by default with value set from #value. The #value key is required — never set #value to empty. Use 'Save' or a descriptive translatable string: '#value' => $this->t('Save configuration')."
+      },
+      "related_rules": [
+        {
+          "id": "button-name",
+          "reason": "The same accessible name requirement applies to <button> elements — fix all button naming violations together."
+        },
+        {
+          "id": "link-name",
+          "reason": "The same accessible name requirement applies to links — fix all interactive element naming together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Submit buttons without labels prevent screen reader users from submitting forms",
+        "impact": "Form fields without proper labels prevent users from understanding what information is required, blocking submissions. Violates WCAG 2.1 AA input assistance requirements. Affects screen reader users and users with cognitive disabilities.",
+        "effort": "quick-win"
+      }
+    },
+    "input-image-alt": {
+      "category": "text-alternatives",
+      "fix": {
+        "description": "Add an alt attribute to every <input type=\"image\"> describing the action it performs.",
+        "code": "<input type=\"image\" src=\"submit.png\" alt=\"Submit form\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, <input type='image'> is rarely used — most apps use <button> with an <img> or SVG icon instead. If encountered, add the alt prop directly: <input type='image' src={src} alt='Submit form' />.",
+        "vue": "In Vue, bind alt directly: <input type='image' :src='src' alt='Submit form'>. This pattern is uncommon in Vue apps — consider replacing with a <button> containing an icon for better maintainability.",
+        "angular": "In Angular, use [alt]='buttonAction' on the input element. Angular does not validate alt on input[type=image] — this must be caught by axe or manual review.",
+        "svelte": "In Svelte, add alt directly: <input type='image' src={src} alt='Submit form'>. Svelte's a11y warnings do not cover input[type=image] — rely on axe-core for detection.",
+        "astro": "In .astro files, <input type='image'> renders as static HTML. Add the alt attribute directly in the template. This element is uncommon in modern Astro projects — consider replacing with a <button> and an icon."
+      },
+      "fix_difficulty_notes": "The alt must describe the button's action, not the image appearance. 'Submit form' is correct; 'Blue arrow pointing right' is not.",
+      "related_rules": [
+        {
+          "id": "image-alt",
+          "reason": "The same alt text requirement applies to <img> — fix all alt text violations together."
+        },
+        {
+          "id": "svg-img-alt",
+          "reason": "SVGs used as images share the same accessible name requirement."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Image buttons without alt text are unlabeled for screen reader users",
+        "impact": "Non-text content is invisible to assistive technology, excluding users who depend on text descriptions. Violates WCAG 2.1 AA perceivable requirements. Affects screen reader users and users on slow connections.",
+        "effort": "quick-win"
+      }
+    },
+    "label": {
+      "category": "forms",
+      "preferred_relationship_checks": [
+        "aria-labelledby",
+        "explicit-label",
+        "form-field-multiple-labels",
+        "label",
+        "aria-label",
+        "implicit-label"
+      ],
+      "fix": {
+        "description": "Associate every form input with a visible <label> element.",
+        "code": "<label for=\"email\">Email address</label>\n<input id=\"email\" type=\"email\" name=\"email\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Use htmlFor prop (not 'for') on <label>: <label htmlFor=\"email\">Email</label>. The 'for' attribute is reserved in JSX.",
+        "vue": "Use the standard for attribute: <label for=\"email\">. Vue renders standard HTML — no special prop needed.",
+        "angular": "Use [for]=\"inputId\" binding or wrap the input inside the label element to avoid explicit ID linking.",
+        "svelte": "Use the standard HTML for attribute: <label for='email'>. Svelte's compiler warns if interactive form elements lack associated labels (a11y-label-has-associated-control). Wrapping the input inside the label also satisfies the check.",
+        "astro": "In .astro files, use standard HTML <label for='id'>. For form inputs inside framework islands (React/Vue/Svelte), each framework's label rules apply within the island boundary — Astro does not validate cross-island label-input associations."
+      },
+      "cms_notes": {
+        "shopify": "Dawn theme hides labels visually with the 'visually-hidden' class. Ensure labels exist in the DOM even when hidden — screen readers need the <label> element. Never remove the label; instead use CSS to hide it if the design requires it.",
+        "wordpress": "Gutenberg's built-in form blocks include labels by default. For custom blocks, use <label> inside the block's save() function. Contact Form 7 and WPForms plugins generate labels automatically — verify they use the 'for' attribute.",
+        "drupal": "Drupal's Form API automatically generates labels when #title is set on form elements. In custom Twig templates for forms, ensure every input has a corresponding <label for='{{ input_id }}'>. Use form_element.html.twig as your reference."
+      },
+      "fix_difficulty_notes": "aria-label works technically but voice control users cannot target the field by speaking the label — they need a visible text match. Prefer a visible <label> over aria-label for all inputs. placeholder is not a substitute for a label — it disappears on input and is not reliably announced by screen readers.",
+      "related_rules": [
+        {
+          "id": "select-name",
+          "reason": "The same label association pattern resolves select-name violations."
+        },
+        {
+          "id": "autocomplete-valid",
+          "reason": "Properly labeled inputs should also have correct autocomplete tokens — fix label association and autocomplete together."
+        },
+        {
+          "id": "form-field-multiple-labels",
+          "reason": "Fixing label association may expose or create multiple-label conflicts — audit both together."
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "reason": "The visible label text must match the accessible name — fix label association and name mismatch together."
+        },
+        {
+          "id": "aria-input-field-name",
+          "reason": "ARIA input field naming and native label association address the same accessible name gap — fix together."
+        },
+        {
+          "id": "aria-toggle-field-name",
+          "reason": "The same label association pattern resolves both label and aria-toggle-field-name violations."
+        },
+        {
+          "id": "label-title-only",
+          "reason": "Both rules enforce proper label association — fix label-title-only and label violations together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Form inputs without labels prevent screen reader users from understanding required fields",
+        "impact": "Form fields without proper labels prevent users from understanding what information is required, blocking submissions. Violates WCAG 2.1 AA input assistance requirements. Affects screen reader users and users with cognitive disabilities.",
+        "effort": "quick-win"
+      }
+    },
+    "label-content-name-mismatch": {
+      "category": "forms",
+      "fix": {
+        "description": "Ensure the element's accessible name contains or starts with the visible label text so voice control users can activate it by speaking what they see.",
+        "code": "<!-- Visible label: 'Search products' -->\n<!-- aria-label must contain that text: -->\n<button aria-label=\"Search products\">Search products</button>\n\n<!-- Or remove aria-label and rely on visible text: -->\n<button>Search products</button>\n\n<!-- If icon + text: make aria-label match the visible text -->\n<button aria-label=\"Search products\">\n  <svg aria-hidden=\"true\">...</svg>\n  Search products\n</button>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, avoid aria-label props that differ from the button's child text. For icon buttons, if you add visible text alongside the icon, the aria-label becomes unnecessary — remove it.",
+        "vue": "In Vue, check components that accept both a label slot and an aria-label prop — if both are provided with different values, this violation occurs. Prefer deriving the accessible name from the visible slot content.",
+        "angular": "In Angular, aria-label bindings on buttons with text content are a common source of this violation. Remove [attr.aria-label] on buttons that have visible text children unless the label extends the text rather than replacing it.",
+        "svelte": "In Svelte, the accessible name (from aria-label or aria-labelledby) must include the visible text of the element. Voice control users speak the visible text — if it doesn't match the accessible name, activation fails.",
+        "astro": "In .astro files, ensure aria-label includes the visible text content. This rule ensures voice control users can activate elements by speaking the visible label."
+      },
+      "fix_difficulty_notes": "The accessible name must contain (not just match) the visible text — it can have additional context. For example, aria-label='Search products in catalog' on a button with visible text 'Search products' is valid. The violation is when aria-label completely replaces the visible label with different text (e.g., visible 'Buy now', aria-label='Add to cart'). The simplest fix is often to remove the aria-label and let the visible text serve as the accessible name.",
+      "related_rules": [
+        {
+          "id": "label",
+          "reason": "Fixing label association is the primary step before resolving name mismatch."
+        },
+        {
+          "id": "form-field-multiple-labels",
+          "reason": "Multiple labels frequently cause accessible name to differ from visible label text."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Visible label doesn't match accessible name, breaking voice control commands",
+        "impact": "Form fields without proper labels prevent users from understanding what information is required, blocking submissions. Violates WCAG 2.1 AA input assistance requirements. Affects screen reader users and users with cognitive disabilities.",
+        "effort": "medium"
+      }
+    },
+    "label-title-only": {
+      "category": "forms",
+      "fix": {
+        "description": "Ensure every form element has a visible label and is not solely labeled using the title attribute, aria-describedby, or hidden labels. The title attribute is not consistently exposed by all screen readers and is not visible to sighted users.",
+        "code": "<!-- Before: labeled only by title (not visible, not reliable) -->\n<input type=\"text\" title=\"Enter your name\">\n\n<!-- After: visible <label> element -->\n<label for=\"name\">Full name</label>\n<input type=\"text\" id=\"name\">\n\n<!-- Also valid: floating label pattern with visible label -->\n<div class=\"form-group\">\n  <input type=\"email\" id=\"email\" placeholder=\" \" required>\n  <label for=\"email\">Email address</label>\n</div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, avoid using title as the sole labeling mechanism on inputs. Use <label htmlFor='id'> or aria-label only for visually hidden inputs. For floating labels, ensure the <label> is always rendered — not replaced by placeholder text.",
+        "vue": "In Vue, replace title-only labeling with <label :for='id'>. For component libraries (Vuetify, PrimeVue), use the label prop which renders a visible <label> element, not just a title attribute.",
+        "angular": "In Angular, use <label [for]='inputId'> or Angular Material's <mat-label> inside <mat-form-field>. The mat-label renders a visible, persistent label. Do not rely on [attr.title] as the sole accessible name.",
+        "svelte": "In Svelte, prefer <label for='id'> over a title attribute for form inputs. The title attribute is only exposed on hover — screen reader users hear it, but it's invisible to sighted keyboard users.",
+        "astro": "In .astro files, form inputs should have <label> elements, not just title attributes. The title attribute is a fallback, not a substitute for a visible label."
+      },
+      "fix_difficulty_notes": "The title attribute provides a tooltip on hover but is not reliably announced by all screen reader and browser combinations. WCAG requires a visible label for form inputs (1.3.1 Info and Relationships, 3.3.2 Labels or Instructions). The fix is to add a <label> element associated via for/id. For cases where a visible label is not desired (icon-only search fields), use aria-label with a visually hidden <label> as a fallback.",
+      "related_rules": [
+        {
+          "id": "label",
+          "reason": "Both rules enforce proper label association — fix label-title-only and label violations together."
+        },
+        {
+          "id": "form-field-multiple-labels",
+          "reason": "When adding a visible label, verify you are not creating a duplicate label association."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Labels only in title attribute are invisible to most assistive technology",
+        "impact": "Form fields without proper labels prevent users from understanding what information is required, blocking submissions. Violates WCAG 2.1 AA input assistance requirements. Affects screen reader users and users with cognitive disabilities.",
+        "effort": "quick-win"
+      }
+    },
+    "landmark-banner-is-top-level": {
+      "category": "structure",
+      "fix": {
+        "description": "Ensure the banner landmark (<header> or role='banner') is at the top level of the document and not nested inside another landmark such as <main>, <aside>, <nav>, or <section>.",
+        "code": "<!-- Correct: banner at the top level -->\n<body>\n  <header>\n    <nav aria-label=\"Primary\">\n      <a href=\"/\">Home</a>\n    </nav>\n  </header>\n  <main>...</main>\n  <footer>...</footer>\n</body>\n\n<!-- Incorrect: banner nested inside main -->\n<!-- <main>\n  <header>Site header</header>\n  <section>Content</section>\n</main> -->"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In Next.js, place <header> in the root layout.tsx as a sibling of <main>, not inside it. Page components must not render a top-level <header> — use <section> or <div> for page-specific header areas.",
+        "vue": "In Nuxt, place <header> in layouts/default.vue before the <main> wrapping <slot />. Do not nest <header> inside <main> or <aside>.",
+        "angular": "In Angular, place <header> in app.component.html before the <main> wrapping <router-outlet>. Feature modules must not render a <header> inside the routed content area.",
+        "svelte": "In SvelteKit, <header> elements (which have implicit role='banner') must be top-level — not nested inside <main>, <section>, or <article>. Place <header> as a direct child of <body> in +layout.svelte.",
+        "astro": "In .astro layouts, ensure <header> (role='banner') is a direct child of <body>, not nested inside <main> or <section>. Astro component nesting can accidentally push <header> inside other landmarks."
+      },
+      "fix_difficulty_notes": "A <header> inside <article> or <section> does not create a banner landmark — it is scoped to that sectioning element. The violation occurs when a <header> intended as the site banner is nested inside <main> or another landmark. Move it to be a direct child of <body>. In SPA frameworks, ensure the layout component places <header> before <main>, not inside it.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add role='banner' to a <header> nested inside <main> as a shortcut — move the element to the correct position in the DOM.",
+          "Do not add a second <header role='banner'> at the body level if one already exists — this creates a duplicate-banner violation."
+        ],
+        "verify": [
+          "Confirm the <header> is a direct child of <body> (or is the only banner landmark at body level) in the rendered DOM."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "landmark-no-duplicate-banner",
+          "reason": "If the banner is duplicated and one copy is nested incorrectly, fix both the nesting and the duplication together."
+        },
+        {
+          "id": "landmark-contentinfo-is-top-level",
+          "reason": "The contentinfo (footer) landmark has the same top-level requirement — fix both together."
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "reason": "All primary landmarks (banner, main, contentinfo) must be at the top level — fix as a group."
+        },
+        {
+          "id": "landmark-complementary-is-top-level",
+          "reason": "All primary landmarks share the same top-level requirement — fix nesting issues for all landmarks together."
+        }
+      ],
+      "pm": {
+        "summary": "Nested banner landmarks break expected page structure navigation",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "quick-win"
+      }
+    },
+    "landmark-complementary-is-top-level": {
+      "category": "structure",
+      "fix": {
+        "description": "Ensure the complementary landmark (<aside> or role='complementary') is at the top level of the document and not nested inside another landmark such as <main>, <nav>, or <header>.",
+        "code": "<!-- Correct: aside at the top level -->\n<body>\n  <header>...</header>\n  <main>...</main>\n  <aside aria-label=\"Related articles\">\n    <h2>Related articles</h2>\n    <ul>...</ul>\n  </aside>\n  <footer>...</footer>\n</body>\n\n<!-- Incorrect: aside nested inside main -->\n<!-- <main>\n  <article>Content</article>\n  <aside>Sidebar</aside>\n</main> -->"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In Next.js App Router, place <aside> in layout.tsx as a sibling of <main>, not inside it. If sidebar content varies per page, use a slot pattern or React context to project sidebar content into the layout-level <aside>.",
+        "vue": "In Nuxt, use a named slot in layouts/default.vue for sidebar content: <aside><slot name='sidebar' /></aside> placed outside <main>. Page components fill the slot without nesting <aside> inside <main>.",
+        "angular": "In Angular, place <aside> in app.component.html alongside <main>, not inside the <router-outlet>. Use a service or ng-content projection to populate sidebar content from route components.",
+        "svelte": "In Svelte, <aside> elements (role='complementary') must be top-level landmarks — not nested inside <main> unless they are related to the main content specifically.",
+        "astro": "In .astro layouts, <aside> should be a direct child of <body> for top-level complementary content. If related to a specific section, it can be inside <main> with an aria-label."
+      },
+      "fix_difficulty_notes": "The HTML spec allows <aside> inside <article> or <section>, where it is scoped to that sectioning element and does not create a top-level complementary landmark. The violation occurs when an <aside> intended as a page-level sidebar is nested inside <main>. Move it to be a sibling of <main>. Common in blog layouts where the sidebar is mistakenly placed inside the main content area.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add role='complementary' to an <aside> nested inside <main> as a workaround — move the element to be a sibling of <main>.",
+          "Do not flag an <aside> inside <article> or <section> — that placement is intentional and does not create a landmark."
+        ],
+        "verify": [
+          "Confirm the <aside> intended as a page sidebar is a direct child of <body> or a sibling of <main> in the rendered DOM."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "landmark-banner-is-top-level",
+          "reason": "All primary landmarks share the same top-level requirement — fix nesting issues for all landmarks together."
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "reason": "Complementary and main landmarks must both be at the top level — fix together."
+        }
+      ],
+      "pm": {
+        "summary": "Nested complementary landmarks break sidebar navigation for screen readers",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "quick-win"
+      }
+    },
+    "landmark-contentinfo-is-top-level": {
+      "category": "structure",
+      "fix": {
+        "description": "Ensure the contentinfo landmark (<footer> or role='contentinfo') is at the top level of the document and not nested inside another landmark such as <main>, <aside>, or <nav>.",
+        "code": "<!-- Correct: footer at the top level -->\n<body>\n  <header>...</header>\n  <main>...</main>\n  <footer>\n    <p>&copy; 2026 Company Name</p>\n    <nav aria-label=\"Footer\">\n      <a href=\"/privacy\">Privacy</a>\n      <a href=\"/terms\">Terms</a>\n    </nav>\n  </footer>\n</body>\n\n<!-- Incorrect: footer nested inside main -->\n<!-- <main>\n  <section>Content</section>\n  <footer>Copyright info</footer>\n</main> -->"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In Next.js, place <footer> in the root layout.tsx after <main>, not inside it. Page components should not render a top-level <footer> — the layout owns the site-wide footer.",
+        "vue": "In Nuxt, place <footer> in layouts/default.vue after the <main> wrapping <slot />. Individual page components must not add a <footer> at the landmark level.",
+        "angular": "In Angular, place <footer> in app.component.html after the <main> wrapping <router-outlet>. Route components must not render their own <footer> at the document root level.",
+        "svelte": "In SvelteKit, <footer> (role='contentinfo') must be top-level — not nested inside <main> or <section>. Place it as a direct child of <body> in +layout.svelte, after </main>.",
+        "astro": "In .astro layouts, <footer> (role='contentinfo') must be a direct child of <body>. Astro component composition can accidentally nest <footer> inside other landmarks."
+      },
+      "fix_difficulty_notes": "A <footer> inside <article> or <section> does not create a contentinfo landmark — it is scoped to that sectioning element. The violation occurs when the site-wide <footer> is nested inside <main> or another landmark. Move it to be a direct child of <body>. In SPAs, this is typically a layout architecture issue — the layout component must place <footer> after <main>, not inside it.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add role='contentinfo' to a <footer> inside <main> as a workaround — move the element to be a direct child of <body>.",
+          "Do not flag a <footer> inside <article> or <section> — that placement is scoped to the sectioning element and does not create a landmark."
+        ],
+        "verify": [
+          "Confirm the site-wide <footer> is a direct child of <body> in the rendered DOM, not nested inside any other landmark."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "landmark-no-duplicate-contentinfo",
+          "reason": "If multiple contentinfo landmarks exist, fix both the nesting and the duplication together."
+        },
+        {
+          "id": "landmark-banner-is-top-level",
+          "reason": "Banner and contentinfo landmarks share the same top-level requirement — fix together."
+        }
+      ],
+      "pm": {
+        "summary": "Nested footer landmarks break expected page structure navigation",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "quick-win"
+      }
+    },
+    "landmark-main-is-top-level": {
+      "category": "structure",
+      "fix": {
+        "description": "Ensure the main landmark (<main> or role='main') is at the top level of the document and not nested inside another landmark such as <header>, <aside>, <nav>, or <section>.",
+        "code": "<!-- Correct: main at the top level -->\n<body>\n  <header>...</header>\n  <main id=\"main-content\">\n    <h1>Page title</h1>\n    <section>...</section>\n  </main>\n  <footer>...</footer>\n</body>\n\n<!-- Incorrect: main nested inside a section -->\n<!-- <section>\n  <main>Content</main>\n</section> -->"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In Next.js App Router, <main> belongs in layout.tsx as a direct child of <body> (or the root element). Do not wrap <main> inside a <section> or <div role='region'>.",
+        "vue": "In Nuxt, <main> belongs in layouts/default.vue as a top-level element wrapping <slot />. Do not nest it inside another landmark element.",
+        "angular": "In Angular, <main> belongs in app.component.html wrapping <router-outlet>. Ensure no parent component template wraps it in a <section> or other landmark.",
+        "svelte": "In SvelteKit, <main> must be a direct child of <body> — not nested inside another landmark. Place <main> in +layout.svelte wrapping <slot />, alongside (not inside) <header> and <footer>.",
+        "astro": "In .astro layouts, <main> must be a direct child of <body>. Ensure no wrapper <div>, <section>, or other landmark nests the <main> element."
+      },
+      "fix_difficulty_notes": "In SPAs and component-based architectures, <main> is often wrapped by layout shells, provider components, or CSS utility wrappers that may inadvertently introduce a landmark parent. The fix requires understanding which component owns the layout structure — in Next.js it is layout.tsx, in Nuxt layouts/default.vue, in SvelteKit +layout.svelte. Non-landmark <div> wrappers (for CSS Grid/Flexbox) are safe and do not trigger this rule.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not flag <main> wrapped in a non-landmark <div> — plain <div> elements are not landmarks and do not violate this rule.",
+          "Do not add role='main' to a <main> element — the implicit role is already 'main' and the attribute is redundant."
+        ],
+        "verify": [
+          "Confirm no ancestor of <main> has an ARIA role that creates a landmark (header, footer, aside, nav, section with aria-label)."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "landmark-one-main",
+          "reason": "Ensure exactly one main landmark exists and that it is at the top level."
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "reason": "If the main landmark is duplicated, fix both the nesting and the duplication."
+        },
+        {
+          "id": "landmark-banner-is-top-level",
+          "reason": "All primary landmarks (banner, main, contentinfo) must be at the top level — fix as a group."
+        },
+        {
+          "id": "landmark-complementary-is-top-level",
+          "reason": "Complementary and main landmarks must both be at the top level — fix together."
+        }
+      ],
+      "pm": {
+        "summary": "Nested main landmarks break direct navigation to primary content",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "quick-win"
+      }
+    },
+    "landmark-no-duplicate-banner": {
+      "category": "structure",
+      "fix": {
+        "description": "Ensure only one <header> element (or role='banner') exists at the top level of the page, outside of sectioning elements.",
+        "code": "<body>\n  <!-- One top-level header (banner landmark): -->\n  <header>\n    <a href=\"/\" aria-label=\"Acme Corp home\">\n      <img src=\"/logo.svg\" alt=\"Acme Corp\" width=\"120\" height=\"40\">\n    </a>\n    <nav aria-label=\"Primary\">\n      <a href=\"/shop\">Shop</a>\n      <a href=\"/about\">About</a>\n    </nav>\n  </header>\n  <main>\n    <!-- Nested headers inside article/section do NOT create banner landmarks: -->\n    <article>\n      <header>Published on March 15, 2026</header>\n    </article>\n  </main>\n  <footer>...</footer>\n</body>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In Next.js App Router, the root layout (layout.tsx) should have exactly one <header> at the top level. Page components must not add a second top-level <header> — use <section> or <div> for page-specific header areas.",
+        "vue": "In Nuxt, the global <header> belongs in layouts/default.vue. Individual page components must not render a top-level <header> — use <section aria-labelledby='...'>.",
+        "angular": "In Angular, app.component.html should contain exactly one top-level <header>. Route components must not add a second <header> at the document root level.",
+        "svelte": "In SvelteKit, ensure only one top-level <header> exists per page. If +layout.svelte and +page.svelte both render <header>, one will be a duplicate. Keep <header> only in the layout.",
+        "astro": "In .astro files, ensure only one top-level <header> exists per page. If the base layout includes <header>, individual page components must not add another. Use <section> with aria-label for sub-headers."
+      },
+      "fix_difficulty_notes": "A <header> element only creates a banner landmark when it is a direct child of <body> (not nested inside <article>, <aside>, <main>, <nav>, or <section>). axe may flag this when a layout component renders two <header> tags at body level — one for a skip link area and one for the visible site header. Consolidate them into one top-level <header>.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add aria-label to a second banner landmark as a fix — two labelled banner landmarks still violate this rule. Only one banner is permitted.",
+          "Do not flag a <header> inside <article>, <aside>, <section>, or <nav> — it does not create a banner landmark in that context."
+        ],
+        "verify": [
+          "Confirm exactly one <header> exists as a direct child of <body> (or at body level) in the rendered DOM."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "landmark-no-duplicate-main",
+          "reason": "Fix all duplicate landmark violations together — they share the same root cause in layout architecture."
+        },
+        {
+          "id": "landmark-one-main",
+          "reason": "Landmark structure issues are often co-located — fix them as a group."
+        },
+        {
+          "id": "landmark-unique",
+          "reason": "Unique landmark labels are the fix for duplicate banner violations — add aria-label to distinguish them."
+        },
+        {
+          "id": "landmark-banner-is-top-level",
+          "reason": "If the banner is duplicated and one copy is nested incorrectly, fix both the nesting and the duplication together."
+        },
+        {
+          "id": "landmark-no-duplicate-contentinfo",
+          "reason": "Fix all duplicate landmark violations together — they share the same root cause in layout architecture."
+        }
+      ],
+      "pm": {
+        "summary": "Multiple banner landmarks confuse screen reader page structure navigation",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "quick-win"
+      }
+    },
+    "landmark-no-duplicate-contentinfo": {
+      "category": "structure",
+      "fix": {
+        "description": "Ensure the document has at most one contentinfo landmark. Multiple top-level <footer> elements or elements with role='contentinfo' create ambiguity for screen reader users navigating by landmarks.",
+        "code": "<!-- Correct: one top-level footer (contentinfo landmark) -->\n<body>\n  <header>...</header>\n  <main>\n    <article>\n      <footer>Article footer — not a contentinfo landmark</footer>\n    </article>\n  </main>\n  <footer><!-- Only this one creates a contentinfo landmark -->\n    <p>&copy; 2026 Company</p>\n  </footer>\n</body>\n\n<!-- Incorrect: two top-level footers -->\n<!-- <body>\n  <main>...</main>\n  <footer>Site links</footer>\n  <footer>Copyright</footer>\n</body> -->"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In Next.js, the root layout.tsx should contain exactly one top-level <footer>. Page components that need footer-like content should use <section> or <div>, not <footer>, to avoid creating a second contentinfo landmark.",
+        "vue": "In Nuxt, the global <footer> belongs in layouts/default.vue. Individual page components must not render a second top-level <footer>. Use <div> or <section> for page-specific footer content.",
+        "angular": "In Angular, app.component.html should contain exactly one <footer>. Route components must not add a second <footer> at the document root level — use <section> for page-specific bottom content.",
+        "svelte": "In SvelteKit, ensure only one top-level <footer> exists per page. Keep <footer> in +layout.svelte only — individual +page.svelte files should use generic containers for page-specific footer content.",
+        "astro": "In .astro files, ensure only one top-level <footer> exists per page. If the base layout includes <footer>, page components should not add another."
+      },
+      "fix_difficulty_notes": "A <footer> inside <article>, <section>, or <aside> does not create a contentinfo landmark — it is scoped to that sectioning element. The violation only occurs when two or more <footer> elements exist at the body level (not inside sectioning elements). Consolidate them into one <footer> or move the extra ones inside sectioning elements where they become scoped footers.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not flag a <footer> inside <article>, <section>, or <aside> — it is scoped to that element and does not create a contentinfo landmark.",
+          "Do not add aria-label to differentiate two body-level footers as a fix — the rule requires at most one contentinfo landmark."
+        ],
+        "verify": [
+          "Confirm only one <footer> exists as a direct child of <body> (or at body level) in the rendered DOM."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "landmark-contentinfo-is-top-level",
+          "reason": "Duplicate contentinfo landmarks are often caused by incorrect nesting — fix both together."
+        },
+        {
+          "id": "landmark-no-duplicate-banner",
+          "reason": "Fix all duplicate landmark violations together — they share the same root cause in layout architecture."
+        },
+        {
+          "id": "landmark-unique",
+          "reason": "If duplicate contentinfo landmarks cannot be eliminated, give each a unique aria-label."
+        }
+      ],
+      "pm": {
+        "summary": "Multiple footer landmarks confuse screen reader page structure navigation",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "quick-win"
+      }
+    },
+    "landmark-no-duplicate-main": {
+      "category": "structure",
+      "fix": {
+        "description": "Ensure only one <main> element (or role='main') exists on the page. If multiple content areas are needed, use <section> with unique aria-labelledby.",
+        "code": "<main id=\"main-content\">\n  <!-- all primary page content -->\n  <section aria-labelledby=\"section-a-heading\">\n    <h2 id=\"section-a-heading\">Section A</h2>\n  </section>\n  <section aria-labelledby=\"section-b-heading\">\n    <h2 id=\"section-b-heading\">Section B</h2>\n  </section>\n</main>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In Next.js App Router, <main> belongs in layout.tsx, not in page.tsx. Individual page components render content inside the layout's <main> — never add a second <main> inside a page component.",
+        "vue": "In Nuxt, <main> belongs in layouts/default.vue wrapping <slot />. Page components must not add a <main> wrapper.",
+        "angular": "In Angular, <main> belongs in app.component.html wrapping <router-outlet>. Route component templates must not contain a second <main>.",
+        "svelte": "In SvelteKit, ensure only one <main> element exists per page. Place <main> in the root +layout.svelte wrapping <slot />. Individual +page.svelte files must not add their own <main>.",
+        "astro": "In .astro files, ensure only one <main> element exists per page. The base layout should contain the single <main> wrapping <slot />."
+      },
+      "fix_difficulty_notes": "In SPAs, a second <main> commonly appears when a layout component defines one and a page component adds another. The fix is to ensure only the layout component owns the <main> wrapper, and page components render their content inside it without adding a second <main>.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add aria-label to two <main> elements as a workaround — multiple main landmarks are not permitted regardless of labelling.",
+          "Do not use role='main' as a secondary main alongside <main> — both create main landmarks and violate this rule."
+        ],
+        "verify": [
+          "Confirm exactly one <main> element exists in the rendered DOM."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "landmark-one-main",
+          "reason": "landmark-one-main requires exactly one <main> — duplicate main violations are the inverse of the same requirement."
+        },
+        {
+          "id": "landmark-no-duplicate-banner",
+          "reason": "Fix all duplicate landmark violations together."
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "reason": "If the main landmark is duplicated, fix both the nesting and the duplication."
+        }
+      ],
+      "pm": {
+        "summary": "Multiple main landmarks prevent screen readers from identifying primary content",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "quick-win"
+      }
+    },
+    "landmark-one-main": {
+      "category": "structure",
+      "fix": {
+        "description": "Add a <main> landmark wrapping your page content.",
+        "code": "<main id=\"main-content\">\n  <h1>Products</h1>\n  <section aria-labelledby=\"featured-heading\">\n    <h2 id=\"featured-heading\">Featured items</h2>\n  </section>\n</main>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Place <main id='main-content'> in the root layout component (app/layout.tsx in Next.js App Router, or the root App component). Do not place <main> in individual page components — it will be missing for routes that render before the layout mounts.",
+        "vue": "Add <main id='main-content'> to the root layout component (App.vue or layouts/default.vue in Nuxt), wrapping <router-view /> or <slot />. Nuxt: set it in layouts/default.vue.",
+        "angular": "Add <main id='main-content'> in app.component.html wrapping <router-outlet>. This ensures the landmark is present for all routes and the skip link target resolves correctly.",
+        "svelte": "In SvelteKit, wrap <slot /> in +layout.svelte with <main id='main-content'>. SvelteKit's layout inheritance ensures every page is wrapped. Never place <main> in individual +page.svelte files.",
+        "astro": "Place <main id='main-content'> in your base layout (e.g., layouts/BaseLayout.astro) wrapping the <slot />. Since Astro pre-renders to static HTML, the <main> landmark is always present without hydration delays."
+      },
+      "cms_notes": {
+        "shopify": "Dawn theme uses <main id='MainContent'> in layout/theme.liquid. If building a custom theme, wrap {{ content_for_layout }} in <main>. Never place <main> inside a section template — it only renders when that section is included.",
+        "wordpress": "Classic themes should wrap the_content() in <main> inside page.php/single.php. Block themes use <main> in templates/index.html. WordPress core does not add <main> automatically — the theme is responsible.",
+        "drupal": "Olivero (the default theme) includes <main> in page.html.twig. Custom themes must ensure page.html.twig wraps {{ page.content }} in <main id='main-content'>. Sub-theme overrides of page.html.twig sometimes lose this landmark."
+      },
+      "fix_difficulty_notes": [
+        "SPAs often render `<main>` conditionally — ensure the root layout component (`layout.tsx` in Next.js, `App.vue` in Vue, `app.component.html` in Angular) always wraps page content in `<main>`, not individual page components.",
+        "axe may flag SPA routes where `<main>` is rendered client-side after the initial snapshot — ensure it is server-side rendered or present in the initial HTML payload."
+      ],
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add <main> to individual page components if the root layout already wraps content in <main> — this creates a duplicate-main violation.",
+          "Do not use role='main' on a <div> if a <main> element already exists on the page."
+        ],
+        "verify": [
+          "Confirm exactly one <main> element exists in the rendered DOM after adding it."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "bypass",
+          "reason": "The skip link target (#main-content) should reference the <main> landmark."
+        },
+        {
+          "id": "region",
+          "reason": "Adding <main> may resolve orphan-content region violations."
+        },
+        {
+          "id": "landmark-no-duplicate-banner",
+          "reason": "Landmark structure issues are often co-located — fix them as a group."
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "reason": "Duplicate main violations are the inverse of the single <main> requirement — fix together."
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "reason": "Ensure exactly one main landmark exists and that it is at the top level."
+        },
+        {
+          "id": "skip-link",
+          "reason": "The skip link target should be the <main> landmark — ensure it exists and has the correct id."
+        }
+      ],
+      "pm": {
+        "summary": "Pages without a main landmark force screen reader users to search for primary content",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "quick-win"
+      }
+    },
+    "landmark-unique": {
+      "category": "structure",
+      "fix": {
+        "description": "Add unique accessible labels to landmarks of the same type using aria-label or aria-labelledby.",
+        "code": "<nav aria-label=\"Primary navigation\">\n  <a href=\"/\">Home</a>\n  <a href=\"/shop\">Shop</a>\n  <a href=\"/about\">About</a>\n</nav>\n\n<nav aria-label=\"Breadcrumb\">\n  <ol>\n    <li><a href=\"/\">Home</a></li>\n    <li><a href=\"/shop\">Shop</a></li>\n    <li>Running Shoes</li>\n  </ol>\n</nav>\n\n<nav aria-label=\"Footer links\">\n  <a href=\"/privacy\">Privacy Policy</a>\n  <a href=\"/terms\">Terms of Service</a>\n</nav>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, pass the aria-label prop to navigation components: <Nav aria-label='Primary navigation'>. Ensure the component forwards the prop to the native <nav> element via spread or explicit prop.",
+        "vue": "In Vue, bind aria-label directly on <nav>: <nav aria-label='Primary navigation'>. Navigation components should accept and forward an aria-label prop to the root <nav>.",
+        "angular": "In Angular, use aria-label='Primary navigation' or [attr.aria-label]='navLabel' on <nav> elements. Shared navigation components should accept an @Input() ariaLabel string and bind it.",
+        "svelte": "In SvelteKit, if multiple <nav> elements exist, each must have a unique aria-label (e.g., 'Primary navigation', 'Footer navigation'). This applies to all landmarks that appear more than once.",
+        "astro": "In .astro files, duplicate landmark types (multiple <nav>, <aside>, etc.) must each have a unique aria-label to distinguish them for screen reader users."
+      },
+      "fix_difficulty_notes": "In component-based apps, duplicate landmarks often come from independently authored components that each render their own <nav> or <aside>. The challenge is coordinating unique labels across components that don't know about each other. Establish a naming convention early (e.g., 'Primary', 'Footer', 'Breadcrumb') and document it in your design system. The label becomes part of the AT announcement: 'Primary navigation, navigation landmark'.",
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists as a heading inside the landmark, use aria-labelledby pointing to that heading rather than duplicating the text in aria-label."
+        ],
+        "must_not": [
+          "Do not use generic labels like 'navigation 1', 'navigation 2' — labels must be descriptive of the landmark's purpose."
+        ],
+        "verify": [
+          "Confirm all same-type landmarks on the page have unique, descriptive aria-label or aria-labelledby values."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "landmark-no-duplicate-banner",
+          "reason": "If duplicate banners exist, add aria-label to each — or eliminate the duplicate."
+        },
+        {
+          "id": "bypass",
+          "reason": "Unique landmark labels enhance skip navigation — users can jump directly to a specific landmark."
+        },
+        {
+          "id": "landmark-no-duplicate-contentinfo",
+          "reason": "If duplicate contentinfo landmarks cannot be eliminated, give each a unique aria-label."
+        }
+      ],
+      "pm": {
+        "summary": "Identical landmark labels prevent screen readers from distinguishing page sections",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "quick-win"
+      }
+    },
+    "link-in-text-block": {
+      "category": "color",
+      "fix": {
+        "description": "Distinguish links within a block of text from surrounding text using a visual cue beyond color alone (e.g., underline, bold, outline). Users with color vision deficiency cannot rely on color difference alone to identify links (WCAG 1.4.1).",
+        "code": "<!-- Before: link distinguished only by color -->\n<p>Read our <a href=\"/terms\" style=\"color: blue; text-decoration: none;\">terms of service</a>.</p>\n\n<!-- After: underline makes the link identifiable without color -->\n<p>Read our <a href=\"/terms\">terms of service</a>.</p>\n<!-- Browser default underline is sufficient -->\n\n<!-- Or use a visible underline + contrast -->\n<style>\n  a { text-decoration: underline; text-underline-offset: 0.2em; }\n</style>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In Tailwind CSS projects, the 'no-underline' utility on links inside text blocks violates this rule. Use 'underline' or 'decoration-2' instead. In design systems, ensure the link component applies a visible non-color indicator by default.",
+        "vue": "In Vue, global CSS resets (normalize.css, Tailwind's preflight) often remove link underlines. Re-add underlines to links within text blocks: a:not([class]) { text-decoration: underline; }. Scoped styles in Vue SFCs may not reach deep enough — check computed styles.",
+        "angular": "In Angular Material, links may inherit the Material typography styles that remove underlines. Override in the component stylesheet: a { text-decoration: underline; }. Angular's ViewEncapsulation may prevent global styles from applying — use ::ng-deep cautiously or component-level styles.",
+        "svelte": "In Svelte, links within text blocks must be distinguishable by more than just color — use underlines or other visual indicators. Svelte's scoped styles can target a:not(:hover) for default underline styling.",
+        "astro": "In .astro files, links within paragraphs must be visually distinct from surrounding text via underline or border, not just color contrast alone."
+      },
+      "fix_difficulty_notes": "The 3:1 contrast ratio between link color and surrounding text color is the alternative to underlines per WCAG 1.4.1 — but meeting this ratio is difficult to verify and unreliable for users with color vision deficiency. The safest approach: always underline links within text blocks. Links in navigation menus, buttons, or clearly distinct UI elements are generally exempt because their context makes them identifiable as interactive.",
+      "related_rules": [
+        {
+          "id": "color-contrast",
+          "reason": "Links distinguished only by color need sufficient contrast — both rules enforce color-based visual distinction."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."
+        ],
+        "must_not": [
+          "Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."
+        ],
+        "verify": [
+          "Confirm link purpose remains clear out of context and in the accessibility tree."
+        ]
+      },
+      "pm": {
+        "summary": "Links only distinguished by color are invisible to color-blind users",
+        "impact": "Insufficient contrast makes text unreadable for a significant portion of users, reducing engagement and conversions. Violates WCAG 2.1 AA distinguishable requirements. Affects users with low vision or color blindness (8% of men).",
+        "effort": "medium"
+      }
+    },
+    "link-name": {
+      "category": "name-role-value",
+      "preferred_relationship_checks": [
+        "aria-labelledby",
+        "aria-label",
+        "has-visible-text",
+        "presentational-role"
+      ],
+      "managed_by_libraries": [
+        "radix",
+        "react-aria",
+        "ariakit"
+      ],
+      "fix": {
+        "description": "Use descriptive link text that conveys the destination or purpose. Avoid \"click here\" or \"read more\".",
+        "code": "<a href=\"/products\">View our product catalog</a>\n<!-- Avoid: <a href=\"/products\">click here</a> -->"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React Router, use <Link to='/path'>Descriptive text</Link>. For icon links, add aria-label directly: <Link to='/search' aria-label='Search products'>. Avoid wrapping <Link> around empty or icon-only elements without an aria-label.",
+        "vue": "In Vue Router, use <RouterLink to='/path'>Descriptive text</RouterLink>. For icon links, add :aria-label='...' on the RouterLink component.",
+        "angular": "Use the routerLink directive on native <a> elements: <a routerLink='/path'>Descriptive text</a>. The native <a> carries the correct link role and accessible name automatically.",
+        "svelte": "In SvelteKit, use <a href='/path'>Descriptive text</a> — SvelteKit enhances native links for client-side navigation. For icon links, add aria-label directly. Svelte's a11y warnings will flag <a> elements without discernible text.",
+        "astro": "In .astro files, use standard HTML <a href='/path'>Descriptive text</a>. Astro does not transform links — they render as-is. For icon links inside framework islands, the island framework's rules apply."
+      },
+      "cms_notes": {
+        "shopify": "Social media icon links in Shopify themes often lack aria-label. In the social-icons snippet, add aria-label='{{ service }} (opens in a new window)' to each <a> element. Navigation menus use {{ link.title }} from the menu editor — verify merchants have set descriptive titles.",
+        "wordpress": "WordPress nav menus (wp_nav_menu) use the menu item title as link text. Custom link labels can be empty if the author only sets a URL. Social icon blocks render <a> with SVG — ensure aria-label is set via the block's 'Label' field in the editor.",
+        "drupal": "Drupal's Menu system uses the link title field as the accessible name. In Twig, menu links render via menu.html.twig — verify {{ item.title }} is not empty. For icon links in custom blocks, add aria-label via the Attribute object."
+      },
+      "fix_difficulty_notes": [
+        "Adding `aria-label` to a link that already has visible text creates a mismatch — voice control users speak the visible text, not the `aria-label`, and activation may fail.",
+        "Use `aria-label` only for icon links with no visible text, or use `aria-labelledby` to reference visible content."
+      ],
+      "related_rules": [
+        {
+          "id": "button-name",
+          "reason": "The same accessible name requirement applies to buttons — fix all interactive element naming together."
+        },
+        {
+          "id": "input-button-name",
+          "reason": "The same accessible name requirement applies to <input type=\"button\"> — fix all naming violations together."
+        },
+        {
+          "id": "aria-command-name",
+          "reason": "link-name covers native <a> elements — fix all interactive element naming together."
+        },
+        {
+          "id": "identical-links-same-purpose",
+          "reason": "Generic link names (link-name) are the root cause of identical-links-same-purpose failures — fix link-name first."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm link purpose remains clear out of context and in the accessibility tree."
+        ]
+      },
+      "pm": {
+        "summary": "Links without descriptive text (e.g., 'click here') are meaningless to screen readers",
+        "impact": "Interactive elements without accessible names are invisible or unlabeled to assistive technology. Violates WCAG 2.1 AA name-role-value requirements. Affects screen reader and voice control users.",
+        "effort": "quick-win"
+      }
+    },
+    "list": {
+      "category": "semantics",
+      "fix": {
+        "description": "Ensure <ul> and <ol> elements contain only <li> children (and optionally <script> or <template>). Remove or rewrap invalid direct children.",
+        "code": "<!-- Before: div inside ul (invalid) -->\n<ul>\n  <div class=\"list-item\">Item 1</div>\n  <div class=\"list-item\">Item 2</div>\n</ul>\n\n<!-- After: proper li elements -->\n<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n</ul>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, mapping an array to list items is straightforward: {items.map(item => <li key={item.id}>{item.name}</li>)}. Never wrap the map in an extra <div> inside <ul> — use React.Fragment or a flat map.",
+        "vue": "In Vue, use v-for directly on <li>: <li v-for='item in items' :key='item.id'>{{ item.name }}</li>. Avoid adding a wrapper component between <ul> and <li>.",
+        "angular": "In Angular, use *ngFor directly on <li>: <li *ngFor='let item of items'>{{ item.name }}</li>. Component wrappers between <ul> and <li> will introduce invalid children.",
+        "svelte": "In Svelte, <ul> and <ol> must only contain <li>, <script>, and <template> as direct children. Component wrappers that add extra elements inside lists break the list structure.",
+        "astro": "In .astro files, <ul>/<ol> must contain only <li> children in the rendered HTML. Astro component boundaries can insert wrapper elements — verify the final DOM preserves list structure."
+      },
+      "fix_difficulty_notes": "Some CSS frameworks (Bootstrap, Tailwind) output <div> wrappers inside list elements via JavaScript-rendered components. axe will flag these. Before fixing, check whether the violation is in source HTML or in framework-rendered output — the fix location differs. Also note: a <ul> with role='none' on all <li> children (to remove list semantics) is an intentional pattern and not a violation of this rule.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add role='list' to a <ul> that has CSS list-style:none removed — Safari does this intentionally and it is a false positive in many cases.",
+          "Do not restructure the list purely in HTML source without verifying the final rendered DOM — framework-rendered wrappers may re-introduce the violation."
+        ],
+        "verify": [
+          "Confirm the rendered DOM (not just source HTML) has only valid list child elements (<li>, role='presentation' wrappers, or <script>/<template>) directly inside the list."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "listitem",
+          "reason": "The inverse rule — li elements must be inside a ul/ol. Fix list structure violations together."
+        },
+        {
+          "id": "definition-list",
+          "reason": "Both validate list structures — audit all list semantics violations together."
+        }
+      ],
+      "pm": {
+        "summary": "Malformed lists break semantic navigation and item counting for screen readers",
+        "impact": "Incorrect semantic structure breaks navigation for assistive technology and degrades search engine indexing. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users and SEO crawlers.",
+        "effort": "quick-win"
+      }
+    },
+    "listitem": {
+      "category": "semantics",
+      "fix": {
+        "description": "Wrap orphan <li> elements inside a <ul> or <ol> parent, or change the element to a non-list element if list semantics are not intended.",
+        "code": "<!-- Before: li without a list parent -->\n<li>Item 1</li>\n<li>Item 2</li>\n\n<!-- After: wrapped in ul -->\n<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n</ul>\n\n<!-- Or if list semantics not intended: -->\n<p>Item 1</p>\n<p>Item 2</p>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, a component that returns <li> must always be rendered inside a <ul> or <ol>. If the component can be used in contexts without a list parent, consider making it return a generic container and letting the parent decide whether to wrap in <ul>.",
+        "vue": "In Vue, a <li> component must have a <ul> or <ol> as its direct DOM parent. Vue's component wrapper does not count as a list — verify the rendered HTML structure in DevTools, not just the Vue template.",
+        "angular": "In Angular, an <li> component inside <app-list-item> is still a valid <li> in the rendered DOM if the component tag is replaced. Verify the rendered output — Angular component tags are replaced, so check the actual HTML tree.",
+        "svelte": "In Svelte, <li> elements must be inside <ul>, <ol>, or role='list'. Component composition that separates list items from their list container will trigger this violation.",
+        "astro": "In .astro files, <li> elements must be direct children of <ul>/<ol> in the rendered HTML. When splitting list items across components, verify the parent-child relationship is preserved."
+      },
+      "fix_difficulty_notes": "This often occurs in component-based frameworks when a list item component renders <li> at the root but is used outside a parent list component. The fix is either to ensure the parent always provides a <ul>/<ol> context, or to restructure the component so <li> is not the root element when rendered standalone.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add role='listitem' to a <li> as a fix — the element already has an implicit listitem role; the issue is the missing parent list.",
+          "Do not wrap a standalone <li> in a <ul> as a one-off fix without verifying the full list structure is correct."
+        ],
+        "verify": [
+          "Confirm the <li> element is a direct child of a <ul> or <ol> in the rendered DOM."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "list",
+          "reason": "Inverse rule — fix list/listitem violations together to restore correct list semantics."
+        }
+      ],
+      "pm": {
+        "summary": "List items outside proper list structure lose their semantic meaning",
+        "impact": "Incorrect semantic structure breaks navigation for assistive technology and degrades search engine indexing. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users and SEO crawlers.",
+        "effort": "quick-win"
+      }
+    },
+    "marquee": {
+      "category": "sensory",
+      "fix": {
+        "description": "Remove all <marquee> elements. The <marquee> element is deprecated in HTML and creates moving content that users cannot pause, which is inaccessible to users with cognitive disabilities and fails WCAG 2.2.2.",
+        "code": "<!-- Before: scrolling marquee -->\n<marquee>Breaking news: accessibility matters!</marquee>\n\n<!-- After: static text with optional CSS animation that respects user preferences -->\n<p class=\"news-ticker\" role=\"alert\">Breaking news: accessibility matters!</p>\n<style>\n  .news-ticker { /* static by default */ }\n  @media (prefers-reduced-motion: no-preference) {\n    .news-ticker { animation: scroll-text 10s linear infinite; }\n  }\n  @media (prefers-reduced-motion: reduce) {\n    .news-ticker { animation: none; }\n  }\n</style>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "The <marquee> element is not a standard React element and should never be used. If scrolling text is needed, implement it with CSS animations and useReducedMotion() from Framer Motion or a prefers-reduced-motion media query hook.",
+        "vue": "In Vue, <marquee> is treated as an unknown HTML element. Replace with a <p> or <div> and use CSS animations that respect prefers-reduced-motion. Nuxt projects should use the usePreferredReducedMotion() composable from VueUse.",
+        "angular": "In Angular, replace <marquee> with a component that uses CSS animations controlled by a prefers-reduced-motion check. Use the Angular CDK BreakpointObserver or matchMedia to detect and respect the user's motion preference.",
+        "svelte": "The <marquee> element is deprecated HTML — Svelte will render it but it should never be used. Replace with CSS animation that respects @media (prefers-reduced-motion: reduce).",
+        "astro": "The <marquee> element should never appear in .astro files. Replace with CSS animation using @media (prefers-reduced-motion: reduce) { animation: none; }."
+      },
+      "fix_difficulty_notes": "This is one of the easiest fixes — simply remove the <marquee> element and replace with static content. The <marquee> element is fully deprecated and unsupported in the HTML spec. If scrolling/ticker functionality is genuinely needed (e.g., a stock ticker), implement it with CSS animations that respect prefers-reduced-motion and include a pause button for manual control.",
+      "related_rules": [
+        {
+          "id": "blink",
+          "reason": "Both <marquee> and <blink> are deprecated elements causing inaccessible animations — remove both together."
+        }
+      ],
+      "pm": {
+        "summary": "Scrolling marquee content cannot be paused and is prohibited by WCAG",
+        "impact": "Content that flashes, moves, or auto-plays can trigger seizures or disorientation, creating serious health and legal liability. Violates WCAG 2.1 AA seizure and motion requirements. Affects users with vestibular disorders, seizure conditions, or low vision.",
+        "effort": "quick-win"
+      }
+    },
+    "meta-refresh": {
+      "category": "sensory",
+      "fix": {
+        "description": "Remove automatic page refresh. If redirecting immediately, a delay of 0 is permitted.",
+        "code": "<!-- Remove this: -->\n<!-- <meta http-equiv=\"refresh\" content=\"5; url=...\"> -->\n\n<!-- Instant redirect only (delay=0 is OK): -->\n<meta http-equiv=\"refresh\" content=\"0; url=https://example.com/new-page\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In Next.js, use redirect() in server components or middleware for redirects, and useRouter().replace() for client-side navigation. Neither uses <meta http-equiv='refresh'>. Never insert a meta refresh tag.",
+        "vue": "In Nuxt, use navigateTo() or definePageMeta({ redirect: '/' }) — both produce server or router-level redirects without <meta http-equiv='refresh'>.",
+        "angular": "Use the Angular Router service (this.router.navigate() or this.router.navigateByUrl()) for all navigation. Never insert <meta http-equiv='refresh'> into templates or index.html.",
+        "svelte": "In SvelteKit, avoid <meta http-equiv='refresh'>. Use SvelteKit's goto() function for programmatic redirects, or throw redirect(301, '/new-url') in load functions for server-side redirects.",
+        "astro": "In .astro files, avoid <meta http-equiv='refresh'> for redirects. Use Astro.redirect() in the frontmatter for server-side redirects, or configure redirects in astro.config.mjs."
+      },
+      "fix_difficulty_notes": "Server-side HTTP redirects (301/302) do not use <meta http-equiv='refresh'> and are not flagged by this rule. The violation only occurs when a timed redirect is implemented in the HTML <head>. A delay of 0 (instant redirect) is the only permitted use — it is commonly used for canonical URL normalization and is WCAG-compliant.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not remove <meta http-equiv='refresh' content='0; url=...'> — a delay of 0 is the only permitted use and is WCAG-compliant.",
+          "Do not add a JavaScript-based redirect as an alternative without also providing a manual navigation option."
+        ],
+        "verify": [
+          "Confirm the refresh delay is greater than 0 before treating this as a violation (delay=0 is allowed)."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "no-autoplay-audio",
+          "reason": "Both rules involve content that changes without user initiation — timed refresh and autoplay audio are the same class of WCAG 2.2.x timing failure."
+        }
+      ],
+      "pm": {
+        "summary": "Auto-refreshing pages disorient users and cause assistive technology to lose position",
+        "impact": "Content that flashes, moves, or auto-plays can trigger seizures or disorientation, creating serious health and legal liability. Violates WCAG 2.1 AA seizure and motion requirements. Affects users with vestibular disorders, seizure conditions, or low vision.",
+        "effort": "quick-win"
+      }
+    },
+    "meta-viewport": {
+      "category": "sensory",
+      "fix": {
+        "description": "Remove user-scalable=no from the viewport meta tag to allow users to zoom.",
+        "code": "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In Next.js App Router, manage the viewport meta via the Metadata API: export const viewport: Viewport = { width: 'device-width', initialScale: 1 }; in layout.tsx. Never set maximumScale: 1 or userScalable: false — these block zoom.",
+        "vue": "In Nuxt, set the viewport in nuxt.config.ts: app.head.meta = [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }]. Omit user-scalable=no entirely.",
+        "angular": "The viewport meta is in index.html. Remove user-scalable=no if present: <meta name='viewport' content='width=device-width, initial-scale=1'>. Do not add maximum-scale=1 either — it has the same effect.",
+        "svelte": "In SvelteKit, the viewport meta tag is in app.html: <meta name='viewport' content='width=device-width, initial-scale=1'>. Never include maximum-scale=1 or user-scalable=no — this prevents pinch-to-zoom.",
+        "astro": "In .astro layouts, set the viewport meta tag in <head> without maximum-scale or user-scalable=no restrictions. Users must be able to zoom to at least 200%."
+      },
+      "fix_difficulty_notes": "iOS Safari (10+) ignores user-scalable=no as an accessibility override, but Android browsers may enforce it. Remove it unconditionally — there is no valid accessibility reason to block zoom, and it is explicitly forbidden by WCAG 1.4.4.",
+      "related_rules": [
+        {
+          "id": "meta-viewport-large",
+          "reason": "meta-viewport checks for user-scalable=no (blocks zoom entirely); meta-viewport-large checks for insufficient maximum-scale."
+        },
+        {
+          "id": "css-orientation-lock",
+          "reason": "Both restrict how users can adapt the viewport — fix together for complete WCAG 1.3.4 / 1.4.4 coverage."
+        }
+      ],
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not use user-scalable=no in any combination — even paired with initial-scale=1.",
+          "Do not add maximum-scale=1 as a substitute — it has the same zoom-blocking effect."
+        ],
+        "verify": [
+          "Confirm the final viewport tag contains neither user-scalable=no nor maximum-scale=1.",
+          "Test pinch-to-zoom on a physical device or Chrome DevTools mobile simulation after the fix."
+        ]
+      },
+      "pm": {
+        "summary": "Disabling zoom blocks users with low vision from enlarging content to read it",
+        "impact": "Content that flashes, moves, or auto-plays can trigger seizures or disorientation, creating serious health and legal liability. Violates WCAG 2.1 AA seizure and motion requirements. Affects users with vestibular disorders, seizure conditions, or low vision.",
+        "effort": "quick-win"
+      }
+    },
+    "meta-viewport-large": {
+      "category": "sensory",
+      "fix": {
+        "description": "Ensure <meta name='viewport'> allows scaling to at least 500% (maximum-scale >= 5 or omit maximum-scale entirely). This is a stricter best-practice check beyond the WCAG AA requirement.",
+        "code": "<!-- Best: no maximum-scale restriction at all -->\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\n<!-- Acceptable: maximum-scale is 5 or higher -->\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=10\">\n\n<!-- Violation: maximum-scale below 5 -->\n<!-- <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=2\"> -->"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In Next.js App Router, configure viewport via the Metadata API: export const viewport: Viewport = { width: 'device-width', initialScale: 1 }; — omit maximumScale entirely. The Pages Router uses <Head><meta name='viewport' ... /></Head>.",
+        "vue": "In Nuxt, set viewport in nuxt.config.ts: app.head.meta = [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }]. Do not include maximum-scale unless it is 5 or higher.",
+        "angular": "In Angular, the viewport meta is in index.html. Remove or increase maximum-scale: <meta name='viewport' content='width=device-width, initial-scale=1'>.",
+        "svelte": "In SvelteKit's app.html, ensure the viewport meta tag allows scaling to at least 200%. Do not set maximum-scale below 2.0 or user-scalable=no.",
+        "astro": "In .astro layouts, the viewport meta tag must allow scaling to at least 200%. Users with low vision rely on pinch-to-zoom for readability."
+      },
+      "fix_difficulty_notes": "This is a best-practice rule that goes beyond the WCAG AA requirement (which only requires not blocking zoom entirely via user-scalable=no or maximum-scale=1). The best-practice threshold is maximum-scale >= 5 (500% zoom). The simplest fix is to omit maximum-scale entirely — there is no valid accessibility reason to cap zoom level. iOS Safari ignores maximum-scale restrictions as an accessibility override, but Android browsers may enforce them.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not set maximum-scale to exactly 2 or 3 as a compromise — the best-practice threshold is 5 (500%). Set to 5 or remove it entirely.",
+          "Do not confuse this rule with meta-viewport — this rule fires only on low maximum-scale values, not on user-scalable=no."
+        ],
+        "verify": [
+          "Confirm maximum-scale is set to 5.0 or higher, or that the maximum-scale parameter is absent entirely from the viewport meta tag."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "meta-viewport",
+          "reason": "meta-viewport checks for user-scalable=no (blocks zoom entirely); meta-viewport-large checks for insufficient maximum-scale."
+        },
+        {
+          "id": "avoid-inline-spacing",
+          "reason": "Both address WCAG 1.4.4/1.4.12 adaptability — fixing one without the other leaves the same user group affected."
+        }
+      ],
+      "pm": {
+        "summary": "Restricting zoom to less than 500% limits low vision users' ability to read content",
+        "impact": "Content that flashes, moves, or auto-plays can trigger seizures or disorientation, creating serious health and legal liability. Violates WCAG 2.1 AA seizure and motion requirements. Affects users with vestibular disorders, seizure conditions, or low vision.",
+        "effort": "quick-win"
+      }
+    },
+    "nested-interactive": {
+      "category": "keyboard",
+      "managed_by_libraries": [
+        "radix",
+        "headless-ui",
+        "react-aria",
+        "ariakit"
+      ],
+      "fix": {
+        "description": "Remove or restructure nested interactive elements. Interactive controls (buttons, links, inputs) must not be descendants of other interactive controls.",
+        "code": "<!-- Pattern A: <a> wrapping a <button> (card pattern) -->\n<!-- Before: -->\n<a href=\"/product\">\n  Product name\n  <button onclick=\"addToCart()\">Add to cart</button>\n</a>\n<!-- After: stretched-link keeps card clickable without wrapping the button -->\n<div style=\"position:relative\">\n  <a href=\"/product\" style=\"position:absolute;inset:0\" aria-label=\"Product name\"></a>\n  <span>Product name</span>\n  <button onclick=\"addToCart()\">Add to cart</button>\n</div>\n\n<!-- Pattern B: role=\"option\" / role=\"listitem\" with focusable descendants -->\n<!-- ARIA spec forbids interactive children inside option/listitem roles. -->\n<!-- Before: -->\n<div role=\"option\" aria-selected=\"true\">\n  <a href=\"/detail\">View details</a>\n</div>\n<!-- After: remove href/tabIndex from descendants; parent handles keyboard interaction -->\n<div role=\"option\" aria-selected=\"true\" tabindex=\"0\" onkeydown=\"handleSelect(event)\">\n  <span>View details</span>\n</div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React card components, avoid wrapping the entire JSX tree in <Link> or <a> when it contains interactive children. Use a CSS stretched-link pattern: position the <a> absolutely with ::after covering the card, while the button stays outside the <a> in DOM order.",
+        "vue": "In Vue, the same pattern applies — <RouterLink> wrapping a card with buttons inside is invalid HTML. Use the stretched-link CSS technique or restructure the component so interactive children are siblings, not descendants, of the link.",
+        "angular": "In Angular, wrapping <mat-card> or a template outlet in [routerLink] creates the same issue. Set [routerLink] on a visible text element or use a CSS overlay approach to preserve DOM structure.",
+        "svelte": "In Svelte, avoid nesting interactive elements (e.g., <button> inside <a>, <a> inside <button>). Svelte does not warn about nested interactives — verify manually. This commonly occurs when wrapping card components in links.",
+        "astro": "In .astro files, nested interactive elements (links inside buttons, buttons inside links) render to static HTML. This is invalid HTML and confuses AT — restructure to avoid nesting."
+      },
+      "fix_difficulty_notes": [
+        "The evidence shows the OUTER container — identify the nested focusable element first. Search the component for `tabIndex`, `href=`, `<button`, `<a `, or `role=\"button\"` inside the flagged selector.",
+        "Most common pattern: a card wrapped in `<a>` containing a `<button>` — the HTML spec forbids interactive content inside `<a>`. Solutions: (1) stretched-link CSS pattern (position `<a>` with `::after` overlay, keep button outside `<a>` in DOM order); (2) keep elements separate and handle card-level clicks via JS.",
+        "COMPOUND CASE — link-as-button co-occurring: if the nested `<a>` calls `e.preventDefault()` and runs a JS action, two violations are stacked.",
+        "Remove only the invalid ARIA attributes from the container (`role`, `aria-selected`); preserve ALL `onClick`/`onKeyDown` handlers that contain non-ARIA conditional logic (drag state, position offsets, gesture thresholds, business flags).",
+        "Fix the link separately: if it never navigates, convert to `<button type=\"button\">`; if it sometimes navigates, keep `<a href>` and remove `e.preventDefault()`. Never delete a handler because the ARIA around it was wrong."
+      ],
+      "related_rules": [
+        {
+          "id": "focus-order-semantics",
+          "reason": "Restructuring nested interactives changes focus order — verify semantics and tab sequence remain logical after the fix."
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "reason": "Scrollable containers inside interactive elements can create compounded focusability issues — audit together."
+        },
+        {
+          "id": "aria-text",
+          "reason": "role=text forbids focusable descendants — aria-text violations often co-occur with nested interactive elements."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Nested interactive controls create confusing focus behavior for keyboard users",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "medium"
+      }
+    },
+    "no-autoplay-audio": {
+      "category": "sensory",
+      "fix": {
+        "description": "Remove the autoplay attribute from audio elements, or provide a clearly visible pause/stop control that activates before 3 seconds of audio plays.",
+        "code": "<!-- Remove autoplay: -->\n<audio controls src=\"background.mp3\"></audio>\n\n<!-- Background video: muted is acceptable -->\n<video autoplay muted loop src=\"bg-video.mp4\"></video>\n\n<!-- If autoplay with sound is required, provide an immediate stop control: -->\n<audio autoplay id=\"bg-audio\" src=\"jingle.mp3\"></audio>\n<button onclick=\"document.getElementById('bg-audio').pause()\" style=\"position:fixed;top:1rem;right:1rem\">Stop audio</button>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, never set the autoPlay prop on <audio> for content with meaningful audio. Background decorative video with autoPlay muted is acceptable. Trigger audio playback programmatically via user interaction events, not in useEffect on mount.",
+        "vue": "In Vue, avoid :autoplay='true' on audio elements. Trigger audio playback via @click handlers. Background video with autoplay muted as static attributes is acceptable.",
+        "angular": "In Angular, do not bind [autoplay]='true' on audio elements. Trigger .play() calls inside (click) event handlers, not in ngOnInit lifecycle hooks.",
+        "svelte": "In Svelte, avoid autoplay on <audio> and <video> elements. If autoplay is needed, provide a visible pause/stop button and ensure the media is muted initially or lasts less than 3 seconds.",
+        "astro": "In .astro files, <audio autoplay> and <video autoplay> render to static HTML. Avoid autoplay, or ensure media is muted and under 3 seconds. For auto-playing media, add a pause control via a framework island."
+      },
+      "fix_difficulty_notes": "axe detects the autoplay attribute but cannot determine whether the audio is muted — muted autoplay is acceptable. A <video autoplay muted loop> for decorative background video does not violate WCAG 1.4.2. The violation is specifically audio content that plays without user interaction and cannot be immediately stopped. Browser autoplay policies (especially Chrome) often block autoplay with sound anyway — verify the audio actually plays in the target browser before treating it as a confirmed violation.",
+      "cms_notes": {
+        "shopify": "Dawn's video section (sections/video.liquid) uses autoplay with muted=true for hero videos — this is intentional and does not violate WCAG 1.4.2. If a merchant-selected video plays audio without muting, add muted to the <video> tag and expose a schema setting for a pause control. Shopify's native video_section block sets autoplay muted by default.",
+        "wordpress": "WordPress's Cover block and Video block allow autoplay. The block editor does not enforce muting on autoplay. If a user enables autoplay and the video has audio, add a pause/stop control using the block's 'Poster image' option and a Play/Pause button via JavaScript. The Advanced Video plugin enforces muted autoplay.",
+        "drupal": "Drupal's Media embed and Video formatter can autoplay via display settings. In the media_video_embed_field module, the 'autoplay' setting should always pair with 'muted'. Override the video formatter template in your theme to ensure autoplay is never set without muted."
+      },
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not flag <video autoplay muted> or <audio autoplay muted> as violations — muted autoplay does not violate WCAG 1.4.2.",
+          "Do not remove autoplay from decorative background video that is muted — verify the muted attribute is absent before treating as a confirmed violation."
+        ],
+        "verify": [
+          "Confirm the media element does not have the muted attribute before treating this as a violation.",
+          "Confirm the audio actually auto-plays in the target browser — browser autoplay policies may block it silently."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "audio-caption",
+          "reason": "Auto-playing audio also needs captions if it conveys information — fix both together."
+        },
+        {
+          "id": "video-caption",
+          "reason": "Auto-playing video with audio needs captions — address media accessibility holistically."
+        },
+        {
+          "id": "meta-refresh",
+          "reason": "Both are WCAG 2.2.x timing failures that disrupt users without warning — fix together for complete criterion coverage."
+        }
+      ],
+      "pm": {
+        "summary": "Auto-playing audio disrupts screen reader announcements and startles users",
+        "impact": "Content that flashes, moves, or auto-plays can trigger seizures or disorientation, creating serious health and legal liability. Violates WCAG 2.1 AA seizure and motion requirements. Affects users with vestibular disorders, seizure conditions, or low vision.",
+        "effort": "quick-win"
+      }
+    },
+    "object-alt": {
+      "category": "text-alternatives",
+      "fix": {
+        "description": "Add an aria-label to every <object> element describing its content.",
+        "code": "<object data=\"chart.svg\" type=\"image/svg+xml\" aria-label=\"Bar chart: Q1 2024 sales by region\">\n  Fallback text for unsupported browsers\n</object>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, <object> is rarely used. If embedding SVGs, prefer <img> with alt or an inline SVG with role='img' and aria-label. For PDF embeds, consider react-pdf with an accessible fallback link.",
+        "vue": "In Vue, <object> renders as standard HTML. Add aria-label directly. For SVG content, prefer <img :src='svgPath' :alt='description'> or inline SVG with role='img'. Vue does not validate ARIA on <object>.",
+        "angular": "In Angular, use [attr.aria-label]='objectDescription' on <object>. For PDF or media embeds, consider replacing <object> with <iframe title='...'> which has broader AT support.",
+        "svelte": "In Svelte, add aria-label directly: <object data={src} type={type} aria-label='Description'>. Svelte's a11y warnings do not cover <object> — rely on axe-core for detection.",
+        "astro": "In .astro files, <object> renders as static HTML. Add aria-label directly in the template. Consider replacing with <img> or <iframe> for better cross-browser accessibility support."
+      },
+      "fix_difficulty_notes": "The <object> element is rarely used in modern development — most use cases (SVG, PDF, media) are better served by <img>, <video>, <embed>, or <iframe>. If <object> is used, the aria-label must describe what the embedded content communicates to the user (not just the file type or format). If the object is purely decorative, consider replacing it with an accessible equivalent (e.g., an <img> with alt='').",
+      "related_rules": [
+        {
+          "id": "image-alt",
+          "reason": "The same text alternative requirement applies to <img> — audit both together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Embedded objects without alternative text are inaccessible to screen readers",
+        "impact": "Non-text content is invisible to assistive technology, excluding users who depend on text descriptions. Violates WCAG 2.1 AA perceivable requirements. Affects screen reader users and users on slow connections.",
+        "effort": "quick-win"
+      }
+    },
+    "p-as-heading": {
+      "category": "semantics",
+      "fix": {
+        "description": "Replace <p> elements styled to look like headings with actual heading elements (<h1>–<h6>) at the appropriate level in the document hierarchy.",
+        "code": "<!-- Before: paragraph styled as heading -->\n<p class=\"text-2xl font-bold\">Section Title</p>\n<p>Content paragraph...</p>\n\n<!-- After: semantic heading -->\n<h2>Section Title</h2>\n<p>Content paragraph...</p>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In component libraries (shadcn/ui, Radix), heading-like components sometimes render as <p> by default. Use the 'as' prop or the 'asChild' pattern to change the rendered element: <Text as='h2' className='text-2xl font-bold'>Section Title</Text>.",
+        "vue": "In Vue UI kits (Vuetify, Nuxt UI), check if the heading-like component supports a 'tag' prop: <VTitle tag='h2'>Section Title</VTitle>. Without it, add the heading element directly in the template.",
+        "angular": "In Angular, heading-like components often render as <div> or <p>. Use the component's selector or a host element attribute to change the rendered tag, or apply the heading element directly in the template rather than relying on the component's default tag.",
+        "svelte": "In Svelte, do not style <p> elements to look like headings — use proper <h1>-<h6> elements. Svelte does not warn about this — it is a content structure issue caught by axe-core.",
+        "astro": "In .astro files, use semantic heading elements instead of styled paragraphs. This is particularly common in CMS-driven content where formatting is applied inline."
+      },
+      "fix_difficulty_notes": "axe detects this heuristically — it flags <p> elements with large, bold, or otherwise heading-like CSS properties. This can produce false positives on intro paragraphs, pull quotes, or callout boxes that are intentionally styled large. Verify visually: does this text introduce a new section of content? If yes, it should be a heading. If it is decorative, a caption, or a lead-in paragraph, it may not need to be a heading despite the styling.",
+      "cms_notes": {
+        "shopify": "Shopify's rich text sections (sections/rich-text.liquid) render WYSIWYG content from the theme editor. Merchants sometimes use paragraph text formatted as bold+large instead of heading elements. In Dawn, educate merchants using the heading type selector in the rich text block. Alternatively, restrict the rich text schema to heading blocks only for section titles.",
+        "wordpress": "The Classic Editor's TinyMCE lets authors select paragraph text and apply visual formatting (bold, font-size) instead of using the heading format. The block editor's Paragraph block similarly allows font-size overrides. Educate authors to use the Heading block. The Accessibility Checker plugin by Equalize Digital flags this pattern in the editor.",
+        "drupal": "Drupal's CKEditor (both CKEditor 4 and 5) allows authors to select paragraph text and apply heading-like styling. Restrict the allowed formats in the text format configuration (admin/config/content/formats) to prevent authors from using <p> with font-size or bold styling. Use CKEditor's Heading plugin to enforce semantic heading use."
+      },
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not convert a <p> to a heading element purely because it is styled large — verify it semantically introduces a new section before changing the element.",
+          "Do not change the heading level of the new element without verifying it fits the existing heading hierarchy."
+        ],
+        "verify": [
+          "Confirm the element introduces a new section of content (not a decorative or stylistic element) before converting it to a heading.",
+          "Confirm the heading level chosen fits the document outline without skipping levels."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "heading-order",
+          "reason": "After converting p-as-heading to real headings, verify the heading hierarchy is correct — new headings must fit the existing order."
+        },
+        {
+          "id": "page-has-heading-one",
+          "reason": "If converting a p-as-heading introduces a new h1, verify it is the only h1 on the page."
+        }
+      ],
+      "pm": {
+        "summary": "Bold paragraphs used as headings break document outline navigation",
+        "impact": "Incorrect semantic structure breaks navigation for assistive technology and degrades search engine indexing. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users and SEO crawlers.",
+        "effort": "quick-win"
+      }
+    },
+    "page-has-heading-one": {
+      "category": "semantics",
+      "fix": {
+        "description": "Search for an `<h1>` in the frontend source files first. If found, fix it there. If no `<h1>` exists in the source — because content is authored in a CMS, database, or backend — mark this finding as **Out of scope — content is not managed in frontend source** and do not propose a code fix. Report it to the user instead.",
+        "code": "<h1>Wireless Noise-Cancelling Headphones</h1>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In Next.js App Router, place the h1 directly in page.tsx, not in a client component that renders conditionally or inside a Suspense loading state — axe evaluates the initial HTML payload before client hydration fills the loading boundary.",
+        "vue": "In Nuxt, ensure the page-level h1 is in the <template> of the page component so it is included in the server-rendered HTML. Avoid placing the h1 exclusively inside an async component that renders after the initial paint.",
+        "angular": "With Angular Universal (SSR), the h1 must be part of the component template, not inserted via JavaScript after hydration. Verify the h1 is visible in the pre-rendered HTML using View Source.",
+        "svelte": "In SvelteKit, ensure every page has exactly one <h1>. Place it in the +page.svelte component (not +layout.svelte, since the h1 should be page-specific). The layout should define the page structure; individual pages define their h1.",
+        "astro": "In .astro files, each page should have exactly one <h1> that describes the page content. Place it in the page component, not the layout, since the heading should be unique per page."
+      },
+      "fix_difficulty_notes": [
+        "In SPAs and SSR frameworks, the `h1` may be injected client-side after the initial DOM snapshot axe evaluates — ensure it is server-side rendered or present in the initial HTML payload.",
+        "In Next.js, place the `h1` directly in the page component, not behind a loading state."
+      ],
+      "related_rules": [
+        {
+          "id": "heading-order",
+          "reason": "Fixing the missing h1 anchors the heading hierarchy and may cascade-resolve heading-order violations."
+        },
+        {
+          "id": "p-as-heading",
+          "reason": "If converting a p-as-heading introduces a new h1, verify it is the only h1 on the page."
+        },
+        {
+          "id": "document-title",
+          "reason": "Page title and h1 together describe the same page — fix both to give screen reader users consistent context."
+        }
+      ],
+      "pm": {
+        "summary": "Pages without an h1 lack a clear entry point for screen reader navigation",
+        "impact": "Incorrect semantic structure breaks navigation for assistive technology and degrades search engine indexing. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users and SEO crawlers.",
+        "effort": "quick-win"
+      }
+    },
+    "presentation-role-conflict": {
+      "category": "aria",
+      "fix": {
+        "description": "Ensure elements with role='presentation' or role='none' do not have global ARIA attributes or tabindex that would conflict with their presentational purpose. These conflicts cause inconsistent behavior across screen readers.",
+        "code": "<!-- Before: conflicting attributes on a presentational element -->\n<table role=\"presentation\" aria-label=\"Layout table\" tabindex=\"0\">\n  <tr><td>Content</td></tr>\n</table>\n\n<!-- After: remove conflicting attributes -->\n<table role=\"presentation\">\n  <tr><td>Content</td></tr>\n</table>\n\n<!-- Or remove the presentational role if ARIA/tabindex are needed -->\n<table aria-label=\"Data summary\" tabindex=\"0\">\n  <tr><td>Content</td></tr>\n</table>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, components that spread props onto a root element may inadvertently add aria-label, aria-describedby, or tabIndex to an element with role='presentation'. Audit the rendered DOM to ensure presentational elements have no global ARIA attributes.",
+        "vue": "In Vue, attribute inheritance (inheritAttrs: true by default) can pass global ARIA attributes from a parent component down to a child with role='presentation'. Set inheritAttrs: false on presentational wrapper components.",
+        "angular": "In Angular, host bindings on components with role='presentation' may add tabindex or aria-label via @HostBinding. Audit host bindings and remove any that conflict with the presentational role.",
+        "svelte": "In Svelte, role='presentation' or role='none' removes an element's semantics from the accessibility tree. If the element has interactive children or a tabindex, the role creates a conflict — AT ignores the element but its children are still reachable.",
+        "astro": "In .astro files, role='presentation' on an element with focusable children creates an AT conflict. The role hides the element but children remain interactive — restructure to avoid the conflict."
+      },
+      "fix_difficulty_notes": "When role='presentation' or role='none' is set, the element is removed from the accessibility tree. Adding global ARIA attributes (aria-label, aria-describedby, aria-live) or tabindex creates a conflict: the element tries to be both invisible and interactive to AT. The fix is to either remove the conflicting attributes (if the element is truly presentational) or remove role='presentation' (if the element needs to be accessible). Screen readers resolve this conflict differently — some honor the role, others honor the ARIA attributes.",
+      "related_rules": [
+        {
+          "id": "aria-prohibited-attr",
+          "reason": "Both rules address ARIA attributes that should not be present on the element — fix together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Elements with conflicting roles may be incorrectly hidden from assistive tech",
+        "impact": "Incorrect ARIA markup causes assistive technology to misrepresent or ignore interactive elements. Violates WCAG 2.1 AA robust requirements. Affects screen reader and assistive technology users.",
+        "effort": "medium"
+      }
+    },
+    "region": {
+      "category": "structure",
+      "fix": {
+        "description": "Wrap all visible content in semantic landmark elements.",
+        "code": "<header>\n  <a href=\"/\">Acme Corp</a>\n  <nav aria-label=\"Primary\">...</nav>\n</header>\n<main>\n  <h1>Shop all products</h1>\n</main>\n<footer>\n  <p>&copy; 2026 Acme Corp</p>\n</footer>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "Use semantic JSX elements: <header>, <main>, <nav>, <aside>, <footer> instead of <div> wrappers. In Next.js App Router, landmarks naturally fall into layout.tsx (header/footer) and page.tsx (main content).",
+        "vue": "Use semantic HTML5 elements in Vue templates — they work identically to plain HTML. In Nuxt, place <header> and <footer> in the layout component and wrap <slot /> in <main>.",
+        "angular": "Angular adds a custom element wrapper (<app-root>, <app-header>) — ensure the semantic landmark element (<header>, <main>) is inside the component template, not expected to be provided by the custom wrapper.",
+        "svelte": "In SvelteKit, define landmarks in +layout.svelte: <header>, <main> wrapping <slot />, <footer>. Svelte renders standard HTML — landmarks work identically to plain HTML. Ensure components don't add extra wrapper <div>s that orphan content outside landmarks.",
+        "astro": "Define landmarks in your base layout (BaseLayout.astro): <header>, <main> wrapping <slot />, <footer>. Astro islands render inside the layout's landmark structure — island content is automatically inside the correct landmark."
+      },
+      "cms_notes": {
+        "shopify": "Shopify themes define landmarks in layout/theme.liquid. Dawn uses <header>, <main id='MainContent'>, and a footer section. Sections injected via {{ content_for_layout }} land inside <main>. Custom snippets rendered outside the main layout structure can create orphan content.",
+        "wordpress": "Classic themes define landmarks in header.php (<header>), footer.php (<footer>), and wrap the_content() in <main>. Block themes use template parts for header/footer. Sidebar widgets in <aside> are standard. Verify no content renders between </header> and <main> without a landmark.",
+        "drupal": "Olivero defines landmarks in page.html.twig using Drupal's region system. Content outside defined regions (e.g., custom block placements) can create orphan content. Ensure all regions in the .info.yml file map to semantic landmark elements in the page template."
+      },
+      "fix_difficulty_notes": [
+        "Decorative separators, spacer divs, and background containers do not need to be inside landmarks — only meaningful visible content requires landmark wrapping.",
+        "Review each flagged element before adding a landmark."
+      ],
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not wrap decorative elements (spacers, background divs, separator lines) in landmark regions — only meaningful visible content requires landmark wrapping.",
+          "Do not add role='region' without also adding an aria-label or aria-labelledby — an unlabelled role='region' does not create a named landmark."
+        ],
+        "verify": [
+          "Confirm the orphan content is meaningful visible content that users would want to navigate to directly."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "landmark-one-main",
+          "reason": "Adding a <main> landmark is typically the primary fix for orphan content."
+        },
+        {
+          "id": "skip-link",
+          "reason": "Proper landmark regions reduce the need for skip links but do not replace them — both mechanisms should coexist."
+        }
+      ],
+      "pm": {
+        "summary": "Content outside landmarks is skipped by screen reader landmark navigation",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "medium"
+      }
+    },
+    "role-img-alt": {
+      "category": "text-alternatives",
+      "fix": {
+        "description": "Add an accessible name via aria-label or aria-labelledby to every element with role='img', including SVGs, CSS-styled elements, and custom image components that use role='img' to convey visual meaning.",
+        "code": "<!-- SVG with role='img' and aria-label -->\n<svg role=\"img\" aria-label=\"Company logo\" viewBox=\"0 0 100 100\">\n  <circle cx=\"50\" cy=\"50\" r=\"40\" fill=\"#333\" />\n</svg>\n\n<!-- Decorative SVG: use role='presentation' or aria-hidden -->\n<svg role=\"presentation\" aria-hidden=\"true\" viewBox=\"0 0 100 100\">\n  <circle cx=\"50\" cy=\"50\" r=\"40\" fill=\"#333\" />\n</svg>\n\n<!-- Div with role='img' (e.g., CSS background image) -->\n<div role=\"img\" aria-label=\"Sunset over mountains\"\n  style=\"background-image: url('sunset.jpg'); width: 300px; height: 200px;\"></div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, inline SVGs should have role='img' and aria-label on the root <svg> element. For SVG icon components, accept an aria-label prop and apply it to the SVG. Decorative SVGs should have aria-hidden='true'. Libraries like @heroicons/react and lucide-react handle this correctly when passing aria-label.",
+        "vue": "In Vue, SVG components should accept an aria-label prop. Use role='img' on the root <svg> and v-bind:aria-label. Decorative icons should use aria-hidden='true'. Nuxt Image generates <img> tags (not role='img') — this rule applies to custom SVG and CSS image components.",
+        "angular": "In Angular, SVG icon components (including MatIcon) should have role='img' and an accessible name. MatIcon supports [attr.aria-label] directly. For custom SVG components, bind [attr.aria-label]='imageLabel' and set role='img' on the host element.",
+        "svelte": "In Svelte, inline SVG components should accept an aria-label prop: <svg role='img' aria-label={label}>. For decorative SVGs, use aria-hidden='true'. Svelte's compiler warns about missing alt/aria-label on <img> but does not warn about <svg> — enforce this via code review or eslint-plugin-svelte.",
+        "astro": "In .astro files, inline SVGs rendered in the template need role='img' and aria-label manually. Astro's <Image /> component handles <img> tags, not SVGs. For SVG icons inside framework islands, the island framework's rules apply."
+      },
+      "cms_notes": {
+        "shopify": "Shopify themes use SVG icons extensively via {% render 'icon-cart' %} snippets. These snippets typically render <svg> without role='img' or aria-label. Add aria-hidden='true' for decorative icons, or pass an aria-label variable from the including template for meaningful icons.",
+        "wordpress": "WordPress social icons block and navigation block use SVGs. Core blocks include aria-hidden='true' on decorative icons. Custom blocks using inline SVGs must add role='img' and aria-label. The wp_kses_post() sanitizer allows SVG ARIA attributes by default.",
+        "drupal": "Drupal's icon modules and themes render SVGs in Twig. Use {{ attributes.setAttribute('role', 'img').setAttribute('aria-label', label|t) }} on the <svg> element. Decorative icons should use aria-hidden='true' via {{ attributes.setAttribute('aria-hidden', 'true') }}."
+      },
+      "fix_difficulty_notes": "The most common trigger: inline SVGs without an accessible name. Every SVG that conveys meaning should have role='img' and aria-label. Decorative SVGs (icons next to text, dividers, backgrounds) should have aria-hidden='true' instead. CSS background images conveying meaning need a wrapper with role='img' and aria-label — the background-image itself is invisible to AT.",
+      "related_rules": [
+        {
+          "id": "image-alt",
+          "reason": "Both rules require images to have accessible names — fix all image alternatives together."
+        },
+        {
+          "id": "svg-img-alt",
+          "reason": "svg-img-alt specifically targets SVG elements with role='img' — they overlap with this rule."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label.",
+          "Validate role/attribute combinations against ARIA-in-HTML constraints before applying ARIA fixes."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text).",
+          "Do not add composite widget roles unless the full keyboard interaction model is implemented."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase.",
+          "Confirm role, state, and name are exposed correctly in accessibility tooling."
+        ]
+      },
+      "pm": {
+        "summary": "Elements with role=img but no alt text are unlabeled images for screen readers",
+        "impact": "Non-text content is invisible to assistive technology, excluding users who depend on text descriptions. Violates WCAG 2.1 AA perceivable requirements. Affects screen reader users and users on slow connections.",
+        "effort": "quick-win"
+      }
+    },
+    "scope-attr-valid": {
+      "category": "tables",
+      "fix": {
+        "description": "Ensure the scope attribute is used correctly on tables: scope must only appear on <th> elements and its value must be 'row', 'col', 'rowgroup', or 'colgroup'.",
+        "code": "<!-- Correct: scope on <th> elements -->\n<table>\n  <thead>\n    <tr>\n      <th scope=\"col\">Name</th>\n      <th scope=\"col\">Email</th>\n      <th scope=\"col\">Role</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th scope=\"row\">Jane Doe</th>\n      <td>jane@example.com</td>\n      <td>Admin</td>\n    </tr>\n  </tbody>\n</table>\n\n<!-- Invalid: scope on <td> -->\n<!-- <td scope=\"row\">Jane</td> -->"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React table components, ensure scope is only passed to <th> elements, not <td>. When using dynamic rendering (mapping over columns), conditionally apply scope based on whether the cell is a header: scope={isHeader ? 'col' : undefined}.",
+        "vue": "In Vue, bind :scope only on <th> elements: <th :scope=\"isRowHeader ? 'row' : 'col'\">. Do not use scope on <td> — it is invalid HTML and ignored by screen readers.",
+        "angular": "In Angular Material mat-table, headers are rendered via mat-header-cell. Add scope='col' to column headers and scope='row' to row headers manually — Angular Material does not set scope automatically.",
+        "svelte": "In Svelte, the scope attribute on <th> must be 'row', 'col', 'rowgroup', or 'colgroup'. Svelte does not validate attribute values — verify manually.",
+        "astro": "In .astro files, scope on <th> must use valid values (row, col, rowgroup, colgroup). This is rendered to static HTML — incorrect values are not caught at build time."
+      },
+      "fix_difficulty_notes": "The scope attribute tells screen readers which data cells a header applies to. scope='col' means the header applies to the cells below it; scope='row' means it applies to cells to its right. Using scope on <td> is invalid HTML — move the scope to the appropriate <th>. For complex tables with multi-level headers, use the headers attribute on <td> elements instead of scope.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add scope to <td> elements — scope is only valid on <th>. Move the scope attribute to the <th> for that column or row.",
+          "Do not use scope='col' on a row header or scope='row' on a column header — verify the header's actual orientation before assigning a scope value."
+        ],
+        "verify": [
+          "Confirm scope is only present on <th> elements, not <td>, in the rendered HTML."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "td-headers-attr",
+          "reason": "For complex tables where scope is insufficient, the headers attribute on <td> provides explicit header associations."
+        },
+        {
+          "id": "th-has-data-cells",
+          "reason": "Headers must have data cells associated with them — fix scope and header-data relationships together."
+        },
+        {
+          "id": "empty-table-header",
+          "reason": "Scope on an empty <th> is meaningless — ensure headers have text content before adding scope."
+        }
+      ],
+      "pm": {
+        "summary": "Invalid scope attributes on table cells break header-data associations",
+        "impact": "Tables without proper headers and associations are incomprehensible to screen reader users, blocking access to tabular data. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users navigating data tables.",
+        "effort": "quick-win"
+      }
+    },
+    "scrollable-region-focusable": {
+      "category": "keyboard",
+      "managed_by_libraries": [
+        "swiper",
+        "embla-carousel",
+        "splide"
+      ],
+      "fix": {
+        "description": "Make scrollable regions keyboard-accessible by adding tabindex=\"0\" and a descriptive label.",
+        "code": "<div tabindex=\"0\" role=\"region\" aria-label=\"Product comparison table\" style=\"overflow: auto;\">\n  <table>\n    <caption>Feature comparison</caption>\n    <thead><tr><th>Feature</th><th>Basic</th><th>Pro</th></tr></thead>\n    <tbody><tr><td>Storage</td><td>5 GB</td><td>100 GB</td></tr></tbody>\n  </table>\n</div>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "Use a ref to check if the element actually overflows before adding tabIndex={0}. In React: const ref = useRef(); if (ref.current.scrollHeight > ref.current.clientHeight) add tabIndex. Avoid adding tabIndex to containers managed by virtual scroll libraries (react-window, react-virtual) — they handle keyboard internally.",
+        "vue": "Use a template ref and check scrollHeight > clientHeight in onMounted before binding :tabindex='0'. CSS overflow containers created by v-show or transition wrappers may be flagged falsely — verify the element has genuine scroll content.",
+        "angular": "Use @ViewChild and check nativeElement.scrollHeight > nativeElement.clientHeight in ngAfterViewInit. CDK ScrollingModule (VirtualScrollViewport) handles keyboard natively — do not add tabindex to its host element.",
+        "svelte": "In Svelte, scrollable containers (overflow:auto/scroll) must be keyboard-accessible via tabindex='0' and have an accessible name via aria-label or role='region' with aria-label.",
+        "astro": "In .astro files, scrollable regions are rendered in static HTML. Add tabindex='0' and aria-label to make them keyboard-accessible. For scrollable content inside framework islands, manage focus within the island."
+      },
+      "fix_difficulty_notes": "This rule fires on any element with overflow:auto or overflow:scroll — including CSS clip containers, masked elements, and carousels that overflow visually but have no actual scrollable content. Before adding tabindex='0', confirm the element is genuinely scrollable (has overflow content) and that keyboard users need to scroll it. Adding tabindex='0' to a non-scrollable container adds unnecessary tab stops.",
+      "cms_notes": {
+        "shopify": "Dawn's product media slider and slideshow section use Swiper.js with overflow:hidden on the wrapper and overflow:visible on the slide track. axe may flag the slide wrapper. Swiper renders its own keyboard-accessible navigation via the keyboard option — set keyboard: { enabled: true } in the Swiper config and do not add tabindex='0' to the track element.",
+        "wordpress": "WordPress themes using the SplideJS, Swiper, or Owl Carousel libraries may trigger this rule on carousel wrappers. The Splide and Swiper libraries have built-in keyboard navigation — enable it via the keyboard or a11y configuration options rather than adding manual tabindex. The WooCommerce product gallery uses Flexslider, which needs separate a11y configuration.",
+        "drupal": "Drupal's Views carousels (using Slick or Splide) may render scrollable wrapper elements. Slick Carousel (slick_carousel module) has an accessibility option in its configuration — enable it to add proper keyboard navigation and ARIA attributes rather than manually adding tabindex."
+      },
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add tabindex='0' to elements that have overflow CSS but no actual scrollable content — verify the element genuinely overflows before making it focusable.",
+          "Do not add tabindex='0' alone without also ensuring the scrollable region has an accessible name (aria-label) so screen reader users understand what they are navigating."
+        ],
+        "verify": [
+          "Confirm the element actually scrolls (has overflow content that exceeds its dimensions) before treating this as a violation requiring tabindex='0'."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "aria-hidden-focus",
+          "reason": "Both affect keyboard focus — audit all focusability violations together to avoid conflicts."
+        },
+        {
+          "id": "focus-order-semantics",
+          "reason": "Scrollable regions may need tabindex='0' for keyboard access but also need an appropriate role."
+        },
+        {
+          "id": "nested-interactive",
+          "reason": "Nested interactive elements inside scroll containers create keyboard traps — fix both together."
+        }
+      ],
+      "pm": {
+        "summary": "Scrollable areas unreachable by keyboard trap content for non-mouse users",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "medium"
+      }
+    },
+    "select-name": {
+      "category": "forms",
+      "preferred_relationship_checks": [
+        "aria-labelledby",
+        "explicit-label",
+        "label",
+        "select-name",
+        "aria-label",
+        "implicit-label"
+      ],
+      "fix": {
+        "description": "Associate every <select> element with a visible <label>.",
+        "code": "<label for=\"country\">Country</label>\n<select id=\"country\" name=\"country\">\n  <option value=\"us\">United States</option>\n</select>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Use htmlFor on <label> pointing to the select's id. For custom select components (react-select, Headless UI Listbox), pass the accessible name via their label prop or aria-labelledby — these components use the combobox/listbox ARIA pattern internally.",
+        "vue": "Native <select> uses standard <label for='id'>. For custom select components (Headless UI Listbox, Floating Vue Select), pass a label via their label prop — the component handles aria-labelledby internally.",
+        "angular": "In Angular Material, <mat-select> is labeled via <mat-label> inside <mat-form-field>. For standalone <select> elements, use <label [for]='selectId'>Label</label>.",
+        "svelte": "Use standard <label for='id'> with native <select>. For custom select components (Svelte Select, Melt UI), verify they expose a label prop or accept aria-labelledby. Svelte's compiler warns about missing labels on interactive elements.",
+        "astro": "In .astro files, use standard HTML <label for='id'> with <select>. For select elements inside framework islands, the island framework's label rules apply."
+      },
+      "cms_notes": {
+        "shopify": "Cart and product variant selectors in Shopify themes often use visually hidden labels. Verify the <label> is present in the DOM (not just a placeholder). In Dawn, variant selectors use <label class='visually-hidden'>. Custom themes must replicate this pattern.",
+        "wordpress": "WordPress form plugins (Contact Form 7, WPForms, Gravity Forms) generate <select> with labels. Verify plugin-generated markup includes proper <label for='...'> associations. The Comment form's sort dropdown often lacks a label.",
+        "drupal": "Drupal's Form API generates labels for select elements when #title is set. In Views exposed filters, select filters automatically get labels from the filter title. Custom Twig form templates must preserve the <label> element — do not remove it for visual reasons."
+      },
+      "fix_difficulty_notes": "Custom dropdown replacements (div/button combinations) are the main challenge — they bypass native label association entirely. If the team uses a custom dropdown, it must implement role='listbox', aria-expanded, and aria-labelledby pointing to the visible label. Migrating to native <select> is the simplest fix but may face design pushback. When that happens, ensure the custom component's ARIA contract is fully implemented.",
+      "related_rules": [
+        {
+          "id": "label",
+          "reason": "The same label association pattern applies — fix label rule to resolve both."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Select dropdowns without labels prevent screen reader users from choosing options",
+        "impact": "Form fields without proper labels prevent users from understanding what information is required, blocking submissions. Violates WCAG 2.1 AA input assistance requirements. Affects screen reader users and users with cognitive disabilities.",
+        "effort": "quick-win"
+      }
+    },
+    "server-side-image-map": {
+      "category": "text-alternatives",
+      "fix": {
+        "description": "Replace server-side image maps (using ismap on <img>) with client-side image maps (<map> + <area>) or alternative navigation that does not depend on precise pointer coordinates.",
+        "code": "<!-- Before: server-side image map (inaccessible) -->\n<a href=\"/map-handler\">\n  <img src=\"navigation.png\" ismap alt=\"Site navigation\">\n</a>\n\n<!-- After: client-side image map with alt text per area -->\n<img src=\"navigation.png\" usemap=\"#nav-map\" alt=\"Site navigation\">\n<map name=\"nav-map\">\n  <area shape=\"rect\" coords=\"0,0,100,50\" href=\"/home\" alt=\"Home\">\n  <area shape=\"rect\" coords=\"100,0,200,50\" href=\"/about\" alt=\"About\">\n  <area shape=\"rect\" coords=\"200,0,300,50\" href=\"/contact\" alt=\"Contact\">\n</map>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Server-side image maps are extremely rare in React applications. If the ismap attribute is present on an <img>, replace the entire pattern with individual <Link> components styled with CSS Grid or positioned over the image. This is more maintainable and accessible.",
+        "vue": "In Vue, replace server-side image maps with positioned <router-link> components or a client-side <map>. Server-side image maps send cursor coordinates to the server, which is incompatible with SPA routing.",
+        "angular": "In Angular, replace the ismap pattern with Angular Router links positioned over the image, or use a client-side <map> with <area> elements. Server-side coordinate handling is incompatible with Angular's client-side routing.",
+        "svelte": "Server-side image maps (<img ismap>) are inaccessible — replace with client-side image maps (<map>/<area>) or interactive SVGs. Server-side maps are rare in modern Svelte apps.",
+        "astro": "In .astro files, server-side image maps should not be used. Replace with client-side <map>/<area> or interactive SVG elements with proper ARIA labels."
+      },
+      "fix_difficulty_notes": "Server-side image maps send mouse click coordinates to the server, which determines the action. This is completely inaccessible to keyboard users (no coordinates are sent with Enter key) and screen reader users (no alternative text for regions). The fix: replace with a client-side image map (<map>/<area>) with alt text per area, or better yet, replace with individual links positioned via CSS.",
+      "related_rules": [
+        {
+          "id": "area-alt",
+          "reason": "If replacing with a client-side image map, ensure every <area> has alt text."
+        }
+      ],
+      "pm": {
+        "summary": "Server-side image maps are inaccessible to keyboard and screen reader users",
+        "impact": "Non-text content is invisible to assistive technology, excluding users who depend on text descriptions. Violates WCAG 2.1 AA perceivable requirements. Affects screen reader users and users on slow connections.",
+        "effort": "strategic"
+      }
+    },
+    "skip-link": {
+      "category": "keyboard",
+      "fix": {
+        "description": "Ensure all skip links have a focusable target. A skip link (typically 'Skip to main content') must point to an element that exists in the DOM and can receive focus, usually the <main> element with an id attribute.",
+        "code": "<!-- Skip link in the header: -->\n<body>\n  <a href=\"#main-content\" class=\"skip-link\">Skip to main content</a>\n  <header>...</header>\n  <main id=\"main-content\" tabindex=\"-1\">\n    <h1>Page title</h1>\n    ...\n  </main>\n  <footer>...</footer>\n</body>\n\n<!-- CSS for visually hidden skip link (visible on focus): -->\n<!--\n.skip-link {\n  position: absolute;\n  left: -9999px;\n  top: auto;\n  width: 1px;\n  height: 1px;\n  overflow: hidden;\n}\n.skip-link:focus {\n  position: static;\n  width: auto;\n  height: auto;\n  overflow: visible;\n  padding: 0.5rem 1rem;\n  background: #000;\n  color: #fff;\n  z-index: 9999;\n}\n-->"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In Next.js App Router, add the skip link in the root layout.tsx before <header>. Set tabIndex={-1} on <main id='main-content'> so it can receive focus when the skip link is activated. Some browsers require tabindex='-1' for non-interactive elements to be focusable via fragment navigation.",
+        "vue": "In Nuxt, add the skip link in layouts/default.vue before <header>. Add tabindex='-1' and id='main-content' to the <main> element. Ensure the skip link is the first focusable element in the DOM.",
+        "angular": "In Angular, add the skip link in app.component.html before <header>. Use [tabIndex]='-1' on <main id='main-content'>. Angular's router may re-render the main content area on navigation — ensure the id persists across route changes.",
+        "svelte": "In SvelteKit, add the skip link in +layout.svelte as the first child element. Set tabindex='-1' on the <main> target. SvelteKit's client-side navigation does not break skip links since the layout persists across routes.",
+        "astro": "Place the skip link in BaseLayout.astro as the first element in <body>. Since Astro renders static HTML, the skip link target is always present. Add tabindex='-1' to <main> for browsers that require it for fragment navigation."
+      },
+      "cms_notes": {
+        "shopify": "Dawn includes a skip link targeting #MainContent. Custom themes must ensure the target element (id='MainContent') exists and has tabindex='-1'. The skip link must be in layout/theme.liquid, not in a section — sections may not render on all pages.",
+        "wordpress": "The Underscores (_s) starter theme includes a working skip link in header.php. Many premium themes remove or break it. Verify the target element (#content or #main) exists, has tabindex='-1', and receives focus on activation. Block themes need the skip link in the header template part.",
+        "drupal": "Drupal renders a skip link via the 'Skip to main content' region. Olivero includes it by default. Custom themes must ensure the skip-link region is rendered in page.html.twig and the target (typically <main>) has id='main-content' and tabindex='-1'."
+      },
+      "fix_difficulty_notes": "The skip link target must meet two conditions: (1) the element with the matching id must exist in the DOM, and (2) it must be focusable. Native interactive elements are focusable by default; non-interactive elements like <main> or <div> require tabindex='-1' to receive programmatic focus. In SPAs, the target element may not exist during initial render if content is loaded asynchronously — ensure the target is rendered before the skip link can be activated.",
+      "related_rules": [
+        {
+          "id": "bypass",
+          "reason": "Skip links are the primary mechanism for satisfying the bypass blocks requirement (WCAG 2.4.1)."
+        },
+        {
+          "id": "landmark-one-main",
+          "reason": "The skip link target should be the <main> landmark — ensure it exists and has the correct id."
+        },
+        {
+          "id": "region",
+          "reason": "Proper landmark regions reduce the need for skip links but do not replace them — both mechanisms should coexist."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If a link uses target=\"_blank\", ensure rel=\"noopener noreferrer\" (or stricter equivalent) is present."
+        ],
+        "must_not": [
+          "Do not mention \"opens in a new tab\" unless target=\"_blank\" is actually present."
+        ],
+        "verify": [
+          "Confirm link purpose remains clear out of context and in the accessibility tree."
+        ]
+      },
+      "pm": {
+        "summary": "Skip link present but not functioning — keyboard users still can't bypass navigation",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "medium"
+      }
+    },
+    "summary-name": {
+      "category": "name-role-value",
+      "fix": {
+        "description": "Add discernible text content to every <summary> element so screen readers can announce its purpose. The <summary> serves as the visible heading and toggle control for a <details> disclosure widget.",
+        "code": "<!-- Before: empty summary -->\n<details>\n  <summary></summary>\n  <p>Additional information here.</p>\n</details>\n\n<!-- After: summary with descriptive text -->\n<details>\n  <summary>More information about shipping</summary>\n  <p>We offer free shipping on orders over $50.</p>\n</details>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, <summary> elements with dynamic content like <summary>{title}</summary> render empty if title is undefined. Guard with: {title && <details><summary>{title}</summary>...</details>}. Accordion components (Radix Collapsible, Headless UI Disclosure) manage this automatically.",
+        "vue": "In Vue, <summary>{{ title }}</summary> renders empty if title is falsy. Use v-if='title' on the <details> or provide a fallback string. Headless UI and PrimeVue accordion components handle this internally.",
+        "angular": "In Angular, <summary>{{ title }}</summary> renders empty if title is undefined. Use *ngIf='title' on the <details> element or provide a default string. Angular CDK Accordion manages accessible names automatically.",
+        "svelte": "In Svelte, <summary> elements inside <details> must have visible text content that describes the disclosed section. Svelte does not warn about empty <summary> — add descriptive text.",
+        "astro": "In .astro files, <summary> must contain visible text in the static HTML. This serves as the accessible name for the disclosure widget."
+      },
+      "fix_difficulty_notes": "The fix is to add descriptive text content to the <summary> element. In CMS-driven content, the issue often occurs when an author creates a <details> block but leaves the summary empty. The text should describe what the disclosure widget reveals when expanded — not a generic label like 'Details' or 'More'.",
+      "related_rules": [
+        {
+          "id": "button-name",
+          "reason": "<summary> acts as a toggle button — it requires an accessible name by the same principle as button-name."
+        },
+        {
+          "id": "empty-heading",
+          "reason": "In CMS content, empty <summary> and empty headings often occur together — authors leave both fields blank. Fix both in the same content audit."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Disclosure widgets without accessible names are unlabeled for screen readers",
+        "impact": "Interactive elements without accessible names are invisible or unlabeled to assistive technology. Violates WCAG 2.1 AA name-role-value requirements. Affects screen reader and voice control users.",
+        "effort": "quick-win"
+      }
+    },
+    "svg-img-alt": {
+      "category": "text-alternatives",
+      "fix": {
+        "description": "Add an accessible name to informative SVGs using role='img' and aria-label. For decorative SVGs, use aria-hidden='true'.",
+        "code": "<!-- Informative SVG (icon conveying meaning): -->\n<svg role=\"img\" aria-label=\"Shopping cart — 3 items\" focusable=\"false\">\n  <!-- svg paths -->\n</svg>\n\n<!-- Decorative SVG (visual only, adjacent text explains it): -->\n<svg aria-hidden=\"true\" focusable=\"false\">\n  <!-- svg paths -->\n</svg>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, SVG components commonly strip accessibility attributes. Add role='img' and aria-label directly on the <svg> element: <svg role='img' aria-label='Close' aria-hidden={undefined}>. Icon libraries like Heroicons and Lucide expose aria-hidden and aria-label props.",
+        "vue": "In Vue, pass aria-hidden='true' or aria-label as attributes on the <svg> component. Most Vue icon libraries (unplugin-icons, vue-feather) accept these as standard HTML attributes.",
+        "angular": "In Angular Material, <mat-icon> renders an SVG or ligature — it sets aria-hidden by default. For standalone SVG components, use [attr.aria-label]='label' and [attr.aria-hidden]='isDecorative'.",
+        "svelte": "In Svelte, <svg> elements that convey meaning need role='img' and aria-label or <title> as the first child. Decorative SVGs should have aria-hidden='true'. Svelte's compiler warns about <img> without alt but not <svg> without labels.",
+        "astro": "In .astro files, meaningful <svg> elements need role='img' and an accessible name. Astro's <Image /> component handles <img> tags only — SVGs must be labeled manually."
+      },
+      "fix_difficulty_notes": "Most SVGs in UI are decorative (icons next to visible button text, background illustrations). axe may flag them as missing an alt even when the adjacent text is sufficient. The decision is: does this SVG convey meaning that is NOT expressed in adjacent visible text? If yes → aria-label. If no → aria-hidden='true'. Never add aria-label that duplicates adjacent text — this creates redundant announcements.",
+      "cms_notes": {
+        "shopify": "Shopify themes use {% render 'icon-cart' %}, {% render 'icon-close' %}, and similar snippets that render raw <svg> without aria attributes. For decorative icons (with accompanying visible button text), add aria-hidden='true' to the snippet's <svg> root. For standalone icon buttons (no visible text), pass an aria_label variable from the including template to the snippet.",
+        "wordpress": "WordPress core's Social Icons block (Gutenberg) adds aria-hidden='true' to SVG icons by default. Custom blocks using inline SVG must add role='img' and aria-label for informative icons, or aria-hidden='true' for decorative ones. The SVG Sanitizer used in wp_kses_post allows aria attributes.",
+        "drupal": "Drupal themes render SVG icons via Twig include. Use {{ attributes.setAttribute('aria-hidden', 'true') }} for decorative icons, or {{ attributes.setAttribute('role', 'img').setAttribute('aria-label', label|t) }} for informative icons. Icon modules like Iconify for Drupal apply aria-hidden automatically when used as decorative."
+      },
+      "related_rules": [
+        {
+          "id": "image-alt",
+          "reason": "The same alt text requirement applies to <img> — fix all alt text violations together."
+        },
+        {
+          "id": "image-redundant-alt",
+          "reason": "When adding aria-label to SVGs, avoid duplicating visible adjacent text."
+        },
+        {
+          "id": "input-image-alt",
+          "reason": "The same alt text requirement applies to <input type=\"image\"> — fix all alt text violations together."
+        },
+        {
+          "id": "role-img-alt",
+          "reason": "svg-img-alt specifically targets SVG elements with role='img' — they overlap with this rule."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "SVG images without accessible names are invisible to screen readers",
+        "impact": "Non-text content is invisible to assistive technology, excluding users who depend on text descriptions. Violates WCAG 2.1 AA perceivable requirements. Affects screen reader users and users on slow connections.",
+        "effort": "quick-win"
+      }
+    },
+    "tabindex": {
+      "category": "keyboard",
+      "fix": {
+        "description": "Remove positive tabindex values. Use tabindex=\"0\" to include in natural tab order, tabindex=\"-1\" to exclude.",
+        "code": "<!-- Include in natural tab order: -->\n<div role=\"button\" tabindex=\"0\">Focusable element</div>\n<!-- Programmatically focusable only: -->\n<div tabindex=\"-1\">Focus via script only</div>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In JSX, the attribute is camelCase: tabIndex={0} or tabIndex={-1}. Never use positive integers. For programmatically managed focus (e.g., opening a modal), call element.focus() instead of relying on tabIndex values greater than 0.",
+        "vue": "Use :tabindex='0' or tabindex='-1' in Vue templates. Do not expose a tabindex prop that accepts positive integers — validate the value at the component level.",
+        "angular": "Use [tabIndex]='value' for dynamic binding, ensuring only 0 or -1 are bound. The Angular CDK FocusTrap handles sequential focus management within dialogs without requiring positive tabindex values.",
+        "svelte": "In Svelte, avoid tabindex values greater than 0 — they disrupt the natural tab order. Use tabindex='0' for custom interactive elements and tabindex='-1' for programmatic focus targets only.",
+        "astro": "In .astro files, tabindex values render to static HTML. Never use tabindex > 0. For custom interactive elements, use tabindex='0' and add keyboard event handlers via a framework island."
+      },
+      "fix_difficulty_notes": "Positive tabindex values (tabindex='1', tabindex='2') create a separate focus sequence that runs before the natural DOM order. All positive-tabindex elements are visited first, then everything else. This almost always breaks focus flow. Remove all positive tabindex values and reorder the DOM instead if a different focus sequence is needed.",
+      "related_rules": [
+        {
+          "id": "focus-order-semantics",
+          "reason": "Both rules address focus order issues — fix tabindex values and semantic roles together."
+        }
+      ],
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not assign tabindex > 0 — this creates a separate focus sequence that runs before natural DOM order and breaks keyboard navigation.",
+          "Do not use positive tabindex as a workaround for DOM order issues — reorder the DOM instead."
+        ],
+        "verify": [
+          "Confirm no tabindex values greater than 0 remain in the affected file.",
+          "Tab through the modified element to confirm it appears in logical, predictable focus order."
+        ]
+      },
+      "pm": {
+        "summary": "Positive tabindex values create unpredictable focus order, disorienting keyboard users",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "medium"
+      }
+    },
+    "table-duplicate-name": {
+      "category": "tables",
+      "fix": {
+        "description": "Remove the summary attribute or change the caption text so the table caption and summary do not contain the same text.",
+        "code": "<!-- Remove summary entirely (deprecated in HTML5) -->\n<table>\n  <caption>Sales data by region and quarter — columns are quarters Q1–Q4, rows are regions</caption>\n  ...\n</table>\n\n<!-- Or if summary must remain, use different text: -->\n<table summary=\"Use arrow keys to navigate rows and columns.\">\n  <caption>Sales data by region and quarter</caption>\n  ...\n</table>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React table components, avoid passing both caption and summary props with the same content. Remove the summary attribute entirely — it is deprecated.",
+        "vue": "In Vue, do not bind :summary on <table>. Use <caption> for all table descriptions.",
+        "angular": "In Angular, remove [attr.summary] bindings from table components. Migrate to <caption> with descriptive text or aria-describedby pointing to an adjacent description.",
+        "svelte": "In Svelte, remove the deprecated summary attribute from <table> elements. Use <caption> as the sole table description. If you must keep both a <caption> and a summary, ensure their text is different.",
+        "astro": "In .astro files, remove the deprecated summary attribute from <table> elements. Use <caption> as the sole table description. The summary attribute is a legacy HTML4 pattern that should not appear in modern Astro templates."
+      },
+      "fix_difficulty_notes": "The summary attribute is deprecated in HTML5 and should not be used in new code. The preferred pattern is to put all necessary description in the <caption> element. If legacy code uses both, the simplest fix is to remove the summary attribute entirely. For complex tables requiring navigation instructions, use aria-describedby pointing to a visible description paragraph adjacent to the table.",
+      "related_rules": [
+        {
+          "id": "table-fake-caption",
+          "reason": "If both a <caption> and aria-label exist, they must not duplicate each other."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Tables with identical captions and summaries provide redundant information",
+        "impact": "Tables without proper headers and associations are incomprehensible to screen reader users, blocking access to tabular data. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users navigating data tables.",
+        "effort": "quick-win"
+      }
+    },
+    "table-fake-caption": {
+      "category": "tables",
+      "fix": {
+        "description": "Replace any first-row fake caption (a <td> spanning all columns) with a proper <caption> element as the first child of <table>. Screen readers do not associate a spanning <td> with the table as a label.",
+        "code": "<!-- Before: fake caption using first row -->\n<table>\n  <tr>\n    <td colspan=\"3\"><strong>Quarterly Sales</strong></td>\n  </tr>\n  <tr>\n    <th>Region</th><th>Q1</th><th>Q2</th>\n  </tr>\n  <tr>\n    <td>North</td><td>$100k</td><td>$120k</td>\n  </tr>\n</table>\n\n<!-- After: proper caption element -->\n<table>\n  <caption>Quarterly Sales</caption>\n  <thead>\n    <tr>\n      <th>Region</th><th>Q1</th><th>Q2</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>North</td><td>$100k</td><td>$120k</td>\n    </tr>\n  </tbody>\n</table>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React table components, add a <caption> element as the first child of <table>. UI libraries (Tanstack Table, AG Grid React) may not render a <caption> by default — add it manually in the table wrapper or use the library's caption/title slot.",
+        "vue": "In Vue, add <caption> as the first child of the <table> element in your template. Vuetify's v-data-table uses a title slot — configure it to render as a proper <caption> for data tables.",
+        "angular": "In Angular Material, mat-table does not include a <caption> element by default. Add a <caption> element inside the <table mat-table> element. For CDK Table, include the <caption> in the table template.",
+        "svelte": "In Svelte, do not use <td colspan> as a table caption. Use the proper <caption> element inside <table> for the table's accessible name.",
+        "astro": "In .astro files, tables should use <caption> for their title, not a spanning <td> in the first row."
+      },
+      "fix_difficulty_notes": "The <caption> element must be the first child of <table>. It is announced by screen readers as the table's name, enabling users to understand the table's purpose before navigating its cells. CSS can be used to style or visually reposition the caption (caption-side: bottom). Never use visibility:hidden or display:none — use the sr-only/visually-hidden pattern if the caption must be visible only to AT.",
+      "related_rules": [
+        {
+          "id": "table-duplicate-name",
+          "reason": "If both a <caption> and aria-label exist, they must not duplicate each other."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Data tables using non-caption elements for titles break table navigation",
+        "impact": "Tables without proper headers and associations are incomprehensible to screen reader users, blocking access to tabular data. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users navigating data tables.",
+        "effort": "medium"
+      }
+    },
+    "target-size": {
+      "category": "keyboard",
+      "fix": {
+        "description": "Increase small interactive elements to a minimum target size of 24×24 CSS pixels (WCAG 2.5.8). Use 44×44 px or larger for touch interfaces.",
+        "code": "/* Minimum WCAG 2.2 AA target size */\n.btn, a, [role=\"button\"] {\n  min-width: 24px;\n  min-height: 24px;\n}\n\n/* Recommended for touch: */\n.btn {\n  min-width: 44px;\n  min-height: 44px;\n  padding: 0.5rem 1rem;\n}"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, icon-only buttons from component libraries (shadcn/ui, Radix, Chakra) often render below 24px. Add min-w-6 min-h-6 (Tailwind) or min-width/min-height in CSS. For touch targets, use min-w-11 min-h-11 (44px). Radix's IconButton defaults to small sizes — override via className.",
+        "vue": "In Vue, Vuetify's icon buttons default to 36px (sufficient), but custom icon buttons may not. Ensure min-width and min-height are set. PrimeVue's Button with icon-only mode may render small — verify with DevTools.",
+        "angular": "Angular Material's mat-icon-button defaults to 40px (sufficient). Custom icon buttons or mat-mini-fab (40px) meet the minimum. Verify third-party component libraries meet the 24px minimum — inspect computed size in DevTools.",
+        "svelte": "In Svelte, there are no built-in size constraints on interactive elements. Ensure all buttons, links, and inputs have min-width: 24px and min-height: 24px. For touch interfaces, use 44px. Apply sizes in a global stylesheet to catch all interactive elements.",
+        "astro": "In .astro files, target sizes depend entirely on CSS. Ensure icon-only buttons and small links in the base layout meet the 24px minimum. Framework islands inherit page CSS — verify the computed size of interactive elements inside hydrated islands."
+      },
+      "fix_difficulty_notes": "WCAG 2.5.8 provides an exception for inline text links within a sentence (e.g., 'see our privacy policy') where sufficient spacing around the link satisfies the criterion. axe may flag these — verify whether the exception applies before adding padding that could break the text flow.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add padding to inline text links within a paragraph to meet the target size — the WCAG 2.5.8 inline exception allows these to be smaller if surrounding spacing is sufficient.",
+          "Do not increase font-size to pad target size without confirming the design allows it — use min-width/min-height with padding instead."
+        ],
+        "verify": [
+          "Confirm the element is a standalone interactive control (not an inline link within text) before applying the target size fix.",
+          "Measure the computed size of the interactive element in DevTools — axe uses the bounding box, not just the text content area."
+        ]
+      },
+      "related_rules": [],
+      "pm": {
+        "summary": "Touch targets smaller than 24x24px cause errors for users with motor impairments",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "medium"
+      }
+    },
+    "td-has-header": {
+      "category": "tables",
+      "fix": {
+        "description": "Associate every non-empty <td> in a multi-row/multi-column data table with a <th> header cell. Use <th> elements for column and row headers, and add scope or headers attributes for complex table structures.",
+        "code": "<!-- Simple table: use <th> with scope -->\n<table>\n  <caption>Employee Directory</caption>\n  <thead>\n    <tr>\n      <th scope=\"col\">Name</th>\n      <th scope=\"col\">Department</th>\n      <th scope=\"col\">Extension</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>Jane Doe</td>\n      <td>Engineering</td>\n      <td>1234</td>\n    </tr>\n  </tbody>\n</table>\n\n<!-- Complex table with row and column headers -->\n<table>\n  <caption>Quarterly Revenue</caption>\n  <thead>\n    <tr><th></th><th scope=\"col\">Q1</th><th scope=\"col\">Q2</th></tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th scope=\"row\">North</th><td>$100k</td><td>$120k</td>\n    </tr>\n  </tbody>\n</table>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, dynamic table components must render <th> elements for headers, not <td> with styling. Use scope='col' on column headers and scope='row' on row headers. Tanstack Table renders headers as <th> by default — verify the rendered output.",
+        "vue": "In Vue, ensure the table header row uses <th> not <td>. Vuetify's v-data-table renders column headers as <th> automatically. For custom tables, add scope='col' to each <th> in the <thead>.",
+        "angular": "Angular Material's mat-table uses mat-header-cell, which renders as <th> with role='columnheader'. Verify the rendered HTML includes proper scope attributes. For native HTML tables in Angular, add scope='col' or scope='row' to <th> elements.",
+        "svelte": "In Svelte data table components, ensure every <td> is associated with a <th> via the table structure or the headers attribute. Complex tables with merged cells need explicit headers attributes.",
+        "astro": "In .astro files, table cells must be associated with header cells. For simple tables, proper <th>/<td> structure is sufficient. For complex tables, use the headers attribute."
+      },
+      "fix_difficulty_notes": "This rule triggers on 'large' tables (more than 3 rows and 3 columns) where data cells are not associated with headers. The most common fix: convert the first row from <td> to <th scope='col'> and the first column from <td> to <th scope='row'>. For complex tables with multi-level headers, use the headers attribute on <td> to explicitly reference <th id> values. Avoid merged cells (colspan/rowspan) when possible — they complicate header association significantly.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add role='presentation' or role='none' to the table to suppress this violation — this removes the table semantics and harms AT users who rely on table navigation."
+        ],
+        "verify": [
+          "Confirm the table is a data table (not a layout table) before applying header fixes — layout tables should use role='presentation' instead.",
+          "Confirm the table is not in an empty/loading state that is causing axe to find no data cells — guard tables to only display headers when data is present."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "th-has-data-cells",
+          "reason": "th-has-data-cells verifies headers have associated data; td-has-header verifies data cells have associated headers — fix both together."
+        },
+        {
+          "id": "td-headers-attr",
+          "reason": "For complex tables, the headers attribute on <td> must reference valid <th> id values."
+        }
+      ],
+      "pm": {
+        "summary": "Data cells without headers leave screen reader users unable to interpret table data",
+        "impact": "Tables without proper headers and associations are incomprehensible to screen reader users, blocking access to tabular data. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users navigating data tables.",
+        "effort": "medium"
+      }
+    },
+    "td-headers-attr": {
+      "category": "tables",
+      "fix": {
+        "description": "Ensure every ID referenced in a td's headers attribute matches an existing th element in the same table.",
+        "code": "<table>\n  <thead>\n    <tr>\n      <th id=\"col-name\">Name</th>\n      <th id=\"col-dept\">Department</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td headers=\"col-name\">Alice</td>\n      <td headers=\"col-dept\">Engineering</td>\n    </tr>\n  </tbody>\n</table>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, generate table IDs programmatically: const colId = `col-${column.key}`; <th id={colId}> and <td headers={colId}>. Ensure IDs are unique if multiple table instances render on the same page.",
+        "vue": "In Vue, bind unique IDs: :id='`col-${col.key}`' on <th> and :headers='`col-${col.key}`' on <td>. Use a table-scoped unique prefix if multiple tables exist.",
+        "angular": "In Angular, generate IDs in the component: colId = (col: Column) => `col-${col.key}`; and bind [attr.id]='colId(col)' on th and [attr.headers]='colId(col)' on td.",
+        "svelte": "In Svelte, the headers attribute on <td> must reference valid <th> IDs in the same table. When using dynamic table rendering, ensure header IDs are consistent with cell references.",
+        "astro": "In .astro files, the headers attribute on <td> must reference <th> elements by id within the same table. Verify references in the rendered static HTML."
+      },
+      "fix_difficulty_notes": "The headers attribute is only needed for complex tables where a single cell spans multiple headers or the column/row relationship is ambiguous. For simple tables (one header row, one header column), use <th scope='col'> and <th scope='row'> instead — it is simpler and better supported across AT. Only use the headers attribute when scope is insufficient.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add the headers attribute to simple tables — use <th scope='col'> and <th scope='row'> instead, which have broader AT support.",
+          "Do not reference ids that belong to <th> elements in a different table — the headers attribute must reference <th> within the same table."
+        ],
+        "verify": [
+          "Confirm every id referenced in a headers attribute exists in the DOM and belongs to a <th> element in the same table."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "th-has-data-cells",
+          "reason": "Fix td-headers-attr and th-has-data-cells together — they are complementary table structure rules."
+        },
+        {
+          "id": "empty-table-header",
+          "reason": "The headers attribute references <th> elements by id — empty headers make these references meaningless."
+        },
+        {
+          "id": "scope-attr-valid",
+          "reason": "For complex tables where scope is insufficient, the headers attribute on <td> provides explicit header associations."
+        },
+        {
+          "id": "td-has-header",
+          "reason": "For complex tables, the headers attribute on <td> must reference valid <th> id values."
+        }
+      ],
+      "pm": {
+        "summary": "Incorrect headers attribute breaks cell-to-header association in complex tables",
+        "impact": "Tables without proper headers and associations are incomprehensible to screen reader users, blocking access to tabular data. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users navigating data tables.",
+        "effort": "medium"
+      }
+    },
+    "th-has-data-cells": {
+      "category": "tables",
+      "fix": {
+        "description": "Ensure every <th> element has at least one associated data cell (<td>). Remove header cells for empty columns or convert them to <td> if they contain data rather than labels.",
+        "code": "<table>\n  <thead>\n    <tr>\n      <th scope=\"col\">Name</th>\n      <th scope=\"col\">Role</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>Alice</td>\n      <td>Engineer</td>\n    </tr>\n  </tbody>\n</table>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In React, render a fallback when the data array is empty: if (!rows.length) return <p>No results found.</p>. Do not render the <table> with headers and an empty <tbody>.",
+        "vue": "In Vue, use v-if='rows.length' on the <table> element. Provide an empty-state <p> or <div> with v-else outside the table.",
+        "angular": "In Angular, use *ngIf='rows.length' on the <table> element and provide an alternative empty-state template with *ngIf='!rows.length'.",
+        "svelte": "In Svelte, every <th> must have associated data cells (<td>) in the table. Empty rows or columns with only headers trigger this violation — remove unused headers.",
+        "astro": "In .astro files, <th> elements must be associated with <td> cells in the rendered table. Headers without data cells are meaningless and should be removed."
+      },
+      "fix_difficulty_notes": "This rule commonly fires on dynamically rendered tables that show an empty state (loading spinner or 'No data' row). axe flags the <th> elements as having no data cells when the table body is empty or renders a colspan'd message. Guard the table to only display headers when data is present, or use a non-table element for the empty state.",
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not remove <th> elements that are legitimately waiting for data — guard the table to hide headers during empty state instead."
+        ],
+        "verify": [
+          "Confirm the table is not in a loading or empty state during the scan — re-test with actual data rows present.",
+          "Confirm the <td> cells that correspond to the flagged <th> are in the same table scope, not in a sibling or child table."
+        ]
+      },
+      "related_rules": [
+        {
+          "id": "td-headers-attr",
+          "reason": "Fix table structure rules together — td-headers-attr and th-has-data-cells are complementary."
+        },
+        {
+          "id": "empty-table-header",
+          "reason": "Headers without text and headers without associated data cells are related structural issues — fix together."
+        },
+        {
+          "id": "scope-attr-valid",
+          "reason": "Headers must have data cells associated with them — fix scope and header-data relationships together."
+        },
+        {
+          "id": "td-has-header",
+          "reason": "th-has-data-cells verifies headers have associated data; td-has-header verifies data cells have associated headers — fix both together."
+        }
+      ],
+      "pm": {
+        "summary": "Table headers without associated data cells create empty structure for screen readers",
+        "impact": "Tables without proper headers and associations are incomprehensible to screen reader users, blocking access to tabular data. Violates WCAG 2.1 AA adaptable requirements. Affects screen reader users navigating data tables.",
+        "effort": "quick-win"
+      }
+    },
+    "valid-lang": {
+      "category": "language",
+      "fix": {
+        "description": "Use a valid BCP 47 language code on any element with a lang attribute.",
+        "code": "<p lang=\"es\">Hola mundo</p>\n<blockquote lang=\"fr\">Citation en français</blockquote>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Add the lang attribute to HTML elements in JSX: <p lang='es'>Hola</p>. Works identically to plain HTML — no special React syntax needed.",
+        "vue": "Use lang='es' as a standard attribute in Vue templates. For dynamic language content, bind it: <p :lang='contentLang'>{{ text }}</p>.",
+        "angular": "Use [attr.lang]='locale' for dynamic language switching on inline content, or lang='es' as a static attribute for fixed foreign-language passages.",
+        "svelte": "In Svelte, any element with a lang attribute must use a valid BCP 47 tag. This applies to inline language overrides like <span lang='fr'>Bonjour</span>.",
+        "astro": "In .astro files, all lang attributes (on any element) must use valid BCP 47 tags. This includes the root <html lang> and any inline language overrides."
+      },
+      "fix_difficulty_notes": "This rule checks inline lang attributes on child elements (e.g., <p lang='es'>), not the root <html>. The most common mistake is copying locale codes from i18n libraries (e.g., 'en_US' with underscore) — only hyphenated BCP 47 tags are valid (e.g., 'en-US', 'es', 'fr-CA'). Verify each value against https://www.iana.org/assignments/language-subtag-registry/.",
+      "cms_notes": {
+        "shopify": "Shopify's Translate & Adapt app and third-party translation apps (Langify, Weglot) inject translated content as page overlays or replace DOM text. Weglot wraps translated content in <span> elements with a lang attribute — ensure it uses valid BCP 47 codes (e.g., 'fr' not 'fr_FR'). Verify via the Weglot dashboard's language code settings.",
+        "wordpress": "WPML and Polylang inject lang attributes on translated content blocks. WPML uses ISO 639-1 codes with underscore separators (e.g., 'fr_FR') in PHP — the Twig/HTML output must convert these to hyphenated BCP 47 format. Use WPML's wpml_active_languages API to retrieve properly formatted language tags.",
+        "drupal": "Drupal's Language module tags content blocks with lang attributes from the content's language assignment. Language IDs configured in /admin/config/regional/language must use valid BCP 47 tags. Custom Twig templates that output {{ node.langcode.value }} directly may produce underscore-format codes — convert using str_replace('_', '-', langcode)."
+      },
+      "related_rules": [
+        {
+          "id": "html-has-lang",
+          "reason": "The root <html> lang attribute must be set before child lang attributes are meaningful."
+        },
+        {
+          "id": "html-lang-valid",
+          "reason": "The same BCP 47 validity requirement applies to the root lang attribute."
+        }
+      ],
+      "pm": {
+        "summary": "Invalid language attributes on elements cause wrong pronunciation by screen readers",
+        "impact": "Missing or incorrect language attributes cause screen readers to mispronounce content and break auto-translation. Violates WCAG 2.1 AA readable requirements. Affects screen reader users and translation tool users.",
+        "effort": "quick-win"
+      }
+    },
+    "video-caption": {
+      "category": "text-alternatives",
+      "fix": {
+        "description": "Add a <track kind='captions'> inside every <video> element. Captions must cover all speech and meaningful audio.",
+        "code": "<video controls>\n  <source src=\"presentation.mp4\" type=\"video/mp4\">\n  <track kind=\"captions\" src=\"presentation.vtt\" srclang=\"en\" label=\"English\" default>\n  <track kind=\"captions\" src=\"presentation-es.vtt\" srclang=\"es\" label=\"Español\">\n</video>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, include <track> as a child of <video>. React warns if <track> lacks a key prop when rendered in a list. Use the crossOrigin prop (camelCase) if serving captions from a different domain.",
+        "vue": "In Vue, nest <track> inside <video> in the template. For dynamically loaded captions, use :src='captionUrl'. Note that Vue does not reload <track> on src change alone — recreate the video element when switching sources.",
+        "angular": "In Angular, include static or dynamic <track> elements inside the <video> template. For dynamically switching caption languages, use [attr.src] binding and reload the video source programmatically.",
+        "svelte": "In Svelte, <video> elements must have <track kind='captions'> for synchronized captions. Svelte does not warn about missing video captions — add them manually.",
+        "astro": "In .astro files, <video> elements need <track kind='captions'> in the static HTML. For video players inside framework islands, ensure the island component includes caption tracks."
+      },
+      "fix_difficulty_notes": "axe cannot verify whether existing captions are accurate or synchronized — it only detects the presence of a <track kind='captions'> element. A <track> pointing to an empty or inaccurate VTT file technically passes axe but still violates WCAG 1.2.2. Always review caption content manually. For YouTube/Vimeo embeds inside <iframe>, this rule does not apply — the embedded player's caption controls are the platform's responsibility.",
+      "cms_notes": {
+        "shopify": "Shopify's video section renders <video> elements using the native HTML5 player. Dawn does not add <track> elements by default. Add a section schema setting for a caption file URL and include <track kind='captions' src='{{ section.settings.caption_src }}' srclang='en' label='English' default> in the section template when the setting is non-empty.",
+        "wordpress": "WordPress's Video block renders a native <video> element. The block editor does not natively support <track> — use a plugin like Able Player or Video.js WordPress Plugin for accessible captioning. For self-hosted videos, add a 'Captions' field to the media attachment and render it in the block template.",
+        "drupal": "Drupal's Media module for local video does not automatically add <track> elements. Use the Video.js player integration (videojs_media module) which supports WebVTT caption tracks via the Media source configuration. Alternatively, add <track> manually in the video--*.html.twig template using a file field on the media entity."
+      },
+      "related_rules": [
+        {
+          "id": "audio-caption",
+          "reason": "Both require media captions — fix all media accessibility violations together."
+        },
+        {
+          "id": "no-autoplay-audio",
+          "reason": "Auto-playing video with audio needs captions — address media accessibility holistically."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "If visible text exists, preserve label-in-name: accessible name must include the visible label."
+        ],
+        "must_not": [
+          "Do not add or replace aria-label when a valid accessible name already exists (visible text, aria-labelledby, existing aria-label, associated label, or sr-only text)."
+        ],
+        "verify": [
+          "Confirm computed accessible name matches expected spoken phrase."
+        ]
+      },
+      "pm": {
+        "summary": "Video without captions excludes deaf and hard-of-hearing users from content",
+        "impact": "Non-text content is invisible to assistive technology, excluding users who depend on text descriptions. Violates WCAG 2.1 AA perceivable requirements. Affects screen reader users and users on slow connections.",
+        "effort": "strategic"
+      }
+    },
+    "cdp-autoplay-media": {
+      "category": "multimedia",
+      "fix": {
+        "description": "Remove the autoplay attribute from media elements, or ensure they are muted and provide visible controls so users can pause or stop playback.",
+        "code": "<!-- Video: remove autoplay or add muted + controls -->\n<video controls muted>\n  <source src=\"video.mp4\" type=\"video/mp4\">\n  <track kind=\"captions\" src=\"video.vtt\" srclang=\"en\" label=\"English\" default>\n</video>\n\n<!-- Audio: remove autoplay and add controls -->\n<audio controls>\n  <source src=\"audio.mp3\" type=\"audio/mpeg\">\n</audio>\n\n<!-- If autoplay is required (e.g. background video), always mute it -->\n<video autoplay muted loop playsinline aria-hidden=\"true\">\n  <source src=\"background.mp4\" type=\"video/mp4\">\n</video>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "In React, remove the autoplay prop or replace with autoPlay={false}. For background videos that must autoplay, add muted and aria-hidden={true}. Never autoplay audio — it is disorienting for screen reader users.",
+        "vue": "In Vue, remove the autoplay attribute from <video> or <audio> templates. For declarative video backgrounds, bind :autoplay=\"false\" or omit the attribute. Muted background videos should use autoplay muted playsinline.",
+        "angular": "In Angular, remove autoplay from the template or set [attr.autoplay]=\"null\" to force removal. For video players driven by a VideoService, expose a controls toggle in the component API.",
+        "svelte": "In Svelte, remove autoplay from the <video> or <audio> element. Svelte does not add autoplay by default — track it at the component level. Muted background videos should use autoplay muted playsinline.",
+        "astro": "In .astro files, remove the autoplay attribute from static <video>/<audio> HTML. For framework island video players, configure autoplay=false in the component props interface."
+      },
+      "cms_notes": {
+        "shopify": "Dawn theme video sections include an autoplay toggle in section settings. Disable it via the theme editor or set the autoplay option to false in the section JSON schema. Background video sections should always have muted set.",
+        "wordpress": "Gutenberg Video block has an Autoplay toggle in the block settings sidebar. Disable it. For embedded videos via shortcodes or page builders, locate the autoplay parameter and set it to 0 or false.",
+        "drupal": "Media fields with video display formatters may expose an autoplay setting in the field formatter configuration. Disable in Structure > Content Types > Manage Display."
+      },
+      "fix_difficulty_notes": "Removing autoplay is a single attribute change. The main complexity is identifying all media elements across templates, CMS-generated content, and third-party embeds. Third-party iframes (YouTube, Vimeo) require appending autoplay=0 to the embed URL.",
+      "related_rules": [
+        {
+          "id": "audio-caption",
+          "reason": "Autoplaying audio also needs captions if it conveys information."
+        },
+        {
+          "id": "video-caption",
+          "reason": "Autoplaying video must have captions."
+        }
+      ],
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add autoplay muted as a \"fix\" for audio elements — muted audio serves no purpose and still violates the spirit of WCAG 1.4.2."
+        ],
+        "verify": [
+          "Confirm no media element starts playing on page load without user interaction.",
+          "If muted background video is used, confirm it has aria-hidden=\"true\" and conveys no meaningful information."
+        ]
+      },
+      "pm": {
+        "summary": "Auto-playing media disrupts screen readers and violates user expectations",
+        "impact": "Auto-playing media disrupts screen reader announcements and violates user expectations for page behavior. Violates WCAG 2.1 AA time-based media requirements. Affects users with hearing impairments and users in quiet environments.",
+        "effort": "quick-win"
+      }
+    },
+    "cdp-missing-main-landmark": {
+      "category": "structure",
+      "fix": {
+        "description": "Add a <main> landmark element wrapping the primary page content so screen reader users can navigate directly to the main area.",
+        "code": "<a class=\"skip-link\" href=\"#main-content\">Skip to main content</a>\n<header>...</header>\n<nav aria-label=\"Primary\">...</nav>\n\n<main id=\"main-content\">\n  <h1>Page Title</h1>\n  <!-- primary page content -->\n</main>\n\n<footer>...</footer>"
+      },
+      "false_positive_risk": "low",
+      "framework_notes": {
+        "react": "Place <main id=\"main-content\"> in the root layout component (app/layout.tsx in Next.js App Router). Do not place <main> in individual page components — it will be missing for routes that render before the layout mounts.",
+        "vue": "Add <main id=\"main-content\"> to the root layout component (App.vue or layouts/default.vue in Nuxt), wrapping <router-view /> or <slot />.",
+        "angular": "Add <main id=\"main-content\"> in app.component.html wrapping <router-outlet>. This ensures the landmark is present for all routes.",
+        "svelte": "In SvelteKit, wrap <slot /> in +layout.svelte with <main id=\"main-content\">. Never place <main> in individual +page.svelte files.",
+        "astro": "Place <main id=\"main-content\"> in your base layout (layouts/BaseLayout.astro) wrapping <slot />. Astro pre-renders to static HTML so the landmark is always present."
+      },
+      "cms_notes": {
+        "shopify": "Dawn theme uses <main id=\"MainContent\"> in layout/theme.liquid. If building a custom theme, wrap {{ content_for_layout }} in <main>.",
+        "wordpress": "Classic themes should wrap the_content() in <main> inside page.php/single.php. Block themes use <main> in templates/index.html.",
+        "drupal": "Olivero includes <main> in page.html.twig. Custom themes must ensure page.html.twig wraps {{ page.content }} in <main id=\"main-content\">."
+      },
+      "fix_difficulty_notes": "Adding <main> is a low-effort structural change. The risk is accidentally creating two <main> elements if the layout and a child component both add one — verify with axe after the fix.",
+      "related_rules": [
+        {
+          "id": "bypass",
+          "reason": "The skip link target (#main-content) should reference the <main> landmark."
+        },
+        {
+          "id": "cdp-missing-skip-link",
+          "reason": "Skip link and main landmark are complementary — fix both together."
+        },
+        {
+          "id": "landmark-one-main",
+          "reason": "axe equivalent check — ensure consistency."
+        },
+        {
+          "id": "region",
+          "reason": "Adding <main> may resolve orphan-content region violations."
+        }
+      ],
+      "guardrails_overrides": {
+        "must_not": [
+          "Do not add <main> to individual page components if the root layout already wraps content in <main> — this creates a duplicate-main violation.",
+          "Do not use role=\"main\" on a <div> if a <main> element already exists on the page."
+        ],
+        "verify": [
+          "Confirm exactly one <main> element exists in the rendered DOM after the fix."
+        ]
+      },
+      "pm": {
+        "summary": "No main landmark — screen reader users cannot jump to primary content",
+        "impact": "Missing or incorrect landmark structure prevents screen reader users from quickly navigating to key page sections. Violates WCAG 2.1 AA navigable requirements. Affects screen reader users who navigate by landmarks.",
+        "effort": "quick-win"
+      }
+    },
+    "cdp-missing-skip-link": {
+      "category": "keyboard",
+      "fix": {
+        "description": "Add a visible-on-focus skip link as the very first focusable element in the page so keyboard users can bypass repetitive navigation.",
+        "code": "<!-- CSS -->\n.skip-link {\n  position: absolute;\n  left: -9999px;\n  top: 0;\n  z-index: 9999;\n  padding: 8px 16px;\n  background: #000;\n  color: #fff;\n}\n.skip-link:focus {\n  left: 0;\n}\n\n<!-- HTML (first element in <body>) -->\n<a class=\"skip-link\" href=\"#main-content\">Skip to main content</a>\n<header>...</header>\n<main id=\"main-content\">\n  ...\n</main>"
+      },
+      "false_positive_risk": "medium",
+      "framework_notes": {
+        "react": "In Next.js, add the skip link as the first element in the root layout (app/layout.tsx), before the <header>. Style it with CSS to appear only on :focus. The target #main-content must reference the <main id=\"main-content\"> in the same layout.",
+        "vue": "In Nuxt, add the skip link at the very top of layouts/default.vue, before the <header>. The target #main-content must be on the <main> element wrapping <slot />.",
+        "angular": "Add the skip link as the first element inside app.component.html, before <app-header>. The target #main-content must match the id on the <main> element rendered adjacent to <router-outlet>.",
+        "svelte": "In SvelteKit, add the skip link as the first element in +layout.svelte. Use afterNavigate() to reset focus to the skip link target on route changes, since SvelteKit handles transitions client-side.",
+        "astro": "Place the skip link in your base layout (layouts/BaseLayout.astro) as the first element in <body>. Since Astro pre-renders to HTML, the skip link is always in the DOM without hydration delays."
+      },
+      "cms_notes": {
+        "shopify": "Dawn theme includes a skip link in layout/theme.liquid. If building a custom theme, add <a href=\"#MainContent\" class=\"skip-to-content-link\">Skip to content</a> before the header section.",
+        "wordpress": "Most WordPress themes include a skip link in header.php. The Underscores (_s) starter theme includes one by default. If missing, add it as the first element inside <body> in header.php.",
+        "drupal": "Olivero includes a skip link by default. Custom themes should add it in page.html.twig as the first element inside <body>."
+      },
+      "fix_difficulty_notes": "The skip link must be visible on focus — hiding it with display:none or visibility:hidden prevents keyboard users from activating it. Use the off-screen CSS pattern (position:absolute; left:-9999px) and bring on-screen on :focus. The target anchor (#main-content) must be a real element in the DOM.",
+      "related_rules": [
+        {
+          "id": "bypass",
+          "reason": "axe equivalent — skip links are the primary mechanism for satisfying WCAG 2.4.1."
+        },
+        {
+          "id": "cdp-missing-main-landmark",
+          "reason": "The skip link target must point to a <main> landmark."
+        }
+      ],
+      "guardrails_overrides": {
+        "must": [
+          "Place the skip link as the very first focusable element in the DOM, before any navigation or header markup."
+        ],
+        "must_not": [
+          "Do not hide the skip link with display:none or visibility:hidden.",
+          "Do not point the href to a non-existent or unmatched id."
+        ],
+        "verify": [
+          "Confirm the skip link is the first element reached by pressing Tab from a fresh page load.",
+          "Confirm activating the skip link moves focus to the <main> content target."
+        ]
+      },
+      "pm": {
+        "summary": "No skip link forces keyboard users to tab through all navigation on every page",
+        "impact": "Users who rely on keyboard navigation cannot interact with affected elements, blocking task completion. Violates WCAG 2.1 AA operable requirements. Affects keyboard-only and motor-impaired users.",
+        "effort": "medium"
+      }
+    }
+  }
+};

@@ -41,6 +41,21 @@ Rules:
 - If the violation data contains specific values (colors, ratios, labels), use them in your response
 - Respond in JSON only — no markdown, no explanation outside the JSON structure`;
 
+export const PM_AI_SYSTEM_PROMPT = `You are an accessibility compliance advisor for product managers and non-technical stakeholders.
+
+Your task is to provide a business-oriented summary for each accessibility finding — something a PM can use to prioritize, communicate to stakeholders, and plan sprints.
+
+For each finding, provide:
+1. pmSummary: A single sentence describing who is affected and what they cannot do. Use plain language, no technical jargon.
+2. pmImpact: 2-3 sentences on business consequences: legal/compliance risk, user segments blocked, effect on conversions/engagement/SEO. Be specific to the violation.
+3. pmEffort: One of "quick-win", "medium", or "strategic" with a brief time estimate (e.g., "quick-win — under 1 hour per instance").
+
+Rules:
+- Write for a non-technical audience — no code, no selectors, no ARIA terminology
+- Focus on users affected, business risk, and prioritization
+- Reference the actual violation data (title, severity, affected users) to be specific
+- Respond in JSON only — no markdown, no explanation outside the JSON structure`;
+
 function buildSystemPrompt(context) {
   const { framework, cms, uiLibraries } = context.stack || {};
 
@@ -93,6 +108,37 @@ function buildUserMessage(findings, sourceFiles) {
   "fixDescription": "<improved description>",
   "fixCode": "<improved code snippet>",
   "fixCodeLang": "<language: html|jsx|tsx|vue|svelte|astro|liquid|php|css>"
+}`;
+
+  return message;
+}
+
+/**
+ * Builds the user message for PM audience.
+ * @param {EnrichedFinding[]} findings
+ * @returns {string}
+ */
+function buildPmUserMessage(findings) {
+  const items = findings.map((f, i) => ({
+    index: i,
+    title: f.title,
+    severity: f.severity,
+    wcag: f.wcag,
+    impactedUsers: f.impactedUsers,
+    currentPmSummary: f.pmSummary,
+    currentPmImpact: f.pmImpact,
+    totalInstances: f.totalInstances,
+    pagesAffected: f.pagesAffected,
+  }));
+
+  let message = `Improve the PM-facing guidance for these ${findings.length} accessibility finding(s).\n\n`;
+  message += `FINDINGS:\n${JSON.stringify(items, null, 2)}\n`;
+  message += `\nRespond with a JSON array where each item has:\n`;
+  message += `{
+  "index": <number>,
+  "pmSummary": "<one-line business impact>",
+  "pmImpact": "<2-3 sentences on business/legal/UX consequences>",
+  "pmEffort": "<quick-win|medium|strategic with time estimate>"
 }`;
 
   return message;
@@ -266,6 +312,7 @@ export async function enrichWithAI(findings, context = {}, options = {}) {
   if (!enabled) return findings;
 
   const model = options.model || DEFAULT_MODEL;
+  const audience = options.audience || "dev";
   const customSystemPrompt = options.systemPrompt || null;
 
   // Only enrich Critical and Serious findings, cap total
@@ -281,11 +328,16 @@ export async function enrichWithAI(findings, context = {}, options = {}) {
       ? await fetchSourceFilesForFindings(targets, context.repoUrl, options.githubToken)
       : {};
 
-    const systemPrompt = customSystemPrompt || buildSystemPrompt({
-      stack: context.stack,
-      hasSourceCode: Object.keys(sourceFiles).length > 0,
-    });
-    const userMessage = buildUserMessage(targets, sourceFiles);
+    const isPm = audience === "pm";
+    const systemPrompt = customSystemPrompt || (isPm
+      ? PM_AI_SYSTEM_PROMPT
+      : buildSystemPrompt({
+          stack: context.stack,
+          hasSourceCode: Object.keys(sourceFiles).length > 0,
+        }));
+    const userMessage = isPm
+      ? buildPmUserMessage(targets)
+      : buildUserMessage(targets, sourceFiles);
 
     const responseText = await callClaude(options.apiKey, model, systemPrompt, userMessage);
 
@@ -310,6 +362,15 @@ export async function enrichWithAI(findings, context = {}, options = {}) {
       if (targetIdx === -1) return finding;
       const imp = improvementMap.get(targetIdx);
       if (!imp) return finding;
+
+      if (isPm) {
+        return {
+          ...finding,
+          pmSummary: imp.pmSummary || finding.pmSummary,
+          pmImpact: imp.pmImpact || finding.pmImpact,
+          pmEffort: imp.pmEffort || finding.pmEffort,
+        };
+      }
 
       return {
         ...finding,
