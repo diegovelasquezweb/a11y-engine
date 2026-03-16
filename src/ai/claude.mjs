@@ -132,6 +132,54 @@ async function callClaude(apiKey, model, systemPrompt, userMessage) {
  * @param {string|undefined} githubToken
  * @returns {Promise<Record<string, string>>}
  */
+/**
+ * Extracts candidate component/class names from a CSS selector or HTML snippet.
+ * e.g. ".trustarc-banner-right > span" → ["trustarc", "banner"]
+ * e.g. "#search-input" → ["search", "input"]
+ */
+function extractSearchTermsFromFinding(finding) {
+  const terms = new Set();
+  const sources = [
+    finding.primarySelector || finding.selector || "",
+    finding.title || "",
+  ];
+
+  for (const src of sources) {
+    // Extract class names: .foo-bar → ["foo", "bar"]
+    const classes = src.match(/\.[\w-]+/g) || [];
+    for (const cls of classes) {
+      const parts = cls.slice(1).split(/[-_]/);
+      for (const p of parts) {
+        if (p.length > 3) terms.add(p.toLowerCase());
+      }
+    }
+    // Extract IDs: #foo-bar → ["foo", "bar"]
+    const ids = src.match(/#[\w-]+/g) || [];
+    for (const id of ids) {
+      const parts = id.slice(1).split(/[-_]/);
+      for (const p of parts) {
+        if (p.length > 3) terms.add(p.toLowerCase());
+      }
+    }
+    // Extract data attributes: [data-component="Foo"] → ["foo"]
+    const dataAttrs = src.match(/data-[\w-]+=["']?[\w-]+["']?/g) || [];
+    for (const attr of dataAttrs) {
+      const val = attr.split(/=["']?/)[1]?.replace(/["']/, "").toLowerCase();
+      if (val && val.length > 3) terms.add(val);
+    }
+  }
+
+  return [...terms].slice(0, 5);
+}
+
+/**
+ * Scores a file path by how many search terms it contains.
+ */
+function scoreFilePath(filePath, terms) {
+  const lower = filePath.toLowerCase();
+  return terms.filter((t) => lower.includes(t)).length;
+}
+
 async function fetchSourceFilesForFindings(findings, repoUrl, githubToken) {
   const sourceFiles = {};
   if (!repoUrl) return sourceFiles;
@@ -139,30 +187,50 @@ async function fetchSourceFilesForFindings(findings, repoUrl, githubToken) {
   const { fetchRepoFile, listRepoFiles, parseRepoUrl } = await import("../core/github-api.mjs");
   if (!parseRepoUrl(repoUrl)) return sourceFiles;
 
-  const patterns = new Set(
-    findings
-      .filter((f) => f.fileSearchPattern)
-      .map((f) => f.fileSearchPattern)
-  );
+  // Collect all extensions needed
+  const extensions = new Set();
+  for (const f of findings) {
+    if (!f.fileSearchPattern) continue;
+    const extMatch = f.fileSearchPattern.match(/\*\.(\w+)$/);
+    if (extMatch) extensions.add(`.${extMatch[1]}`);
+  }
+  if (extensions.size === 0) return sourceFiles;
 
-  for (const pattern of patterns) {
-    try {
-      // Extract extension from pattern (e.g. "src/components/*.tsx" -> ".tsx")
-      const extMatch = pattern.match(/\*\.(\w+)$/);
-      if (!extMatch) continue;
-      const ext = `.${extMatch[1]}`;
+  // Fetch full file list once
+  let allFiles = [];
+  try {
+    allFiles = await listRepoFiles(repoUrl, [...extensions], githubToken);
+  } catch {
+    return sourceFiles;
+  }
 
-      const files = await listRepoFiles(repoUrl, [ext], githubToken);
-      // Pick up to 3 most relevant files per pattern
-      const relevant = files.slice(0, 3);
-      for (const filePath of relevant) {
-        if (!sourceFiles[filePath]) {
-          const content = await fetchRepoFile(repoUrl, filePath, githubToken);
-          if (content) sourceFiles[filePath] = content;
-        }
-      }
-    } catch {
-      // non-fatal
+  // For each finding, find the most relevant files by selector/title terms
+  const MAX_FILES_PER_FINDING = 2;
+  const MAX_TOTAL_FILES = 6;
+
+  for (const finding of findings) {
+    if (Object.keys(sourceFiles).length >= MAX_TOTAL_FILES) break;
+
+    const terms = extractSearchTermsFromFinding(finding);
+
+    // Score and sort files by relevance to this finding
+    const scored = allFiles
+      .map((fp) => ({ fp, score: scoreFilePath(fp, terms) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    // Fall back to first files if no relevant match found
+    const candidates = scored.length > 0
+      ? scored.slice(0, MAX_FILES_PER_FINDING).map(({ fp }) => fp)
+      : allFiles.slice(0, 1);
+
+    for (const filePath of candidates) {
+      if (sourceFiles[filePath]) continue;
+      if (Object.keys(sourceFiles).length >= MAX_TOTAL_FILES) break;
+      try {
+        const content = await fetchRepoFile(repoUrl, filePath, githubToken);
+        if (content) sourceFiles[filePath] = content;
+      } catch { /* non-fatal */ }
     }
   }
 
