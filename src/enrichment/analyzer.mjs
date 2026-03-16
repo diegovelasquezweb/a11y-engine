@@ -257,6 +257,7 @@ function printUsage() {
 Options:
   --output <path>          Output findings JSON path (default: .audit/a11y-findings.json)
   --ignore-findings <csv> Ignore specific rule IDs (overrides config)
+  --include-incomplete     Include axe "incomplete" items as findings
   -h, --help               Show this help
 `);
 }
@@ -276,10 +277,15 @@ function parseArgs(argv) {
     input: getInternalPath("a11y-scan-results.json"),
     output: getInternalPath("a11y-findings.json"),
     ignoreFindings: [],
+    includeIncomplete: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
+    if (key === "--include-incomplete") {
+      args.includeIncomplete = true;
+      continue;
+    }
     const value = argv[i + 1];
     if (!key.startsWith("--") || value === undefined) continue;
 
@@ -897,6 +903,7 @@ function buildFindings(inputPayload, cliArgs) {
           primary_source_scope: ownership.primarySourceScope,
           search_strategy: ownership.searchStrategy,
           component_hint: extractComponentHint(bestSelector) ?? derivePageHint(route.path),
+          needs_verification: !!v._fromIncomplete,
           verification_command: `pnpm a11y --base-url ${route.url} --routes ${route.path} --only-rule ${v.id} --max-routes 1`,
           verification_command_fallback: `node scripts/audit.mjs --base-url ${route.url} --routes ${route.path} --only-rule ${v.id} --max-routes 1`,
         });
@@ -966,11 +973,32 @@ export function collectIncompleteFindings(routes) {
 /**
  * Runs the analyzer programmatically on a scan payload.
  * @param {Object} scanPayload - The raw scan output from dom-scanner ({ routes, base_url, projectContext, ... }).
- * @param {{ ignoreFindings?: string[], framework?: string, output?: string }} [options={}]
+ * @param {{ ignoreFindings?: string[], framework?: string, output?: string, includeIncomplete?: boolean }} [options={}]
  * @returns {Object} The enriched findings payload { findings, incomplete_findings, metadata, ... }.
  */
 export function runAnalyzer(scanPayload, options = {}) {
   if (!scanPayload) throw new Error("Missing scan payload");
+
+  const sourceRoutes = scanPayload.routes || [];
+  const routesForAnalysis = options.includeIncomplete
+    ? sourceRoutes.map((route) => {
+      const incomplete = Array.isArray(route.incomplete) ? route.incomplete : [];
+      const violations = Array.isArray(route.violations) ? route.violations : [];
+      if (incomplete.length === 0) return route;
+      return {
+        ...route,
+        violations: [
+          ...violations,
+          ...incomplete.map((item) => ({ ...item, _fromIncomplete: true })),
+        ],
+      };
+    })
+    : sourceRoutes;
+
+  const scanPayloadForAnalysis =
+    routesForAnalysis === sourceRoutes
+      ? scanPayload
+      : { ...scanPayload, routes: routesForAnalysis };
 
   const args = {
     input: null,
@@ -980,7 +1008,7 @@ export function runAnalyzer(scanPayload, options = {}) {
   };
 
   const ignoredRules = new Set(args.ignoreFindings);
-  const result = buildFindings(scanPayload, args);
+  const result = buildFindings(scanPayloadForAnalysis, args);
 
   if (ignoredRules.size > 0) {
     const knownIds = new Set(
@@ -1056,6 +1084,7 @@ function main() {
   runAnalyzer(payload, {
     ignoreFindings: args.ignoreFindings,
     framework: args.framework,
+    includeIncomplete: args.includeIncomplete,
     output: args.output,
   });
 }

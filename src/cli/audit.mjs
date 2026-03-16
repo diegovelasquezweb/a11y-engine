@@ -34,6 +34,7 @@ Audit Intelligence:
   --axe-tags <csv>        Comma-separated axe tags (e.g., wcag2a,wcag2aa).
   --only-rule <id>        Only check for this specific rule ID.
   --ignore-findings <csv> Ignore specific rule IDs.
+  --include-incomplete    Include axe "incomplete" items as findings.
   --exclude-selectors <csv> Exclude CSS selectors from scan.
 
 Execution & Emulation:
@@ -187,6 +188,7 @@ async function main() {
   const skipPatterns = argv.includes("--skip-patterns");
   const affectedOnly = argv.includes("--affected-only");
   const ignoreFindings = getArgValue("ignore-findings");
+  const includeIncomplete = argv.includes("--include-incomplete");
   const excludeSelectors = getArgValue("exclude-selectors");
 
   const waitUntil = getArgValue("wait-until");
@@ -290,6 +292,7 @@ async function main() {
 
     const analyzerArgs = [];
     if (ignoreFindings) analyzerArgs.push("--ignore-findings", ignoreFindings);
+    if (includeIncomplete) analyzerArgs.push("--include-incomplete");
     const resolvedFramework = framework || detectedFramework;
     if (resolvedFramework) analyzerArgs.push("--framework", resolvedFramework);
     await runScript("../enrichment/analyzer.mjs", analyzerArgs);

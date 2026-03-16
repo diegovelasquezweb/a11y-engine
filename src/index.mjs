@@ -161,6 +161,7 @@ function normalizeSingleFinding(item, index, screenshotUrlBuilder) {
     check_data: item.check_data && typeof item.check_data === "object" ? item.check_data : null,
     pages_affected: typeof item.pages_affected === "number" ? item.pages_affected : null,
     affected_urls: Array.isArray(item.affected_urls) ? item.affected_urls : null,
+    needs_verification: Boolean(item.needs_verification),
   };
 }
 
@@ -247,6 +248,7 @@ export function getFindings(input, options = {}) {
       checkData: finding.check_data,
       pagesAffected: finding.pages_affected,
       affectedUrls: finding.affected_urls,
+      needsVerification: finding.needs_verification,
     };
 
     // Enrich from intelligence if no fix data exists yet
@@ -379,8 +381,9 @@ function getPersonaGroups(findings) {
  * @returns {object} Full audit summary.
  */
 export function getOverview(findings, payload = null) {
+  const scorableFindings = findings.filter((f) => !f.needsVerification);
   const totals = { Critical: 0, Serious: 0, Moderate: 0, Minor: 0 };
-  for (const f of findings) {
+  for (const f of scorableFindings) {
     const severity = f.severity || "";
     if (severity in totals) totals[severity] += 1;
   }
@@ -622,6 +625,7 @@ export function getKnowledge(options = {}) {
  *   framework?: string,
  *   projectDir?: string,
  *   skipPatterns?: boolean,
+ *   includeIncomplete?: boolean,
  *   engines?: { axe?: boolean, cdp?: boolean, pa11y?: boolean },
  *   onProgress?: (step: string, status: string, extra?: object) => void,
  * }} options
@@ -691,6 +695,7 @@ export async function runAudit(options) {
   const findingsPayload = runAnalyzer(scanPayload, {
     ignoreFindings: options.ignoreFindings,
     framework: options.framework,
+    includeIncomplete: options.includeIncomplete,
   });
 
   // Step 3: Source patterns (optional) — works with local projectDir or remote repoUrl

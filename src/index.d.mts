@@ -51,6 +51,7 @@ export interface Finding {
   source_rule_id?: string | null;
   pages_affected?: number | null;
   affected_urls?: string[] | null;
+  needs_verification?: boolean;
 }
 
 export interface EnrichedFinding {
@@ -102,6 +103,7 @@ export interface EnrichedFinding {
   checkData: Record<string, unknown> | null;
   pagesAffected: number | null;
   affectedUrls: string[] | null;
+  needsVerification?: boolean;
 }
 
 export interface SeverityTotals {
@@ -142,6 +144,7 @@ export interface AuditSummary {
 export interface ScanPayload {
   findings: Finding[] | Record<string, unknown>[];
   metadata?: Record<string, unknown>;
+  incomplete_findings?: unknown[];
 }
 
 export interface ReportOptions {
@@ -397,6 +400,7 @@ export interface RunAuditOptions {
   repoUrl?: string;
   githubToken?: string;
   skipPatterns?: boolean;
+  includeIncomplete?: boolean;
   screenshotsDir?: string;
   engines?: EngineSelection;
   ai?: AiOptions;
