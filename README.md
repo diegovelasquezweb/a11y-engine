@@ -94,12 +94,18 @@ Computes severity totals, compliance score, WCAG pass/fail status, persona impac
 ```ts
 const summary = getOverview(findings, payload);
 // summary.score         -> 72
-// summary.label         -> "Good"
-// summary.wcagStatus    -> "Fail"
+// summary.label         -> "Good"      // "Excellent" | "Good" | "Fair" | "Poor" | "Critical"
+// summary.wcagStatus    -> "Fail"      // "Pass" | "Conditional Pass" | "Fail"
 // summary.totals        -> { Critical: 1, Serious: 3, Moderate: 5, Minor: 2 }
-// summary.personaGroups -> { screenReader: {...}, keyboard: {...}, ... }
-// summary.quickWins     -> [top 3 fixable Critical/Serious findings]
+// summary.personaGroups -> {
+//   screenReader: { label: "Screen Readers", count: 4, icon: "screenReader" },
+//   keyboard:     { label: "Keyboard Only",  count: 2, icon: "keyboard" },
+//   ...
+// }
+// summary.quickWins     -> [top 3 Critical/Serious findings with fixCode]
+// summary.targetUrl     -> "https://example.com"
 // summary.detectedStack -> { framework: "nextjs", cms: null, uiLibraries: [] }
+// summary.totalFindings -> 11
 ```
 
 ### Output API
@@ -141,7 +147,7 @@ The package exposes an `a11y-audit` binary for terminal execution. See the [CLI 
 | Resource | Description |
 | :--- | :--- |
 | [Architecture](docs/architecture.md) | Multi-engine pipeline, merge logic, and execution model |
-| [API Reference](docs/api-reference.md) | Function signatures, options, and return contracts |
+| [API Reference](docs/api-reference.md) | Function signatures, options, return contracts, and exported constants |
 | [CLI Handbook](docs/cli-handbook.md) | Full flag reference and usage examples |
 | [Output Artifacts](docs/outputs.md) | Schema and structure of every generated file |
 | [Engine Manifest](docs/engine-manifest.md) | Current inventory of source modules, assets, and tests |

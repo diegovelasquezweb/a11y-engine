@@ -21,12 +21,9 @@
   - [getSourcePatterns](#getsourcepatternsprojdir-options)
 - [Knowledge API](#knowledge-api)
   - [getKnowledge](#getknowledgeoptions)
-  - [getScannerHelp](#getscannerhelpoptions)
-  - [getPersonaReference](#getpersonareferenceoptions)
-  - [getUiHelp](#getuihelpoptions)
-  - [getConformanceLevels](#getconformancelevelsoptions)
-  - [getWcagPrinciples](#getwcagprinciplesoptions)
-  - [getSeverityLevels](#getseveritylevelsoptions)
+- [Constants](#constants)
+  - [VIEWPORT_PRESETS](#viewport_presets)
+  - [DEFAULT_AI_SYSTEM_PROMPT](#default_ai_system_prompt)
 
 ---
 
@@ -53,12 +50,8 @@ import {
   getRemediationGuide,
   getSourcePatterns,
   getKnowledge,
-  getScannerHelp,
-  getPersonaReference,
-  getUiHelp,
-  getConformanceLevels,
-  getWcagPrinciples,
-  getSeverityLevels,
+  VIEWPORT_PRESETS,
+  DEFAULT_AI_SYSTEM_PROMPT,
 } from "@diegovelasquezweb/a11y-engine";
 ```
 
@@ -81,9 +74,9 @@ const payload = await runAudit({
 const findings = getFindings(payload);
 
 // 3. Get compliance summary
-const { score, scoreLabel, wcagStatus, totals, quickWins } = getOverview(findings, payload);
+const { score, label, wcagStatus, totals, quickWins } = getOverview(findings, payload);
 
-console.log(`Score: ${score}/100 (${scoreLabel})`);
+console.log(`Score: ${score}/100 (${label})`);
 console.log(`WCAG Status: ${wcagStatus}`);
 console.log(`Critical: ${totals.Critical}, Serious: ${totals.Serious}`);
 ```
@@ -226,14 +219,15 @@ const overview = getOverview(findings, payload);
 //   wcagStatus: "Fail",     // "Pass" | "Conditional Pass" | "Fail"
 //   totals: { Critical: 1, Serious: 3, Moderate: 5, Minor: 2 },
 //   personaGroups: {
-//     screenReader: { count: 4, findings: [...] },
-//     keyboard:     { count: 2, findings: [...] },
-//     vision:       { count: 3, findings: [...] },
-//     cognitive:    { count: 1, findings: [...] },
+//     screenReader: { label: "Screen Readers", count: 4, icon: "screenReader" },
+//     keyboard:     { label: "Keyboard Only",  count: 2, icon: "keyboard" },
+//     vision:       { label: "Color/Low Vision", count: 3, icon: "vision" },
+//     cognitive:    { label: "Cognitive/Motor",  count: 1, icon: "cognitive" },
 //   },
-//   quickWins: [...],       // top Critical/Serious findings with fix code ready
+//   quickWins: [...],       // top 3 Critical/Serious findings with fixCode ready
 //   targetUrl: "https://example.com",
 //   detectedStack: { framework: "nextjs", cms: null, uiLibraries: ["radix-ui"] },
+//   totalFindings: 11,
 // }
 ```
 
@@ -357,6 +351,8 @@ Returns: `Promise<SourcePatternResult>`
 
 Returns all accessibility knowledge in a single call. Accepts an optional `{ locale?: string }` option (default: `"en"`).
 
+This is the **only exported Knowledge API function**. The data it returns covers scanner help, persona profiles, concepts, glossary, docs, conformance levels, WCAG principles, and severity definitions — all in one call.
+
 ```ts
 import { getKnowledge } from "@diegovelasquezweb/a11y-engine";
 
@@ -375,6 +371,54 @@ const knowledge = getKnowledge({ locale: "en" });
 | `conformanceLevels` | `ConformanceLevel[]` | WCAG A/AA/AAA definitions with axe-core tag mappings |
 | `wcagPrinciples` | `WcagPrinciple[]` | The four WCAG principles with criterion prefix patterns |
 | `severityLevels` | `SeverityLevel[]` | Critical/Serious/Moderate/Minor definitions with ordering |
+
+---
+
+## Constants
+
+### `VIEWPORT_PRESETS`
+
+Ready-made viewport dimensions for common device classes. Useful when building scanner UI option pickers.
+
+```ts
+import { VIEWPORT_PRESETS } from "@diegovelasquezweb/a11y-engine";
+
+// VIEWPORT_PRESETS:
+// [
+//   { label: "Desktop", width: 1280, height: 800 },
+//   { label: "Laptop",  width: 1440, height: 900 },
+//   { label: "Tablet",  width: 768,  height: 1024 },
+//   { label: "Mobile",  width: 375,  height: 812 },
+// ]
+```
+
+Type: `ViewportPreset[]` — `{ label: string; width: number; height: number }[]`
+
+---
+
+### `DEFAULT_AI_SYSTEM_PROMPT`
+
+The default system prompt passed to Claude for AI enrichment. Exported so consumers can read, log, or extend it when building custom AI workflows.
+
+```ts
+import { DEFAULT_AI_SYSTEM_PROMPT } from "@diegovelasquezweb/a11y-engine";
+
+// Override for a specific scan:
+await runAudit({
+  baseUrl: "https://example.com",
+  ai: {
+    enabled: true,
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    systemPrompt: DEFAULT_AI_SYSTEM_PROMPT + "\n\nFocus on Vue 3 Composition API patterns.",
+  },
+});
+```
+
+Type: `string`
+
+---
+
+> **Note on `ai_enriched_findings` fast path**: When `getFindings()` receives a payload that contains `ai_enriched_findings` and no `screenshotUrlBuilder` option is provided, it returns `ai_enriched_findings` directly without re-normalizing the raw `findings` array. If a `screenshotUrlBuilder` is provided, normalization always runs so paths can be rewritten.
 
 ---
 

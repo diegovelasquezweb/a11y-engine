@@ -14,7 +14,7 @@
 
 - **Framework**: Vitest
 - **Command**: `pnpm test`
-- **Current suite**: 8 files, 26 tests
+- **Current suite**: 9 files, 38 tests
 
 The suite focuses on regression protection for architecture changes, public API contracts, and critical report-generation paths.
 
@@ -32,19 +32,24 @@ The suite focuses on regression protection for architecture changes, public API 
 - `tests/audit-summary.test.mjs`
 - Verifies canonicalization, normalization, sorting, effort inference, quick wins, and detected stack output.
 
-### 3) Report API and import safety
+### 3) Knowledge API
+
+- `tests/knowledge-api.test.mjs`
+- Verifies `getKnowledge()` returns the full expected shape: scanner, personas, concepts, glossary, docs, conformance levels, WCAG principles, and severity levels.
+
+### 4) Report API and import safety
 
 - `tests/reports-api.test.mjs`
 - `tests/reports-paths.test.mjs`
 - Verifies report APIs return expected output types and protects against broken relative imports after refactors.
 
-### 4) Source-pattern behavior
+### 5) Source-pattern behavior
 
 - `tests/source-patterns.test.mjs`
 - `tests/source-scanner-utils.test.mjs`
 - Verifies edge behavior for pattern filtering and source scanner utility functions.
 
-### 5) Integration tests (no network)
+### 6) Integration tests (no network)
 
 - `tests/run-audit.integration.test.mjs`
 - Mocks scanner/analyzer modules to verify:

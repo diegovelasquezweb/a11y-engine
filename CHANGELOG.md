@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-03-16
+
+### Changed
+
+- **Knowledge API consolidated** — `getScannerHelp`, `getPersonaReference`, `getUiHelp`, `getConformanceLevels`, `getWcagPrinciples`, and `getSeverityLevels` are no longer part of the public API. They remain as internal helpers consumed by `getKnowledge`. `getUiHelp` renamed to `getConceptsAndGlossary` internally. `getKnowledge` is the single exported entry point for all knowledge data.
+- TypeScript declarations (`src/index.d.mts`) updated to remove the six individual knowledge functions.
+- `tests/knowledge-api.test.mjs` updated to reflect the consolidated API shape.
+
+---
+
+## [0.8.5] — 2026-03-16
+
+### Fixed
+
+- **pa11y merge no longer drops findings with shared selectors** — the merge step was discarding pa11y findings whenever any prior finding (from axe or CDP) targeted the same selector, regardless of rule. Now pa11y findings are only de-duplicated when the exact same `rule_id + selector` combination already exists.
+
+---
+
+## [0.8.4] — 2026-03-15
+
+### Added
+
+- **`DEFAULT_AI_SYSTEM_PROMPT` exported** — the default Claude system prompt is now part of the public API, allowing consumers to read, log, or extend it.
+- **`VIEWPORT_PRESETS` exported** — four ready-made viewport presets (`Desktop`, `Laptop`, `Tablet`, `Mobile`) exported from the package root for use in scanner UI option pickers.
+- **`dependabot.yml`** — automated dependency update configuration added.
+- **Effort fallback** — `getFindings` now infers `effort` after intelligence enrichment so findings that gain a `fixCode` from the intelligence database are correctly rated `"low"`.
+
+---
+
+## [0.8.3] — 2026-03-15
+
+### Fixed
+
+- **`actual` field no longer contains axe preamble** — the `"Fix any of the following:"` prefix from axe `failureSummary` strings is now stripped in `analyzer.mjs`, producing a cleaner violation description.
+
+### Added
+
+- `SECURITY.md` — security policy and vulnerability reporting process.
+
+---
+
 ## [0.8.2] — 2026-03-16
 
 ### Changed

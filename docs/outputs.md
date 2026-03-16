@@ -63,6 +63,10 @@ Real-time scan progress written by `src/pipeline/dom-scanner.mjs` as each engine
 | `cdp` | CDP | Chrome DevTools Protocol accessibility tree check. `found` = issue count. |
 | `pa11y` | pa11y | HTML CodeSniffer scan. `found` = issue count. |
 | `merge` | — | Cross-engine merge and deduplication. `merged` = final unique count. |
+| `repo` | — | Remote `package.json` fetch via GitHub API for stack detection. Only emitted when `repoUrl` is set. |
+| `intelligence` | — | Analyzer enrichment step (fix intelligence, ownership, scoring). |
+| `patterns` | — | Source code pattern scan (local or remote). Only emitted when `projectDir` or `repoUrl` is set. `total` / `confirmed` / `potential` counts in `extra`. |
+| `ai` | Claude | AI enrichment via Anthropic API. Only emitted when `ai.enabled` is `true` and `ai.apiKey` is set. |
 
 ### Step statuses
 

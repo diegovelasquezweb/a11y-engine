@@ -49,6 +49,7 @@ This document is the current technical inventory of the engine package.
 | `assets/remediation/code-patterns.mjs` | Source code pattern definitions |
 | `assets/remediation/source-boundaries.mjs` | Framework source boundaries |
 | `assets/remediation/axe-check-maps.mjs` | axe check-to-rule mappings |
+| `assets/knowledge/knowledge.mjs` | Knowledge API data — scanner help, personas, concepts, glossary, docs, conformance levels, WCAG principles, severity definitions |
 | `assets/reporting/compliance-config.mjs` | Compliance scoring configuration |
 | `assets/reporting/wcag-reference.mjs` | WCAG + persona mapping reference |
 | `assets/reporting/manual-checks.mjs` | Manual checklist data |
@@ -62,6 +63,7 @@ Current files:
 - `tests/asset-loader.test.mjs`
 - `tests/audit-summary.test.mjs`
 - `tests/enriched-findings.test.mjs`
+- `tests/knowledge-api.test.mjs`
 - `tests/reports-api.test.mjs`
 - `tests/reports-paths.test.mjs`
 - `tests/run-audit.integration.test.mjs`
