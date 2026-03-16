@@ -299,6 +299,7 @@ async function main() {
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
         ...(repoUrl ? { A11Y_REPO_URL: repoUrl } : {}),
         ...(githubToken ? { GH_TOKEN: githubToken } : {}),
+        ...(process.env.AI_SYSTEM_PROMPT ? { AI_SYSTEM_PROMPT: process.env.AI_SYSTEM_PROMPT } : {}),
       });
     }
 

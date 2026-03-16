@@ -40,10 +40,13 @@ async function main() {
 
   log.info(`AI enrichment: processing up to 20 Critical/Serious findings...`);
 
+  const systemPrompt = process.env.AI_SYSTEM_PROMPT || null;
+
   const enriched = await enrichWithAI(findings, { stack, repoUrl }, {
     enabled: true,
     apiKey,
     githubToken,
+    ...(systemPrompt ? { systemPrompt } : {}),
   });
 
   const enrichedWithFlag = enriched.map((f, i) => {
@@ -52,7 +55,14 @@ async function main() {
       f.fixDescription !== original.fixDescription ||
       f.fixCode !== original.fixCode
     );
-    return wasImproved ? { ...f, aiEnhanced: true } : f;
+    if (!wasImproved) return f;
+    return {
+      ...original,
+      aiEnhanced: true,
+      ai_fix_description: f.fixDescription || null,
+      ai_fix_code: f.fixCode || null,
+      ai_fix_code_lang: f.fixCodeLang || null,
+    };
   });
 
   writeJson(findingsPath, { ...payload, findings: enrichedWithFlag });

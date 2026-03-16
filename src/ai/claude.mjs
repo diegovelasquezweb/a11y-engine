@@ -35,17 +35,18 @@ function buildSystemPrompt(context) {
 
   return `You are an expert web accessibility engineer specializing in WCAG 2.2 AA remediation.
 
-Your task is to improve the fix guidance for accessibility findings from an automated scan.
+Your task is to provide a developer-friendly AI hint for each accessibility finding — something MORE USEFUL than the generic automated fix already provided.
 ${stackInfo ? `\nProject context:\n${stackInfo}` : ""}
-For each finding you receive, provide:
-1. A clear, specific fix description (1-2 sentences, actionable, no jargon)
-2. Ready-to-use fix code in the correct language for the stack${context.hasSourceCode ? "\n3. The exact line/component to change if you can identify it from the source code" : ""}
+For each finding, provide:
+1. fixDescription: A 2-3 sentence explanation that goes BEYOND the generic fix. Explain WHY this matters for real users, WHAT specifically to look for in the codebase, and HOW to verify the fix works. Be specific to the selector and actual violation data provided.
+2. fixCode: A ready-to-use, production-quality code snippet in the correct syntax for the stack. Do NOT copy the existing fix code — write a BETTER, more complete example that a developer can use directly.
 
 Rules:
-- Keep fix code minimal and focused — only the changed element, not the whole file
-- Use the detected framework syntax (JSX for React/Next.js, template syntax for Vue, etc.)
-- Do not change component logic, only accessibility attributes
-- If the fix requires multiple changes, show the most important one
+- Your fixDescription must add new insight not present in currentFix — don't paraphrase it
+- Your fixCode must be different and more complete than currentCode
+- Use framework-specific syntax (JSX/TSX for React/Next.js, SFC for Vue, etc.)
+- Reference the actual selector or element from the finding when possible
+- If the violation data contains specific values (colors, ratios, labels), use them in your response
 - Respond in JSON only — no markdown, no explanation outside the JSON structure`;
 }
 
@@ -191,6 +192,7 @@ export async function enrichWithAI(findings, context = {}, options = {}) {
   if (!enabled) return findings;
 
   const model = options.model || DEFAULT_MODEL;
+  const customSystemPrompt = options.systemPrompt || null;
 
   // Only enrich Critical and Serious findings, cap total
   const targets = findings
@@ -205,7 +207,7 @@ export async function enrichWithAI(findings, context = {}, options = {}) {
       ? await fetchSourceFilesForFindings(targets, context.repoUrl, options.githubToken)
       : {};
 
-    const systemPrompt = buildSystemPrompt({
+    const systemPrompt = customSystemPrompt || buildSystemPrompt({
       stack: context.stack,
       hasSourceCode: Object.keys(sourceFiles).length > 0,
     });
