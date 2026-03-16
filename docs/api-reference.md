@@ -162,6 +162,42 @@ const payload = await runAudit({
 
 Returns: `Promise<ScanPayload>`
 
+**`ScanPayload` shape:**
+
+```ts
+{
+  findings: RawFinding[],                // Raw findings from axe/CDP/pa11y merge
+  metadata: {
+    target_url: string,                  // The baseUrl that was scanned
+    scanned_at: string,                  // ISO 8601 timestamp
+    engines: {                           // Which engines actually ran
+      axe: boolean,
+      cdp: boolean,
+      pa11y: boolean,
+    },
+    projectContext: {                     // Auto-detected or overridden stack
+      framework: string | null,          // "nextjs" | "react" | "vue" | etc.
+      cms: string | null,               // "wordpress" | "shopify" | etc.
+      uiLibraries: string[],            // ["radix-ui", "tailwindcss", ...]
+    },
+    routes_scanned: number,              // How many pages were actually scanned
+    discovery_method: string,            // "crawl" | "explicit"
+  },
+  incomplete_findings?: RawFinding[],    // axe "incomplete" results (needs-review)
+  patternFindings?: {                    // Only present if projectDir/repoUrl + !skipPatterns
+    generated_at: string,
+    project_dir: string,                 // Local path or repo URL
+    findings: SourcePatternFinding[],
+    summary: {
+      total: number,
+      confirmed: number,
+      potential: number,
+    },
+  },
+  ai_enriched_findings?: EnrichedFinding[], // Only present if ai.enabled + ai.apiKey
+}
+```
+
 > **`ai_enriched_findings` fast path**: When AI enrichment runs, `getFindings()` uses `payload.ai_enriched_findings` directly instead of re-normalizing the raw findings array.
 
 ---
@@ -200,6 +236,85 @@ const findings = getFindings(payload, {
 
 Returns: `EnrichedFinding[]`
 
+**`EnrichedFinding` shape:**
+
+```ts
+{
+  // Identity
+  id: string,                            // "A11Y-001", "A11Y-002", ...
+  ruleId: string,                        // Canonical rule ID (e.g. "color-contrast")
+  source: string,                        // "axe" | "cdp" | "pa11y"
+  sourceRuleId: string | null,           // Original engine rule ID before canonicalization
+
+  // Classification
+  title: string,                         // Human-readable issue title
+  severity: string,                      // "Critical" | "Serious" | "Moderate" | "Minor"
+  category: string | null,               // "color", "forms", "structure", "aria", ...
+  wcag: string,                          // WCAG criterion (e.g. "1.4.3")
+  wcagCriterionId: string | null,        // Full criterion ID (e.g. "1.4.3")
+  wcagClassification: string | null,     // "A" | "AA" | "AAA" | "Best Practice"
+
+  // Location
+  area: string,                          // Page path (e.g. "/about")
+  url: string,                           // Full page URL
+  selector: string,                      // CSS selector of the violating element
+  primarySelector: string,               // Preferred selector for targeting
+
+  // Problem description
+  actual: string,                        // What the engine found
+  expected: string,                      // What WCAG requires
+  impactedUsers: string,                 // "Screen reader users", "Keyboard users", etc.
+  primaryFailureMode: string | null,     // "missing-label" | "low-contrast" | ...
+  relationshipHint: string | null,       // How this relates to other findings
+
+  // Evidence
+  evidence: object[],                    // Raw evidence from the engine
+  failureChecks: object[],              // axe check details
+  relatedContext: object[],             // Related DOM elements
+  totalInstances: number | null,         // How many elements are affected
+  pagesAffected: number | null,          // How many pages have this issue
+  affectedUrls: string[] | null,         // Specific URLs affected
+
+  // Fix guidance
+  fixDescription: string | null,         // Human-readable fix explanation
+  fixCode: string | null,               // Code snippet to fix the issue
+  fixCodeLang: string,                   // "html" | "css" | "jsx" | ...
+  recommendedFix: string,               // Short fix summary
+  mdn: string | null,                   // MDN reference URL
+  effort: string,                        // "low" (has fixCode) | "high" (no fixCode)
+  fixDifficultyNotes: object | null,     // Detailed difficulty breakdown
+
+  // Framework / CMS context
+  frameworkNotes: string | null,         // Framework-specific fix guidance
+  cmsNotes: string | null,              // CMS-specific fix guidance
+  managedByLibrary: string | null,       // If the element is from a 3rd-party lib
+  componentHint: string | null,          // Likely component name
+  fileSearchPattern: string | null,      // Glob pattern to find source file
+
+  // Ownership & search
+  ownershipStatus: string,               // "own" | "third-party" | "unknown"
+  ownershipReason: string | null,        // Why it was classified that way
+  primarySourceScope: string[],          // Directories to search for source
+  searchStrategy: string,                // "verify_ownership_before_search" | ...
+
+  // Verification
+  verificationCommand: string | null,    // CLI command to verify the fix
+  verificationCommandFallback: string | null,
+  screenshotPath: string | null,         // Path or URL to element screenshot
+
+  // Metadata
+  relatedRules: string[],               // Related axe rule IDs
+  falsePositiveRisk: string | null,      // "low" | "medium" | "high"
+  guardrails: object | null,             // Guardrail metadata from the engine
+  checkData: object | null,              // Raw check data from the engine
+
+  // AI enrichment (only when ai.enabled ran)
+  aiEnhanced?: boolean,                  // true when AI enriched this finding
+  aiFixDescription?: string,             // Claude-generated fix explanation
+  aiFixCode?: string,                    // Claude-generated code snippet
+}
+```
+
 ---
 
 ### `getOverview(findings, payload?)`
@@ -211,27 +326,38 @@ import { getFindings, getOverview } from "@diegovelasquezweb/a11y-engine";
 
 const findings = getFindings(payload);
 const overview = getOverview(findings, payload);
-
-// overview example:
-// {
-//   score: 72,              // 0–100. Formula: 100 - (Critical×15) - (Serious×5) - (Moderate×2) - (Minor×0.5)
-//   label: "Fair",          // "Excellent" (90–100) | "Good" (75–89) | "Fair" (55–74) | "Poor" (35–54) | "Critical" (0–34)
-//   wcagStatus: "Fail",     // "Pass" | "Conditional Pass" | "Fail"
-//   totals: { Critical: 1, Serious: 3, Moderate: 5, Minor: 2 },
-//   personaGroups: {
-//     screenReader: { label: "Screen Readers", count: 4, icon: "screenReader" },
-//     keyboard:     { label: "Keyboard Only",  count: 2, icon: "keyboard" },
-//     vision:       { label: "Color/Low Vision", count: 3, icon: "vision" },
-//     cognitive:    { label: "Cognitive/Motor",  count: 1, icon: "cognitive" },
-//   },
-//   quickWins: [...],       // top 3 Critical/Serious findings with fixCode ready
-//   targetUrl: "https://example.com",
-//   detectedStack: { framework: "nextjs", cms: null, uiLibraries: ["radix-ui"] },
-//   totalFindings: 11,
-// }
 ```
 
 Returns: `AuditSummary`
+
+**`AuditSummary` shape:**
+
+```ts
+{
+  score: number,                         // 0–100. Formula: 100 - (Critical×15) - (Serious×5) - (Moderate×2) - (Minor×0.5)
+  label: string,                         // "Excellent" (90–100) | "Good" (75–89) | "Fair" (55–74) | "Poor" (35–54) | "Critical" (0–34)
+  wcagStatus: string,                    // "Pass" | "Conditional Pass" | "Fail"
+  totals: {
+    Critical: number,
+    Serious: number,
+    Moderate: number,
+    Minor: number,
+  },
+  personaGroups: Record<string, {        // Keyed by persona ID
+    label: string,                       // "Screen Readers", "Keyboard Only", ...
+    count: number,                       // Findings affecting this persona
+    icon: string,                        // Same as persona ID
+  }>,
+  quickWins: EnrichedFinding[],          // Top 3 Critical/Serious findings with fixCode
+  targetUrl: string,                     // The scanned URL
+  detectedStack: {
+    framework: string | null,            // "nextjs" | "react" | etc.
+    cms: string | null,                  // "wordpress" | "shopify" | etc.
+    uiLibraries: string[],              // ["radix-ui", "tailwindcss", ...]
+  },
+  totalFindings: number,                 // Total enriched findings count
+}
+```
 
 ---
 
@@ -248,12 +374,18 @@ const { buffer, contentType } = await getPDFReport(payload, {
   baseUrl: "https://example.com",
   target: "WCAG 2.2 AA",
 });
-
-// In a Next.js API route:
-return new Response(buffer, { headers: { "Content-Type": contentType } });
 ```
 
-Returns: `Promise<{ buffer: Buffer, contentType: string }>`
+Returns: `Promise<PDFReportResult>`
+
+**`PDFReportResult` shape:**
+
+```ts
+{
+  buffer: Buffer,                        // Raw PDF binary data
+  contentType: "application/pdf",        // MIME type for response headers
+}
+```
 
 ---
 
@@ -270,7 +402,16 @@ const { html, contentType } = await getHTMLReport(payload, {
 });
 ```
 
-Returns: `Promise<{ html: string, contentType: string }>`
+Returns: `Promise<HTMLReportResult>`
+
+**`HTMLReportResult` shape:**
+
+```ts
+{
+  html: string,                          // Self-contained HTML document string
+  contentType: "text/html",              // MIME type for response headers
+}
+```
 
 ---
 
@@ -286,7 +427,16 @@ const { html, contentType } = await getChecklist({
 });
 ```
 
-Returns: `Promise<{ html: string, contentType: string }>`
+Returns: `Promise<ChecklistResult>`
+
+**`ChecklistResult` shape:**
+
+```ts
+{
+  html: string,                          // Self-contained HTML with interactive checklist
+  contentType: "text/html",              // MIME type for response headers
+}
+```
 
 ---
 
@@ -301,11 +451,18 @@ const { markdown, contentType } = await getRemediationGuide(payload, {
   baseUrl: "https://example.com",
   patternFindings: payload.patternFindings ?? null,
 });
-
-// Write to disk or return as download
 ```
 
-Returns: `Promise<{ markdown: string, contentType: string }>`
+Returns: `Promise<RemediationGuideResult>`
+
+**`RemediationGuideResult` shape:**
+
+```ts
+{
+  markdown: string,                      // Full Markdown document with remediation roadmap
+  contentType: "text/markdown",          // MIME type for response headers
+}
+```
 
 ---
 
@@ -320,28 +477,33 @@ const result = await getSourcePatterns("./", {
   framework: "nextjs",   // optional — scopes scan to framework source dirs
   onlyPattern: "placeholder-only-label", // optional — run a single pattern
 });
-
-// result example:
-// {
-//   findings: [
-//     {
-//       id: "PAT-a1b2c3",
-//       pattern_id: "placeholder-only-label",
-//       title: "Input uses placeholder as its only label",
-//       severity: "Critical",
-//       status: "confirmed",
-//       file: "src/components/SearchBar.tsx",
-//       line: 12,
-//       match: '  <input placeholder="Search..." />',
-//       context: "...",
-//       fix_description: "Add an aria-label or visible <label> element",
-//     }
-//   ],
-//   summary: { total: 3, confirmed: 2, potential: 1 }
-// }
 ```
 
 Returns: `Promise<SourcePatternResult>`
+
+**`SourcePatternResult` shape:**
+
+```ts
+{
+  findings: {
+    id: string,                          // "PAT-a1b2c3" — unique pattern finding ID
+    pattern_id: string,                  // Pattern definition ID (e.g. "placeholder-only-label")
+    title: string,                       // Human-readable issue title
+    severity: string,                    // "Critical" | "Serious" | "Moderate" | "Minor"
+    status: string,                      // "confirmed" | "potential"
+    file: string,                        // Relative file path (e.g. "src/components/SearchBar.tsx")
+    line: number,                        // Line number where the pattern was found
+    match: string,                       // The matching source code line
+    context: string,                     // Surrounding code for context
+    fix_description: string,             // How to fix the pattern
+  }[],
+  summary: {
+    total: number,                       // Total findings found
+    confirmed: number,                   // Definite accessibility issues
+    potential: number,                   // Likely issues that need manual review
+  },
+}
+```
 
 ---
 
@@ -361,16 +523,87 @@ const knowledge = getKnowledge({ locale: "en" });
 
 **Returns:** `EngineKnowledge`
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `scanner` | `{ title, engines, options }` | Scan option descriptions, allowed values, and engine metadata |
-| `personas` | `PersonaReferenceItem[]` | Persona labels, icons, descriptions, and mapped rules |
-| `concepts` | `Record<string, ConceptEntry>` | Concept definitions with title, body, and context |
-| `glossary` | `GlossaryEntry[]` | Accessibility term definitions |
-| `docs` | `KnowledgeDocs` | Documentation articles organized by section and group |
-| `conformanceLevels` | `ConformanceLevel[]` | WCAG A/AA/AAA definitions with axe-core tag mappings |
-| `wcagPrinciples` | `WcagPrinciple[]` | The four WCAG principles with criterion prefix patterns |
-| `severityLevels` | `SeverityLevel[]` | Critical/Serious/Moderate/Minor definitions with ordering |
+**`EngineKnowledge` shape:**
+
+```ts
+{
+  locale: string,                        // "en"
+  version: string,                       // "1.0.0"
+
+  scanner: {
+    title: string,                       // "Scanner Help"
+    engines: {                           // Engine descriptions
+      id: string,                        // "axe" | "cdp" | "pa11y"
+      label: string,
+      description: string,
+    }[],
+    options: {                           // CLI/API option descriptions
+      name: string,                      // "maxRoutes"
+      type: string,                      // "number" | "string" | "boolean"
+      default: string | number | boolean,
+      description: string,
+      values?: string[],                 // Allowed values if enum-like
+    }[],
+  },
+
+  personas: {                            // Disability persona profiles
+    id: string,                          // "screenReader" | "keyboard" | "vision" | "cognitive"
+    icon: string,                        // Same as id, used for icon lookup
+    label: string,                       // "Screen Readers"
+    description: string,                 // Explanation of the persona
+    keywords: string[],                  // Keywords for matching findings
+    mappedRules: string[],               // axe rule IDs mapped to this persona
+  }[],
+
+  concepts: Record<string, {             // Concept definitions keyed by ID
+    title: string,
+    body: string,
+    context?: string,                    // When/where this concept applies
+  }>,
+
+  glossary: {                            // Accessibility term definitions
+    term: string,
+    definition: string,
+  }[],
+
+  docs: {                                // Documentation articles
+    sections: {
+      id: string,
+      title: string,
+      groups: {
+        id: string,
+        title: string,
+        articles: {
+          id: string,
+          title: string,
+          body: string,
+        }[],
+      }[],
+    }[],
+  },
+
+  conformanceLevels: {                   // WCAG A/AA/AAA definitions
+    level: string,                       // "A" | "AA" | "AAA"
+    label: string,
+    description: string,
+    axeTags: string[],                   // ["wcag2a", "wcag21a", "wcag22a"]
+  }[],
+
+  wcagPrinciples: {                      // The four WCAG principles
+    id: string,                          // "perceivable" | "operable" | "understandable" | "robust"
+    label: string,
+    description: string,
+    criterionPrefix: string,             // "1." | "2." | "3." | "4."
+  }[],
+
+  severityLevels: {                      // Severity definitions
+    level: string,                       // "Critical" | "Serious" | "Moderate" | "Minor"
+    label: string,
+    description: string,
+    order: number,                       // 1 (Critical) – 4 (Minor)
+  }[],
+}
+```
 
 ---
 
