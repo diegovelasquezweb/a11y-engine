@@ -856,8 +856,10 @@ function buildFindings(inputPayload, cliArgs) {
           selector: selectors.join(", "),
           impacted_users: getImpactedUsers(v.id, v.tags),
           primary_selector: bestSelector,
-          actual:
-            firstNode?.failureSummary || `Found ${nodes.length} instance(s).`,
+          actual: (() => {
+            const raw = firstNode?.failureSummary || `Found ${nodes.length} instance(s).`;
+            return raw.replace(/^Fix any of the following:\s*/i, "").trim();
+          })(),
           primary_failure_mode: failureInsights.primaryFailureMode,
           relationship_hint: failureInsights.relationshipHint,
           failure_checks: failureInsights.failureChecks,
