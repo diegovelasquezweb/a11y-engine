@@ -426,7 +426,8 @@ export function getFindings(
 
 export function getOverview(
   findings: EnrichedFinding[],
-  payload?: ScanPayload | null
+  payload?: ScanPayload | null,
+  options?: { countIncompleteInScore?: boolean }
 ): AuditSummary;
 
 export function getPDFReport(

@@ -378,10 +378,13 @@ function getPersonaGroups(findings) {
  *
  * @param {object[]} findings - Array of enriched findings.
  * @param {{ findings: object[], metadata?: object }|null} [payload=null] - Original scan payload for metadata extraction.
+ * @param {{ countIncompleteInScore?: boolean }} [options={}] - Scoring options.
  * @returns {object} Full audit summary.
  */
-export function getOverview(findings, payload = null) {
-  const scorableFindings = findings.filter((f) => !f.needsVerification);
+export function getOverview(findings, payload = null, options = {}) {
+  const scorableFindings = options.countIncompleteInScore
+    ? findings
+    : findings.filter((f) => !f.needsVerification);
   const totals = { Critical: 0, Serious: 0, Moderate: 0, Minor: 0 };
   for (const f of scorableFindings) {
     const severity = f.severity || "";
