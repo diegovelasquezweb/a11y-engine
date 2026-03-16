@@ -935,17 +935,12 @@ function mergeViolations(axeViolations, cdpViolations, pa11yViolations) {
     }
   }
 
-  // Step 3: pa11y findings — check via canonical rule ID (axe-equivalent) + selector
+  // Step 3: pa11y findings — only skip if same rule + same target already exists
   for (const v of pa11yViolations) {
     const target = v.nodes?.[0]?.target?.[0] || "";
     const key = `${v.id}::${target}`;
 
-    // If pa11y was mapped to an axe rule ID, check if that rule already covers this target
-    const isAxeEquivDuplicate = v.id && seenRuleTargets.has(v.id) && target && seenRuleTargets.get(v.id).has(target);
-    // Also check if any existing finding covers this exact target (broader dedup)
-    const selectorCovered = target && [...seen].some((k) => k.endsWith(`::${target}`));
-
-    if (!seen.has(key) && !isAxeEquivDuplicate && (!selectorCovered || !target)) {
+    if (!seen.has(key)) {
       seen.add(key);
       if (!seenRuleTargets.has(v.id)) seenRuleTargets.set(v.id, new Set());
       seenRuleTargets.get(v.id).add(target);
