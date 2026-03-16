@@ -640,6 +640,29 @@ function computeOverallAssessment(findings) {
 }
 
 /**
+ * Computes pass/incomplete/inapplicable counts across all scanned routes.
+ * @param {Object[]} routes - Raw scan routes.
+ * @returns {{ passesCount: number, incompleteCount: number, inapplicableCount: number }}
+ */
+function computeAxeCounts(routes) {
+  const passedRules = new Set();
+  const inapplicableRules = new Set();
+  let incompleteCount = 0;
+
+  for (const route of routes) {
+    for (const ruleId of route.passes || []) passedRules.add(ruleId);
+    for (const ruleId of route.inapplicable || []) inapplicableRules.add(ruleId);
+    incompleteCount += (route.incomplete || []).length;
+  }
+
+  return {
+    passesCount: passedRules.size,
+    incompleteCount,
+    inapplicableCount: inapplicableRules.size,
+  };
+}
+
+/**
  * Aggregates WCAG 2.2 AA criteria that passed across all scanned routes.
  * @param {Object[]} routes - Raw scan routes with a passes array of rule IDs.
  * @param {Object<string, string>} wcagCriterionMap - Map from rule_id to WCAG criterion ID.
@@ -1044,6 +1067,7 @@ export function runAnalyzer(scanPayload, options = {}) {
   const recommendations = computeRecommendations(dedupedFindings);
   const testingMethodology = computeTestingMethodology(scanPayload);
   const incompleteFindings = collectIncompleteFindings(scanPayload.routes || []);
+  const axeCounts = computeAxeCounts(scanPayload.routes || []);
   if (incompleteFindings.length > 0)
     log.info(`${incompleteFindings.length} incomplete finding(s) require manual review.`);
 
@@ -1060,6 +1084,9 @@ export function runAnalyzer(scanPayload, options = {}) {
       testingMethodology,
       fpFiltered: fpRemovedCount,
       deduplicatedCount,
+      passesCount: axeCounts.passesCount,
+      incompleteCount: axeCounts.incompleteCount,
+      inapplicableCount: axeCounts.inapplicableCount,
     },
   };
 

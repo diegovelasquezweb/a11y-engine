@@ -61,3 +61,31 @@ describe("getOverview", () => {
     expect(summary.wcagStatus).toBe("Conditional Pass");
   });
 });
+
+describe("ScanPayload metadata counts", () => {
+  it("passesCount, incompleteCount, inapplicableCount are numeric when present", () => {
+    const payload = {
+      findings: [],
+      metadata: {
+        passesCount: 38,
+        incompleteCount: 2,
+        inapplicableCount: 15,
+      },
+      incomplete_findings: [],
+    };
+
+    expect(typeof payload.metadata.passesCount).toBe("number");
+    expect(typeof payload.metadata.incompleteCount).toBe("number");
+    expect(typeof payload.metadata.inapplicableCount).toBe("number");
+    expect(payload.metadata.passesCount).toBe(38);
+    expect(payload.metadata.incompleteCount).toBe(2);
+    expect(payload.metadata.inapplicableCount).toBe(15);
+  });
+
+  it("counts default to undefined when analyzer did not compute them", () => {
+    const payload = { findings: [], metadata: {} };
+    expect(payload.metadata.passesCount).toBeUndefined();
+    expect(payload.metadata.incompleteCount).toBeUndefined();
+    expect(payload.metadata.inapplicableCount).toBeUndefined();
+  });
+});

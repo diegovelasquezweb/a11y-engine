@@ -143,6 +143,109 @@ describe("runAudit integration (mocked modules)", () => {
     expect(result.metadata.engines).toEqual({ axe: true, cdp: false, pa11y: true });
   });
 
+  it("passes custom axeTags including best-practice and ACT to runDomScanner", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({ findings: [], metadata: {} });
+
+    const customTags = ["wcag2a", "wcag2aa", "best-practice", "ACT"];
+
+    await runAudit({
+      baseUrl: "https://example.com",
+      skipPatterns: true,
+      axeTags: customTags,
+    });
+
+    expect(mocks.runDomScanner).toHaveBeenCalledWith(
+      expect.objectContaining({
+        axeTags: customTags,
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("passes clearCache option to runDomScanner", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({ findings: [], metadata: {} });
+
+    await runAudit({ baseUrl: "https://example.com", skipPatterns: true, clearCache: true });
+
+    expect(mocks.runDomScanner).toHaveBeenCalledWith(
+      expect.objectContaining({ clearCache: true }),
+      expect.any(Object),
+    );
+  });
+
+  it("clearCache defaults to false when not specified", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({ findings: [], metadata: {} });
+
+    await runAudit({ baseUrl: "https://example.com", skipPatterns: true });
+
+    expect(mocks.runDomScanner).toHaveBeenCalledWith(
+      expect.objectContaining({ clearCache: false }),
+      expect.any(Object),
+    );
+  });
+
+  it("passes serverMode option to runDomScanner", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({ findings: [], metadata: {} });
+
+    await runAudit({ baseUrl: "https://example.com", skipPatterns: true, serverMode: true });
+
+    expect(mocks.runDomScanner).toHaveBeenCalledWith(
+      expect.objectContaining({ serverMode: true }),
+      expect.any(Object),
+    );
+  });
+
+  it("serverMode defaults to false when not specified", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({ findings: [], metadata: {} });
+
+    await runAudit({ baseUrl: "https://example.com", skipPatterns: true });
+
+    expect(mocks.runDomScanner).toHaveBeenCalledWith(
+      expect.objectContaining({ serverMode: false }),
+      expect.any(Object),
+    );
+  });
+
+  it("does not include best-practice or ACT in axeTags by default", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({ findings: [], metadata: {} });
+
+    await runAudit({ baseUrl: "https://example.com", skipPatterns: true });
+
+    const call = mocks.runDomScanner.mock.calls[0][0];
+    // When no axeTags provided, the scanner uses its own AXE_TAGS default
+    // runAudit passes axeTags: null (undefined) — the dom-scanner applies its own default
+    expect(call.axeTags == null || !call.axeTags.includes("best-practice")).toBe(true);
+    expect(call.axeTags == null || !call.axeTags.includes("ACT")).toBe(true);
+  });
+
+  it("exposes passesCount, incompleteCount, inapplicableCount in metadata", async () => {
+    mocks.runDomScanner.mockResolvedValue({ findings: [], metadata: {} });
+    mocks.runAnalyzer.mockReturnValue({
+      findings: [],
+      metadata: {
+        passesCount: 42,
+        incompleteCount: 3,
+        inapplicableCount: 17,
+      },
+      incomplete_findings: [],
+    });
+
+    const result = await runAudit({
+      baseUrl: "https://example.com",
+      skipPatterns: true,
+    });
+
+    expect(result.metadata).toHaveProperty("passesCount", 42);
+    expect(result.metadata).toHaveProperty("incompleteCount", 3);
+    expect(result.metadata).toHaveProperty("inapplicableCount", 17);
+  });
+
   it("returns expected payload shape when analyzer output includes incomplete findings", async () => {
     mocks.runDomScanner.mockResolvedValue({ findings: [{ id: "raw-1" }], metadata: {} });
     mocks.runAnalyzer.mockReturnValue({

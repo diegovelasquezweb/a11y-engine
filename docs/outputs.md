@@ -89,7 +89,8 @@ Merged results from all three engines (axe-core + CDP + pa11y) per route. Writte
       "url": "https://example.com/",
       "violations": [...],
       "incomplete": [...],
-      "passes": [...]
+      "passes": ["aria-hidden-focus", "document-title", ...],
+      "inapplicable": ["video-caption", "audio-caption", ...]
     }
   ]
 }
@@ -128,6 +129,9 @@ The primary enriched data artifact. Written by `src/enrichment/analyzer.mjs`. Th
 | `recommendations` | `object[]` | Grouped fix recommendations by component |
 | `testingMethodology` | `object` | Scan scope and methodology summary |
 | `fpFiltered` | `number` | Count of findings filtered as likely false positives |
+| `passesCount` | `number` | Unique axe-core rules that passed (deduplicated across all scanned routes) |
+| `incompleteCount` | `number` | Total axe-core incomplete results across all routes — items that need manual review |
+| `inapplicableCount` | `number` | Unique axe-core rules that were inapplicable (deduplicated across all scanned routes) |
 | `deduplicatedCount` | `number` | Count of duplicate findings removed |
 
 ### `findings` — per-finding fields

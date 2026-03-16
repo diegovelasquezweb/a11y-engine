@@ -688,6 +688,8 @@ export async function runAudit(options) {
       projectDir: options.projectDir,
       remotePackageJson,
       engines,
+      clearCache: options.clearCache ?? false,
+      serverMode: options.serverMode ?? false,
     },
     { onProgress },
   );

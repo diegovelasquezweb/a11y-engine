@@ -9,6 +9,7 @@
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 import pa11y from "pa11y";
+import puppeteer from "puppeteer";
 import { log, DEFAULTS, writeJson, getInternalPath } from "../core/utils.mjs";
 import { ASSET_PATHS, loadAssetJson } from "../core/asset-loader.mjs";
 import path from "node:path";
@@ -97,6 +98,8 @@ function parseArgs(argv) {
     viewport: null,
     axeTags: null,
     engines: { axe: true, cdp: true, pa11y: true },
+    clearCache: false,
+    serverMode: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -104,6 +107,8 @@ function parseArgs(argv) {
     if (!key.startsWith("--")) continue;
 
     if (key === "--headed") { args.headless = false; continue; }
+    if (key === "--clear-cache") { args.clearCache = true; continue; }
+    if (key === "--server-mode") { args.serverMode = true; continue; }
 
     const value = argv[i + 1];
     if (value === undefined) continue;
@@ -574,11 +579,21 @@ async function analyzeRoute(
   maxRetries = 2,
   waitUntil = "domcontentloaded",
   axeTags = null,
+  clearCache = false,
 ) {
   let lastError;
 
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
     try {
+      // Clear cache before navigation when requested — ensures fresh results
+      // on repeated scans of the same domain within the same browser session.
+      if (clearCache) {
+        const cdpClient = await page.context().newCDPSession(page);
+        await cdpClient.send("Network.clearBrowserCache");
+        await cdpClient.send("Network.setCacheDisabled", { cacheDisabled: true });
+        await cdpClient.detach();
+      }
+
       await page.goto(routeUrl, {
         waitUntil,
         timeout: timeoutMs,
@@ -622,6 +637,7 @@ async function analyzeRoute(
         violations: axeResults.violations,
         incomplete: axeResults.incomplete,
         passes: axeResults.passes.map((p) => p.id),
+        inapplicable: axeResults.inapplicable.map((p) => p.id),
         metadata,
       };
     } catch (error) {
@@ -643,6 +659,7 @@ async function analyzeRoute(
     error: lastError.message,
     violations: [],
     passes: [],
+    inapplicable: [],
     metadata: {},
   };
 }
@@ -790,6 +807,136 @@ async function runCdpChecks(page) {
       }
     }
 
+    // DOM-eval checks: use page.evaluate() for checks that require direct DOM inspection
+    // rather than the accessibility tree.
+
+    // Check: autoplay media (WCAG 1.4.2, 2.2.2)
+    try {
+      const autoplayMedia = await page.evaluate(() => {
+        const elements = Array.from(document.querySelectorAll("video[autoplay], audio[autoplay]"));
+        return elements.map((el, index) => ({
+          html: el.outerHTML.substring(0, 200),
+          selector: el.id
+            ? `${el.tagName.toLowerCase()}#${el.id}`
+            : `${el.tagName.toLowerCase()}:nth-of-type(${index + 1})`,
+        }));
+      });
+
+      if (autoplayMedia.length > 0) {
+        const rule = CDP_CHECKS.rules.find((r) => r.id === "cdp-autoplay-media");
+        if (rule) {
+          violations.push({
+            id: rule.id,
+            impact: rule.impact,
+            tags: rule.tags,
+            description: `${rule.description} (${autoplayMedia.length} element${autoplayMedia.length > 1 ? "s" : ""} found)`,
+            help: rule.help,
+            helpUrl: rule.helpUrl,
+            source: "cdp",
+            nodes: autoplayMedia.map((media) => ({
+              any: [],
+              all: [{
+                id: "cdp-autoplay-media",
+                data: { selector: media.selector },
+                relatedNodes: [],
+                impact: rule.impact,
+                message: rule.failureMessage,
+              }],
+              none: [],
+              impact: rule.impact,
+              html: media.html,
+              target: [media.selector],
+              failureSummary: `Fix all of the following:\n  ${rule.failureMessage}`,
+            })),
+          });
+        }
+      }
+    } catch (err) {
+      log.warn(`CDP autoplay-media check failed (non-fatal): ${err.message}`);
+    }
+
+    // Check: missing main landmark (WCAG 1.3.1)
+    try {
+      const hasMainLandmark = await page.evaluate(() => {
+        return document.querySelector("main, [role=\"main\"]") !== null;
+      });
+
+      if (!hasMainLandmark) {
+        const rule = CDP_CHECKS.rules.find((r) => r.id === "cdp-missing-main-landmark");
+        if (rule) {
+          violations.push({
+            id: rule.id,
+            impact: rule.impact,
+            tags: rule.tags,
+            description: rule.description,
+            help: rule.help,
+            helpUrl: rule.helpUrl,
+            source: "cdp",
+            nodes: [{
+              any: [],
+              all: [{
+                id: "cdp-missing-main-landmark",
+                data: {},
+                relatedNodes: [],
+                impact: rule.impact,
+                message: rule.failureMessage,
+              }],
+              none: [],
+              impact: rule.impact,
+              html: "<body>",
+              target: ["body"],
+              failureSummary: `Fix all of the following:\n  ${rule.failureMessage}`,
+            }],
+          });
+        }
+      }
+    } catch (err) {
+      log.warn(`CDP missing-main-landmark check failed (non-fatal): ${err.message}`);
+    }
+
+    // Check: missing skip link (WCAG 2.4.1)
+    try {
+      const hasSkipLink = await page.evaluate(() => {
+        const firstFocusable = document.querySelector("a[href], button, input, select, textarea");
+        if (!firstFocusable) return false;
+        const href = firstFocusable.getAttribute("href") || "";
+        const text = (firstFocusable.textContent || "").toLowerCase();
+        return href.startsWith("#") && (text.includes("skip") || text.includes("main") || text.includes("content"));
+      });
+
+      if (!hasSkipLink) {
+        const rule = CDP_CHECKS.rules.find((r) => r.id === "cdp-missing-skip-link");
+        if (rule) {
+          violations.push({
+            id: rule.id,
+            impact: rule.impact,
+            tags: rule.tags,
+            description: rule.description,
+            help: rule.help,
+            helpUrl: rule.helpUrl,
+            source: "cdp",
+            nodes: [{
+              any: [],
+              all: [{
+                id: "cdp-missing-skip-link",
+                data: {},
+                relatedNodes: [],
+                impact: rule.impact,
+                message: rule.failureMessage,
+              }],
+              none: [],
+              impact: rule.impact,
+              html: "<body>",
+              target: ["body"],
+              failureSummary: `Fix all of the following:\n  ${rule.failureMessage}`,
+            }],
+          });
+        }
+      }
+    } catch (err) {
+      log.warn(`CDP missing-skip-link check failed (non-fatal): ${err.message}`);
+    }
+
     await cdp.detach();
   } catch (err) {
     log.warn(`CDP checks failed (non-fatal): ${err.message}`);
@@ -805,7 +952,16 @@ async function runCdpChecks(page) {
  * @param {string[]} [axeTags] - WCAG level tags for standard filtering.
  * @returns {Promise<Object[]>} Array of pa11y-sourced violations in axe-compatible format.
  */
-async function runPa11yChecks(routeUrl, axeTags) {
+/**
+ * Runs pa11y (HTML CodeSniffer) against the already-loaded page URL.
+ * @param {string} routeUrl - The URL to scan.
+ * @param {string[]} [axeTags] - WCAG level tags for standard filtering.
+ * @param {import('puppeteer').Browser|null} [sharedBrowser] - Optional shared Puppeteer browser.
+ *   When provided, pa11y reuses this instance instead of launching a new Chrome per call.
+ *   The browser is NOT closed by this function — the caller is responsible for lifecycle.
+ * @returns {Promise<Object[]>} Array of pa11y-sourced violations in axe-compatible format.
+ */
+async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null) {
   const violations = [];
   const equivalenceMap = PA11Y_CONFIG.equivalenceMap || {};
   const impactMap = {};
@@ -824,15 +980,26 @@ async function runPa11yChecks(routeUrl, axeTags) {
     // Build ignore list with dynamic standard prefix
     const ignoreList = (PA11Y_CONFIG.ignoreByPrinciple || []).map((r) => `${standard}.${r}`);
 
-    const results = await pa11y(routeUrl, {
+    const pa11yOptions = {
       standard,
       timeout: 30000,
       wait: 2000,
-      chromeLaunchConfig: {
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      },
       ignore: ignoreList,
-    });
+    };
+
+    if (sharedBrowser) {
+      // Reuse the shared Puppeteer browser — avoids Chrome cold-start per route.
+      // pa11y will open a new page, run its checks, and close the page.
+      // It will NOT close the browser (autoClose = false when browser is provided).
+      pa11yOptions.browser = sharedBrowser;
+    } else {
+      // Fallback: let pa11y launch its own Chrome (original behavior).
+      pa11yOptions.chromeLaunchConfig = {
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      };
+    }
+
+    const results = await pa11y(routeUrl, pa11yOptions);
 
     for (const issue of results.issues || []) {
       if (issue.type === "notice") continue;
@@ -986,6 +1153,8 @@ export async function runDomScanner(options = {}, callbacks = {}) {
       cdp: options.engines?.cdp !== false,
       pa11y: options.engines?.pa11y !== false,
     },
+    clearCache: options.clearCache ?? false,
+    serverMode: options.serverMode ?? false,
   };
 
   if (!args.baseUrl) throw new Error("Missing required option: baseUrl");
@@ -1012,8 +1181,22 @@ async function _runDomScannerInternal(args) {
     height: DEFAULTS.viewports[0].height,
   };
 
+  // Server/EC2 Chrome flags — prevents crashes in Docker and headless server environments.
+  // Equivalent to the flags used by @wondersauce/a11y-scanner in AI-11y.
+  const serverArgs = args.serverMode
+    ? [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--no-zygote",
+        "--disable-accelerated-2d-canvas",
+      ]
+    : [];
+
   const browser = await chromium.launch({
     headless: args.headless,
+    args: serverArgs,
   });
   const context = await browser.newContext({
     viewport: primaryViewport,
@@ -1023,6 +1206,23 @@ async function _runDomScannerInternal(args) {
     locale: "en-US",
   });
   const page = await context.newPage();
+
+  // Shared Puppeteer browser for pa11y — launched once, reused for all routes.
+  // Eliminates Chrome cold-start overhead (1-3s) per route.
+  // Falls back to per-route launch if puppeteer is unavailable.
+  let pa11yBrowser = null;
+  if (args.engines?.pa11y !== false) {
+    try {
+      pa11yBrowser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+      log.info("pa11y: shared Puppeteer browser ready");
+    } catch (err) {
+      log.warn(`pa11y: shared browser launch failed (non-fatal), will launch per-route: ${err.message}`);
+      pa11yBrowser = null;
+    }
+  }
 
   let routes = [];
   let projectContext = { framework: null, cms: null, uiLibraries: [] };
@@ -1199,9 +1399,28 @@ async function _runDomScannerInternal(args) {
               emittedDone.add("page");
             }
 
-            let result = { url: targetUrl, violations: [], incomplete: [], passes: [], metadata: {} };
+            let result = { url: targetUrl, violations: [], incomplete: [], passes: [], inapplicable: [], metadata: {} };
             let cdpViolations = [];
             let pa11yViolations = [];
+
+            // pa11y is fully independent (own browser, receives only URL string).
+            // Start it in parallel with the axe→CDP sequence to hide its latency.
+            // axe and CDP must remain sequential: CDP depends on axe's page navigation.
+            let pa11yPromise = Promise.resolve([]);
+            if (args.engines.pa11y) {
+              if (!emittedDone.has("pa11y")) writeProgress("pa11y", "running");
+              pa11yPromise = runPa11yChecks(targetUrl, args.axeTags, pa11yBrowser)
+                .then((violations) => {
+                  if (!emittedDone.has("pa11y")) {
+                    writeProgress("pa11y", "done", { found: violations.length });
+                    emittedDone.add("pa11y");
+                  }
+                  log.info(`pa11y: ${violations.length} issue(s) found`);
+                  return violations;
+                });
+            } else {
+              log.info("pa11y: skipped (disabled)");
+            }
 
             // Step 1: axe-core (conditional)
             if (args.engines.axe) {
@@ -1216,6 +1435,7 @@ async function _runDomScannerInternal(args) {
                 2,
                 args.waitUntil,
                 args.axeTags,
+                args.clearCache || false,
               );
               const axeViolationCount = result.violations?.length || 0;
               if (!emittedDone.has("axe")) {
@@ -1224,14 +1444,20 @@ async function _runDomScannerInternal(args) {
               }
               log.info(`axe-core: ${axeViolationCount} violation(s) found`);
             } else {
-              // Navigate for CDP/pa11y even if axe is off
+              // Navigate for CDP even if axe is off
+              if (args.clearCache) {
+                const cdpClient = await tabPage.context().newCDPSession(tabPage);
+                await cdpClient.send("Network.clearBrowserCache");
+                await cdpClient.send("Network.setCacheDisabled", { cacheDisabled: true });
+                await cdpClient.detach();
+              }
               await tabPage.goto(targetUrl, { waitUntil: args.waitUntil, timeout: args.timeoutMs });
               await tabPage.waitForLoadState("networkidle", { timeout: args.waitMs }).catch(() => {});
               result.metadata = await tabPage.evaluate(() => ({ title: document.title }));
               log.info("axe-core: skipped (disabled)");
             }
 
-            // Step 2: CDP checks (conditional)
+            // Step 2: CDP checks (conditional) — sequential after axe (shares tabPage)
             if (args.engines.cdp) {
               if (!emittedDone.has("cdp")) writeProgress("cdp", "running");
               cdpViolations = await runCdpChecks(tabPage);
@@ -1244,18 +1470,8 @@ async function _runDomScannerInternal(args) {
               log.info("CDP checks: skipped (disabled)");
             }
 
-            // Step 3: pa11y (conditional)
-            if (args.engines.pa11y) {
-              if (!emittedDone.has("pa11y")) writeProgress("pa11y", "running");
-              pa11yViolations = await runPa11yChecks(targetUrl, args.axeTags);
-              if (!emittedDone.has("pa11y")) {
-                writeProgress("pa11y", "done", { found: pa11yViolations.length });
-                emittedDone.add("pa11y");
-              }
-              log.info(`pa11y: ${pa11yViolations.length} issue(s) found`);
-            } else {
-              log.info("pa11y: skipped (disabled)");
-            }
+            // Step 3: Await pa11y (started in parallel before axe — may already be done)
+            pa11yViolations = await pa11yPromise;
 
             // Step 4: Merge results
             const axeViolationCount = result.violations?.length || 0;
@@ -1295,6 +1511,11 @@ async function _runDomScannerInternal(args) {
     }
   } finally {
     await browser.close();
+    if (pa11yBrowser) {
+      await pa11yBrowser.close().catch((err) =>
+        log.warn(`pa11y browser close failed (non-fatal): ${err.message}`),
+      );
+    }
   }
 
   const payload = {

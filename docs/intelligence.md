@@ -51,7 +51,7 @@ flowchart TD
 
 ## Intelligence Database
 
-The engine ships a bundled intelligence database at `assets/remediation/intelligence.mjs`. This contains per-rule entries keyed by axe rule ID (e.g. `color-contrast`, `image-alt`).
+The engine ships a bundled intelligence database at `assets/remediation/intelligence.mjs`. This contains per-rule entries keyed by axe rule ID (e.g. `color-contrast`, `image-alt`) and CDP check IDs (e.g. `cdp-autoplay-media`, `cdp-missing-main-landmark`, `cdp-missing-skip-link`).
 
 Each rule entry can include:
 
@@ -254,7 +254,7 @@ The default system prompt instructs Claude to go beyond the generic fix: explain
 
 | Asset | Used by | Purpose |
 | :--- | :--- | :--- |
-| `remediation/intelligence.mjs` | analyzer | Per-rule fix descriptions, code, guardrails, framework notes |
+| `remediation/intelligence.mjs` | analyzer | Per-rule fix descriptions, code, guardrails, framework notes. Covers 101 axe-core rules + 3 CDP-specific checks (`cdp-autoplay-media`, `cdp-missing-main-landmark`, `cdp-missing-skip-link`) |
 | `remediation/axe-check-maps.mjs` | analyzer | Failure mode and relationship hint mappings from axe check IDs |
 | `remediation/guardrails.mjs` | analyzer | Shared guardrail constraints for safe automated fixes |
 | `remediation/source-boundaries.mjs` | analyzer, source-scanner | Framework-specific source directory scoping |

@@ -106,7 +106,7 @@ Returns a `ScanPayload` object consumed by all other functions.
 | `viewport` | `object` | `{ width: 1280, height: 800 }` | width: 320–2560, height: 320–2560 | Browser viewport dimensions in pixels |
 | `colorScheme` | `string` | `"light"` | `"light"` \| `"dark"` | Emulates `prefers-color-scheme` media query |
 | `engines` | `object` | all `true` | `{ axe?, cdp?, pa11y? }` | Which engines to run. At least one must be enabled |
-| `axeTags` | `string[]` | WCAG 2.x A+AA | See below | axe-core rule tag filter. Also determines pa11y standard |
+| `axeTags` | `string[]` | WCAG 2.x A+AA | See below | axe-core rule tag filter. Also determines pa11y standard. Add `"best-practice"` and/or `"ACT"` to include non-WCAG best practices and W3C ACT rules (opt-in, not included by default) |
 | `onlyRule` | `string` | — | axe rule ID | Run a single axe rule only (e.g. `"color-contrast"`) |
 | `ignoreFindings` | `string[]` | — | axe rule IDs | Suppress specific rules from output entirely |
 | `excludeSelectors` | `string[]` | — | CSS selectors | Skip elements matching these selectors during axe scan |
@@ -121,6 +121,8 @@ Returns a `ScanPayload` object consumed by all other functions.
 | `ai.githubToken` | `string` | — | GitHub PAT | Used to fetch source files from the repo for AI context |
 | `ai.model` | `string` | `"claude-haiku-4-5-20251001"` | Anthropic model ID | Claude model to use |
 | `ai.systemPrompt` | `string` | Built-in prompt | — | Overrides the default Claude system prompt for the entire scan |
+| `clearCache` | `boolean` | `false` | — | Clear browser cache before each page navigation via CDP `Network.clearBrowserCache`. Ensures fresh results on repeated scans of the same domain |
+| `serverMode` | `boolean` | `false` | — | Enable server/EC2/Docker Chrome launch flags: `--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`, `--no-zygote`, `--disable-accelerated-2d-canvas`. Use in CI, Docker, or EC2 environments |
 | `onProgress` | `function` | — | — | Callback fired at each pipeline step |
 
 **`axeTags` common values:**
@@ -134,9 +136,24 @@ Returns a `ScanPayload` object consumed by all other functions.
 | `wcag22a` | WCAG 2.2 Level A additions |
 | `wcag22aa` | WCAG 2.2 Level AA additions |
 | `wcag2aaa` | WCAG 2.0 Level AAA |
-| `best-practice` | Non-WCAG best practices |
+| `best-practice` | Non-WCAG best practices (opt-in) |
+| `ACT` | W3C Accessibility Conformance Testing rules (opt-in) |
 
 **Supported `framework` values:** `nextjs`, `gatsby`, `react`, `nuxt`, `vue`, `angular`, `astro`, `svelte`, `remix`, `shopify`, `wordpress`, `drupal`
+
+**CDP checks:**
+
+The `cdp` engine runs 5 checks split across two mechanisms:
+
+| Check ID | Mechanism | Impact | WCAG |
+| :--- | :--- | :--- | :--- |
+| `cdp-missing-accessible-name` | Accessibility tree | Serious | 4.1.2 A |
+| `cdp-aria-hidden-focusable` | Accessibility tree | Serious | 4.1.2 A |
+| `cdp-autoplay-media` | `page.evaluate()` | Serious | 1.4.2, 2.2.2 A |
+| `cdp-missing-main-landmark` | `page.evaluate()` | Moderate | 1.3.1 A |
+| `cdp-missing-skip-link` | `page.evaluate()` | Moderate | 2.4.1 A |
+
+All 5 checks have intelligence enrichment entries (fix description, fix code, framework notes, CMS notes).
 
 **`onProgress` callback:**
 
@@ -182,6 +199,9 @@ Returns: `Promise<ScanPayload>`
     },
     routes_scanned: number,              // How many pages were actually scanned
     discovery_method: string,            // "crawl" | "explicit"
+    passesCount: number,                 // Unique axe rules that passed (deduplicated across routes)
+    incompleteCount: number,             // Total axe incomplete results across routes (needs manual review)
+    inapplicableCount: number,           // Unique axe rules that were inapplicable (deduplicated across routes)
   },
   incomplete_findings?: RawFinding[],    // axe "incomplete" results (needs-review)
   patternFindings?: {                    // Only present if projectDir/repoUrl + !skipPatterns

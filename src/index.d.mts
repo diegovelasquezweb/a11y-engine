@@ -141,9 +141,32 @@ export interface AuditSummary {
 
 
 
+export interface ScanMetadata {
+  target_url?: string;
+  scanned_at?: string;
+  engines?: { axe: boolean; cdp: boolean; pa11y: boolean };
+  projectContext?: { framework: string | null; cms: string | null; uiLibraries: string[] };
+  routes_scanned?: number;
+  discovery_method?: string;
+  overallAssessment?: Record<string, unknown>;
+  passedCriteria?: string[];
+  outOfScope?: Record<string, unknown>;
+  recommendations?: unknown[];
+  testingMethodology?: Record<string, unknown>;
+  fpFiltered?: number;
+  deduplicatedCount?: number;
+  /** Total number of unique axe-core rules that passed (deduplicated across all scanned routes). */
+  passesCount?: number;
+  /** Total number of axe-core incomplete results across all scanned routes (needs manual review). */
+  incompleteCount?: number;
+  /** Total number of unique axe-core rules that were inapplicable (deduplicated across all scanned routes). */
+  inapplicableCount?: number;
+  [key: string]: unknown;
+}
+
 export interface ScanPayload {
   findings: Finding[] | Record<string, unknown>[];
-  metadata?: Record<string, unknown>;
+  metadata?: ScanMetadata;
   incomplete_findings?: unknown[];
 }
 
@@ -391,7 +414,31 @@ export interface RunAuditOptions {
   waitUntil?: string;
   colorScheme?: string;
   viewport?: { width: number; height: number };
+  /**
+   * axe-core rule tag filter. Also determines the pa11y standard used.
+   * Default: `["wcag2a","wcag2aa","wcag21a","wcag21aa","wcag22a","wcag22aa"]`
+   *
+   * Optional opt-in tags (not included by default):
+   * - `"best-practice"` — non-WCAG best practices (duplicate IDs, landmark structure, etc.)
+   * - `"ACT"` — W3C Accessibility Conformance Testing rules
+   * - `"wcag2aaa"` / `"wcag21aaa"` — WCAG Level AAA rules
+   */
   axeTags?: string[];
+  /**
+   * Clear browser cache before each page navigation.
+   * Ensures fresh scan results when scanning the same domain multiple times.
+   * Uses CDP `Network.clearBrowserCache` + `Network.setCacheDisabled`.
+   * Default: `false`
+   */
+  clearCache?: boolean;
+  /**
+   * Enable server/EC2/Docker-optimized Chrome launch flags.
+   * Adds: `--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage`,
+   * `--disable-gpu`, `--no-zygote`, `--disable-accelerated-2d-canvas`.
+   * Use this when running in CI, Docker, or EC2 environments.
+   * Default: `false`
+   */
+  serverMode?: boolean;
   onlyRule?: string;
   excludeSelectors?: string[];
   ignoreFindings?: string[];

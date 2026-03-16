@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.3] — 2026-03-16
+
+### Added
+
+- **3 new CDP checks** — `cdp-autoplay-media` (WCAG 1.4.2, 2.2.2 — serious), `cdp-missing-main-landmark` (WCAG 1.3.1 — moderate), `cdp-missing-skip-link` (WCAG 2.4.1 — moderate). These use `page.evaluate()` DOM inspection and complement the existing accessibility-tree-based CDP checks.
+- **Intelligence entries for the 3 new CDP checks** — full fix descriptions, fix code, framework notes (React, Vue, Angular, Svelte, Astro), CMS notes (Shopify, WordPress, Drupal), and guardrails added to `assets/remediation/intelligence.mjs`.
+- **`best-practice` and `ACT` as opt-in `axeTags`** — documented in API reference and type declarations. Pass `axeTags: ["wcag2a", "wcag2aa", "best-practice", "ACT"]` to include non-WCAG best practices and W3C ACT rules.
+- **`passesCount`, `incompleteCount`, `inapplicableCount` in `ScanPayload.metadata`** — axe-core passes, incomplete, and inapplicable counts are now exposed as numeric fields in the metadata object.
+- **`cdp-checks.test.mjs`** — new dedicated test file for DOM-eval CDP check logic.
+- **pa11y shared Puppeteer browser** — a single Puppeteer browser is now launched once per scan and shared across all pa11y route invocations. Eliminates Chrome cold-start overhead (1-3s) per route. Falls back to per-route launch if Puppeteer is unavailable.
+- **pa11y parallelized with axe+CDP** — pa11y now starts in parallel with the axe→CDP sequence instead of running sequentially after them. Since pa11y uses its own browser and receives only the URL, it is fully independent. This hides pa11y's latency behind axe+CDP, reducing per-route scan time.
+- **`clearCache` option** — new `RunAuditOptions.clearCache` (default `false`). When `true`, clears browser cache via CDP `Network.clearBrowserCache` + `Network.setCacheDisabled` before each page navigation. Ensures fresh scan results on repeated scans of the same domain. Also available as `--clear-cache` CLI flag.
+- **`serverMode` option** — new `RunAuditOptions.serverMode` (default `false`). When `true`, passes EC2/Docker-optimized Chrome launch flags to Playwright: `--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`, `--no-zygote`, `--disable-accelerated-2d-canvas`. Use in CI, Docker, or EC2 environments. Also available as `--server-mode` CLI flag.
+
+---
+
 ## [0.9.0] — 2026-03-16
 
 ### Changed
