@@ -5,6 +5,7 @@
  */
 
 import { ASSET_PATHS, loadAssetJson } from "./core/asset-loader.mjs";
+export { DEFAULT_AI_SYSTEM_PROMPT } from "./ai/claude.mjs";
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded asset cache
@@ -238,7 +239,7 @@ export function getFindings(input, options = {}) {
       recommendedFix: finding.recommended_fix,
       evidence: finding.evidence,
       totalInstances: finding.total_instances,
-      effort: finding.effort,
+      effort: finding.effort ?? (finding.fix_code ? "low" : "high"),
       relatedRules: finding.related_rules,
       screenshotPath: finding.screenshot_path,
       falsePositiveRisk: finding.false_positive_risk,
@@ -582,6 +583,13 @@ export function getSeverityLevels(options = {}) {
     severityLevels: clone(levels),
   };
 }
+
+export const VIEWPORT_PRESETS = [
+  { label: "Desktop", width: 1280, height: 800 },
+  { label: "Laptop",  width: 1440, height: 900 },
+  { label: "Tablet",  width: 768,  height: 1024 },
+  { label: "Mobile",  width: 375,  height: 812 },
+];
 
 export function getKnowledge(options = {}) {
   const scanner = getScannerHelp(options);

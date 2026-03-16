@@ -403,15 +403,6 @@ export interface RunAuditOptions {
   onProgress?: (step: string, status: string, extra?: Record<string, unknown>) => void;
 }
 
-export interface AiOptions {
-  enabled?: boolean;
-  apiKey?: string;
-  githubToken?: string;
-  model?: string;
-}
-
-
-
 
 
 export interface EnrichmentOptions {
@@ -471,3 +462,21 @@ export function getWcagPrinciples(options?: KnowledgeOptions): WcagPrinciplesRes
 export function getSeverityLevels(options?: KnowledgeOptions): SeverityLevelsResult;
 
 export function getKnowledge(options?: KnowledgeOptions): EngineKnowledge;
+
+export const DEFAULT_AI_SYSTEM_PROMPT: string;
+
+export interface ViewportPreset {
+  label: string;
+  width: number;
+  height: number;
+}
+
+export const VIEWPORT_PRESETS: ViewportPreset[];
+
+export interface AiOptions {
+  enabled?: boolean;
+  apiKey?: string;
+  githubToken?: string;
+  model?: string;
+  systemPrompt?: string;
+}

@@ -25,18 +25,10 @@ const MAX_AI_FINDINGS = 20; // cap to control cost
  * @param {object} context
  * @returns {string}
  */
-function buildSystemPrompt(context) {
-  const { framework, cms, uiLibraries } = context.stack || {};
-
-  let stackInfo = "";
-  if (framework) stackInfo += `Framework: ${framework}\n`;
-  if (cms) stackInfo += `CMS: ${cms}\n`;
-  if (uiLibraries?.length) stackInfo += `UI Libraries: ${uiLibraries.join(", ")}\n`;
-
-  return `You are an expert web accessibility engineer specializing in WCAG 2.2 AA remediation.
+export const DEFAULT_AI_SYSTEM_PROMPT = `You are an expert web accessibility engineer specializing in WCAG 2.2 AA remediation.
 
 Your task is to provide a developer-friendly AI hint for each accessibility finding — something MORE USEFUL than the generic automated fix already provided.
-${stackInfo ? `\nProject context:\n${stackInfo}` : ""}
+
 For each finding, provide:
 1. fixDescription: A 2-3 sentence explanation that goes BEYOND the generic fix. Explain WHY this matters for real users, WHAT specifically to look for in the codebase, and HOW to verify the fix works. Be specific to the selector and actual violation data provided.
 2. fixCode: A ready-to-use, production-quality code snippet in the correct syntax for the stack. Do NOT copy the existing fix code — write a BETTER, more complete example that a developer can use directly.
@@ -48,6 +40,20 @@ Rules:
 - Reference the actual selector or element from the finding when possible
 - If the violation data contains specific values (colors, ratios, labels), use them in your response
 - Respond in JSON only — no markdown, no explanation outside the JSON structure`;
+
+function buildSystemPrompt(context) {
+  const { framework, cms, uiLibraries } = context.stack || {};
+
+  let stackInfo = "";
+  if (framework) stackInfo += `Framework: ${framework}\n`;
+  if (cms) stackInfo += `CMS: ${cms}\n`;
+  if (uiLibraries?.length) stackInfo += `UI Libraries: ${uiLibraries.join(", ")}\n`;
+
+  const base = DEFAULT_AI_SYSTEM_PROMPT;
+  return stackInfo ? base.replace(
+    "For each finding, provide:",
+    `Project context:\n${stackInfo}\nFor each finding, provide:`
+  ) : base;
 }
 
 /**
