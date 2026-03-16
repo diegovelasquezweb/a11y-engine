@@ -4,6 +4,14 @@
 
 ---
 
+## Table of Contents
+
+- [Source Modules](#1-source-modules)
+- [Asset Modules](#2-asset-modules)
+- [Test Suite](#3-test-suite)
+
+---
+
 This document is the current technical inventory of the engine package.
 
 ## 1) Source Modules

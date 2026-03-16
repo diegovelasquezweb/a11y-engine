@@ -4,174 +4,444 @@
 
 ---
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Import](#import)
+- [End-to-end example](#end-to-end-example)
+- [Core API](#core-api)
+  - [runAudit](#runauditoptions)
+  - [getFindings](#getfindingsinput-options)
+  - [getOverview](#getoverviewfindings-payload)
+- [Output API](#output-api)
+  - [getPDFReport](#getpdfreportpayload-options)
+  - [getHTMLReport](#gethtmlreportpayload-options)
+  - [getChecklist](#getchecklistoptions)
+  - [getRemediationGuide](#getremediationguidepayload-options)
+  - [getSourcePatterns](#getsourcepatternsprojdir-options)
+- [Knowledge API](#knowledge-api)
+  - [getKnowledge](#getknowledgeoptions)
+  - [getScannerHelp](#getscannerhelpoptions)
+  - [getPersonaReference](#getpersonareferenceoptions)
+  - [getUiHelp](#getuihelpoptions)
+  - [getConformanceLevels](#getconformancelevelsoptions)
+  - [getWcagPrinciples](#getwcagprinciplesoptions)
+  - [getSeverityLevels](#getseveritylevelsoptions)
+
+---
+
+## Installation
+
+```bash
+npm install @diegovelasquezweb/a11y-engine
+npx playwright install chromium
+npx puppeteer browsers install chrome
+```
+
+## Import
+
+All functions are named exports from the package root:
+
+```ts
+import {
+  runAudit,
+  getFindings,
+  getOverview,
+  getPDFReport,
+  getHTMLReport,
+  getChecklist,
+  getRemediationGuide,
+  getSourcePatterns,
+  getKnowledge,
+  getScannerHelp,
+  getPersonaReference,
+  getUiHelp,
+  getConformanceLevels,
+  getWcagPrinciples,
+  getSeverityLevels,
+} from "@diegovelasquezweb/a11y-engine";
+```
+
+---
+
+## End-to-end example
+
+```ts
+import { runAudit, getFindings, getOverview } from "@diegovelasquezweb/a11y-engine";
+
+// 1. Run the scan
+const payload = await runAudit({
+  baseUrl: "https://example.com",
+  maxRoutes: 5,
+  engines: { axe: true, cdp: true, pa11y: true },
+  onProgress: (step, status) => console.log(`[${step}] ${status}`),
+});
+
+// 2. Get enriched findings
+const findings = getFindings(payload);
+
+// 3. Get compliance summary
+const { score, scoreLabel, wcagStatus, totals, quickWins } = getOverview(findings, payload);
+
+console.log(`Score: ${score}/100 (${scoreLabel})`);
+console.log(`WCAG Status: ${wcagStatus}`);
+console.log(`Critical: ${totals.Critical}, Serious: ${totals.Serious}`);
+```
+
+---
+
 ## Core API
 
 ### `runAudit(options)`
 
-Runs route discovery, runtime scan, merge, analyzer enrichment, and optional AI enrichment. Supports local project paths or remote GitHub repos for stack detection and source pattern scanning.
+Runs the full audit pipeline: route discovery → axe/CDP/pa11y scan → merge/dedup → analyzer enrichment → optional source pattern scanning → optional AI enrichment.
 
-`options` (`RunAuditOptions`):
+Returns a `ScanPayload` object consumed by all other functions.
 
-| Option | Type |
+**Options:**
+
+| Option | Type | Default | Range / Values | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `baseUrl` | `string` | — | Required | Starting URL including protocol (`https://` or `http://`) |
+| `maxRoutes` | `number` | `10` | 1 – 50 | Maximum unique pages to discover and scan |
+| `crawlDepth` | `number` | `2` | 1 – 3 | BFS link-follow depth from `baseUrl`. Has no effect when `routes` is set |
+| `routes` | `string` | — | CSV paths | Explicit paths to scan (e.g. `"/,/about,/contact"`). Overrides auto-discovery entirely |
+| `waitUntil` | `string` | `"domcontentloaded"` | `"domcontentloaded"` \| `"load"` \| `"networkidle"` | Page load strategy. Use `"networkidle"` for SPAs that render after `DOMContentLoaded` |
+| `waitMs` | `number` | `2000` | 0 – 10000 | Fixed delay (ms) after page load before engines run |
+| `timeoutMs` | `number` | `30000` | 5000 – 120000 | Network timeout per page (ms) |
+| `headless` | `boolean` | `true` | — | Set `false` to open a visible browser for debugging |
+| `viewport` | `object` | `{ width: 1280, height: 800 }` | width: 320–2560, height: 320–2560 | Browser viewport dimensions in pixels |
+| `colorScheme` | `string` | `"light"` | `"light"` \| `"dark"` | Emulates `prefers-color-scheme` media query |
+| `engines` | `object` | all `true` | `{ axe?, cdp?, pa11y? }` | Which engines to run. At least one must be enabled |
+| `axeTags` | `string[]` | WCAG 2.x A+AA | See below | axe-core rule tag filter. Also determines pa11y standard |
+| `onlyRule` | `string` | — | axe rule ID | Run a single axe rule only (e.g. `"color-contrast"`) |
+| `ignoreFindings` | `string[]` | — | axe rule IDs | Suppress specific rules from output entirely |
+| `excludeSelectors` | `string[]` | — | CSS selectors | Skip elements matching these selectors during axe scan |
+| `framework` | `string` | auto-detected | See below | Override framework detection for fix notes and source boundaries |
+| `projectDir` | `string` | — | local path | Local project source directory. Enables source pattern scanning and package.json stack detection |
+| `repoUrl` | `string` | — | GitHub URL | Remote repo URL. Enables source pattern scanning via GitHub API — no clone required |
+| `githubToken` | `string` | — | GitHub PAT | Increases GitHub API rate limit from 60 to 5,000 req/hr. Required for private repos |
+| `skipPatterns` | `boolean` | `false` | — | Disable source pattern scanning even when `projectDir` or `repoUrl` is set |
+| `screenshotsDir` | `string` | `.audit/screenshots` | dir path | Directory where element screenshots are saved |
+| `ai.enabled` | `boolean` | `false` | — | Enable Claude AI enrichment for Critical and Serious findings |
+| `ai.apiKey` | `string` | — | Anthropic API key | Required when `ai.enabled` is `true` |
+| `ai.githubToken` | `string` | — | GitHub PAT | Used to fetch source files from the repo for AI context |
+| `ai.model` | `string` | `"claude-haiku-4-5-20251001"` | Anthropic model ID | Claude model to use |
+| `ai.systemPrompt` | `string` | Built-in prompt | — | Overrides the default Claude system prompt for the entire scan |
+| `onProgress` | `function` | — | — | Callback fired at each pipeline step |
+
+**`axeTags` common values:**
+
+| Tag | Covers |
 | :--- | :--- |
-| `baseUrl` | `string` |
-| `maxRoutes` | `number` |
-| `crawlDepth` | `number` |
-| `routes` | `string` |
-| `waitMs` | `number` |
-| `timeoutMs` | `number` |
-| `headless` | `boolean` |
-| `waitUntil` | `string` |
-| `colorScheme` | `string` |
-| `viewport` | `{ width: number; height: number }` |
-| `axeTags` | `string[]` |
-| `onlyRule` | `string` |
-| `excludeSelectors` | `string[]` |
-| `ignoreFindings` | `string[]` |
-| `framework` | `string` |
-| `projectDir` | `string` |
-| `repoUrl` | `string` |
-| `githubToken` | `string` |
-| `skipPatterns` | `boolean` |
-| `screenshotsDir` | `string` |
-| `engines` | `{ axe?: boolean; cdp?: boolean; pa11y?: boolean }` |
-| `ai` | `{ enabled?: boolean; apiKey?: string; githubToken?: string; model?: string; systemPrompt?: string }` — `systemPrompt` overrides the default Claude prompt when set |
-| `onProgress` | `(step: string, status: string, extra?: Record<string, unknown>) => void` |
+| `wcag2a` | WCAG 2.0 Level A |
+| `wcag2aa` | WCAG 2.0 Level AA |
+| `wcag21a` | WCAG 2.1 Level A additions |
+| `wcag21aa` | WCAG 2.1 Level AA additions |
+| `wcag22a` | WCAG 2.2 Level A additions |
+| `wcag22aa` | WCAG 2.2 Level AA additions |
+| `wcag2aaa` | WCAG 2.0 Level AAA |
+| `best-practice` | Non-WCAG best practices |
 
-Progress steps emitted via `onProgress`:
+**Supported `framework` values:** `nextjs`, `gatsby`, `react`, `nuxt`, `vue`, `angular`, `astro`, `svelte`, `remix`, `shopify`, `wordpress`, `drupal`
 
-| Step | When |
-| :--- | :--- |
-| `page` | Always — page load |
-| `axe` | Always — axe-core scan |
-| `cdp` | Always — CDP accessibility tree check |
-| `pa11y` | Always — pa11y HTML CodeSniffer scan |
-| `merge` | Always — finding deduplication |
-| `intelligence` | Always — enrichment and WCAG mapping |
-| `repo` | When `repoUrl` is set |
-| `patterns` | When source scanning is active |
-| `ai` | When AI enrichment is configured |
+**`onProgress` callback:**
+
+```ts
+onProgress: (step, status, extra) => {
+  // step:   "page" | "axe" | "cdp" | "pa11y" | "merge" | "intelligence" | "repo" | "patterns" | "ai"
+  // status: "running" | "done" | "error" | "skipped"
+  // extra:  { found?: number, merged?: number, ... } — step-specific data
+}
+```
+
+```ts
+const payload = await runAudit({
+  baseUrl: "https://example.com",
+  maxRoutes: 5,
+  engines: { axe: true, cdp: true, pa11y: true },
+  repoUrl: "https://github.com/owner/repo",
+  githubToken: process.env.GH_TOKEN,
+  ai: { enabled: true, apiKey: process.env.ANTHROPIC_API_KEY },
+  onProgress: (step, status) => console.log(`[${step}] ${status}`),
+});
+```
 
 Returns: `Promise<ScanPayload>`
 
-> **`ai_enriched_findings` fast path**: When AI enrichment runs, the engine appends `ai_enriched_findings` to the payload. `getFindings()` checks for this field first — if present, it returns the already-enriched findings directly without re-normalizing the raw `findings` array.
+> **`ai_enriched_findings` fast path**: When AI enrichment runs, `getFindings()` uses `payload.ai_enriched_findings` directly instead of re-normalizing the raw findings array.
+
+---
 
 ### `getFindings(input, options?)`
 
-Normalizes and enriches findings and returns sorted enriched findings.
+Normalizes raw scan results into enriched, UI-ready findings sorted by severity.
 
-- `input`: `ScanPayload` from `runAudit`
-- `options` (`EnrichmentOptions`):
-  - `screenshotUrlBuilder?: (rawPath: string) => string`
+```ts
+import { getFindings } from "@diegovelasquezweb/a11y-engine";
+
+const findings = getFindings(payload, {
+  // Optional: rewrite internal screenshot paths to app URLs
+  screenshotUrlBuilder: (rawPath) =>
+    `/api/scan/${scanId}/screenshot?path=${encodeURIComponent(rawPath)}`,
+});
+
+// findings[0] example:
+// {
+//   id: "A11Y-001",
+//   ruleId: "color-contrast",
+//   title: "Elements must meet minimum color contrast ratio thresholds",
+//   severity: "Serious",
+//   wcag: "1.4.3",
+//   selector: ".hero-text",
+//   actual: "Element has insufficient color contrast of 2.5:1 ...",
+//   expected: "Text contrast ratio must be at least 4.5:1 ...",
+//   fixDescription: "Increase the foreground color contrast ...",
+//   fixCode: "/* Change #aaa to #767676 */",
+//   effort: "low",
+//   aiEnhanced: true,            // present when AI ran
+//   aiFixDescription: "...",     // Claude-generated (more specific)
+//   aiFixCode: "...",            // Claude-generated code snippet
+// }
+```
 
 Returns: `EnrichedFinding[]`
 
+---
+
 ### `getOverview(findings, payload?)`
 
-Computes totals, score, WCAG status, persona groups, quick wins, target URL, and detected stack.
+Computes the compliance score, WCAG status, severity totals, persona groups, and quick wins from enriched findings.
 
-- `findings`: `EnrichedFinding[]`
-- `payload`: `ScanPayload | null`
+```ts
+import { getFindings, getOverview } from "@diegovelasquezweb/a11y-engine";
+
+const findings = getFindings(payload);
+const overview = getOverview(findings, payload);
+
+// overview example:
+// {
+//   score: 72,              // 0–100. Formula: 100 - (Critical×15) - (Serious×5) - (Moderate×2) - (Minor×0.5)
+//   label: "Fair",          // "Excellent" (90–100) | "Good" (75–89) | "Fair" (55–74) | "Poor" (35–54) | "Critical" (0–34)
+//   wcagStatus: "Fail",     // "Pass" | "Conditional Pass" | "Fail"
+//   totals: { Critical: 1, Serious: 3, Moderate: 5, Minor: 2 },
+//   personaGroups: {
+//     screenReader: { count: 4, findings: [...] },
+//     keyboard:     { count: 2, findings: [...] },
+//     vision:       { count: 3, findings: [...] },
+//     cognitive:    { count: 1, findings: [...] },
+//   },
+//   quickWins: [...],       // top Critical/Serious findings with fix code ready
+//   targetUrl: "https://example.com",
+//   detectedStack: { framework: "nextjs", cms: null, uiLibraries: ["radix-ui"] },
+// }
+```
 
 Returns: `AuditSummary`
+
+---
 
 ## Output API
 
 ### `getPDFReport(payload, options?)`
 
-- `payload`: `ScanPayload`
-- `options`: `ReportOptions`
-  - `baseUrl?: string`
-  - `target?: string`
+Generates a formal A4 PDF compliance report.
 
-Returns: `Promise<PDFReport>` (`{ buffer, contentType }`)
+```ts
+import { getPDFReport } from "@diegovelasquezweb/a11y-engine";
+
+const { buffer, contentType } = await getPDFReport(payload, {
+  baseUrl: "https://example.com",
+  target: "WCAG 2.2 AA",
+});
+
+// In a Next.js API route:
+return new Response(buffer, { headers: { "Content-Type": contentType } });
+```
+
+Returns: `Promise<{ buffer: Buffer, contentType: string }>`
+
+---
 
 ### `getHTMLReport(payload, options?)`
 
-- `payload`: `ScanPayload`
-- `options`: `HTMLReportOptions`
-  - `baseUrl?: string`
-  - `target?: string`
-  - `screenshotsDir?: string`
+Generates an interactive HTML audit dashboard with finding cards, score gauge, and persona breakdown.
 
-Returns: `Promise<HTMLReport>` (`{ html, contentType }`)
+```ts
+import { getHTMLReport } from "@diegovelasquezweb/a11y-engine";
+
+const { html, contentType } = await getHTMLReport(payload, {
+  baseUrl: "https://example.com",
+  screenshotsDir: "/path/to/screenshots",
+});
+```
+
+Returns: `Promise<{ html: string, contentType: string }>`
+
+---
 
 ### `getChecklist(options?)`
 
-- `options`: `Pick<ReportOptions, "baseUrl">`
-  - `baseUrl?: string`
+Generates an interactive HTML manual testing checklist with 41 WCAG checks.
 
-Returns: `Promise<ChecklistReport>` (`{ html, contentType }`)
+```ts
+import { getChecklist } from "@diegovelasquezweb/a11y-engine";
+
+const { html, contentType } = await getChecklist({
+  baseUrl: "https://example.com",
+});
+```
+
+Returns: `Promise<{ html: string, contentType: string }>`
+
+---
 
 ### `getRemediationGuide(payload, options?)`
 
-- `payload`: `ScanPayload & { incomplete_findings?: unknown[] }`
-- `options`: `RemediationOptions`
-  - `baseUrl?: string`
-  - `target?: string`
-  - `patternFindings?: Record<string, unknown> | null`
+Generates a Markdown remediation guide optimized for AI agents and developers. Includes finding details, fix code, verify commands, and source pattern findings.
 
-Returns: `Promise<RemediationGuide>` (`{ markdown, contentType }`)
+```ts
+import { getRemediationGuide } from "@diegovelasquezweb/a11y-engine";
+
+const { markdown, contentType } = await getRemediationGuide(payload, {
+  baseUrl: "https://example.com",
+  patternFindings: payload.patternFindings ?? null,
+});
+
+// Write to disk or return as download
+```
+
+Returns: `Promise<{ markdown: string, contentType: string }>`
+
+---
 
 ### `getSourcePatterns(projectDir, options?)`
 
-- `projectDir`: `string`
-- `options`: `SourcePatternOptions`
-  - `framework?: string`
-  - `onlyPattern?: string`
+Scans a local project directory for source code accessibility patterns that runtime engines cannot detect.
+
+```ts
+import { getSourcePatterns } from "@diegovelasquezweb/a11y-engine";
+
+const result = await getSourcePatterns("./", {
+  framework: "nextjs",   // optional — scopes scan to framework source dirs
+  onlyPattern: "placeholder-only-label", // optional — run a single pattern
+});
+
+// result example:
+// {
+//   findings: [
+//     {
+//       id: "PAT-a1b2c3",
+//       pattern_id: "placeholder-only-label",
+//       title: "Input uses placeholder as its only label",
+//       severity: "Critical",
+//       status: "confirmed",
+//       file: "src/components/SearchBar.tsx",
+//       line: 12,
+//       match: '  <input placeholder="Search..." />',
+//       context: "...",
+//       fix_description: "Add an aria-label or visible <label> element",
+//     }
+//   ],
+//   summary: { total: 3, confirmed: 2, potential: 1 }
+// }
+```
 
 Returns: `Promise<SourcePatternResult>`
 
+---
+
 ## Knowledge API
 
-### `getScannerHelp(options?)`
-
-- `options`: `KnowledgeOptions`
-  - `locale?: string`
-
-Returns: `ScannerHelp` (`{ locale, version, title, engines, options }`)
-
-### `getPersonaReference(options?)`
-
-- `options`: `KnowledgeOptions`
-  - `locale?: string`
-
-Returns: `PersonaReference` (`{ locale, version, personas }`)
-
-### `getUiHelp(options?)`
-
-- `options`: `KnowledgeOptions`
-  - `locale?: string`
-
-Returns: `UiHelp` (`{ locale, version, concepts, glossary }`)
-
-### `getConformanceLevels(options?)`
-
-- `options`: `KnowledgeOptions`
-  - `locale?: string`
-
-Returns: `ConformanceLevelsResult` (`{ locale, version, conformanceLevels }`)
-
-### `getWcagPrinciples(options?)`
-
-- `options`: `KnowledgeOptions`
-  - `locale?: string`
-
-Returns: `WcagPrinciplesResult` (`{ locale, version, wcagPrinciples }`)
-
-### `getSeverityLevels(options?)`
-
-- `options`: `KnowledgeOptions`
-  - `locale?: string`
-
-Returns: `SeverityLevelsResult` (`{ locale, version, severityLevels }`)
+These functions expose engine-owned content for UIs and agents to render. All accept an optional `{ locale?: string }` option (default: `"en"`).
 
 ### `getKnowledge(options?)`
 
-- `options`: `KnowledgeOptions`
-  - `locale?: string`
+Returns the full knowledge pack — combines all knowledge functions into one call. Useful for pre-loading UI help content.
 
-Returns: `EngineKnowledge` (`{ locale, version, scanner, personas, concepts, glossary, docs, conformanceLevels, wcagPrinciples, severityLevels }`)
+```ts
+import { getKnowledge } from "@diegovelasquezweb/a11y-engine";
+
+const knowledge = getKnowledge({ locale: "en" });
+
+// knowledge.scanner         → scan options help and engine descriptions
+// knowledge.personas        → persona labels, icons, descriptions
+// knowledge.concepts        → UI concept definitions
+// knowledge.glossary        → accessibility glossary
+// knowledge.conformanceLevels → WCAG A/AA/AAA definitions with axe tags
+// knowledge.wcagPrinciples  → the 4 WCAG principles
+// knowledge.severityLevels  → Critical/Serious/Moderate/Minor definitions
+```
+
+Returns: `EngineKnowledge`
+
+---
+
+### `getScannerHelp(options?)`
+
+Returns scan option descriptions, allowed values, and engine metadata — used to render Advanced Settings UI.
+
+```ts
+const help = getScannerHelp();
+// help.engines → [{ id: "axe", label: "axe-core", description: "..." }, ...]
+// help.options → [{ id: "maxRoutes", label: "Max Routes", type: "number", ... }, ...]
+```
+
+---
+
+### `getPersonaReference(options?)`
+
+Returns persona labels, descriptions, and disability group definitions.
+
+```ts
+const ref = getPersonaReference();
+// ref.personas → [{ id: "screenReader", label: "Screen Readers", icon: "...", description: "..." }, ...]
+```
+
+---
+
+### `getUiHelp(options?)`
+
+Returns shared concept definitions and a glossary of accessibility terms.
+
+```ts
+const ui = getUiHelp();
+// ui.concepts  → { wcag: "...", aria: "...", ... }
+// ui.glossary  → [{ term: "ARIA", definition: "..." }, ...]
+```
+
+---
+
+### `getConformanceLevels(options?)`
+
+Returns WCAG conformance level definitions with their corresponding axe-core tag sets.
+
+```ts
+const { conformanceLevels } = getConformanceLevels();
+// conformanceLevels[0] → { id: "AA", label: "WCAG 2.2 AA", axeTags: ["wcag2a", "wcag2aa", ...] }
+```
+
+---
+
+### `getWcagPrinciples(options?)`
+
+Returns the four WCAG principles (Perceivable, Operable, Understandable, Robust) with criterion prefix patterns.
+
+```ts
+const { wcagPrinciples } = getWcagPrinciples();
+// wcagPrinciples[0] → { id: "perceivable", label: "Perceivable", prefix: "1.", description: "..." }
+```
+
+---
+
+### `getSeverityLevels(options?)`
+
+Returns severity level definitions with labels, descriptions, and ordering.
+
+```ts
+const { severityLevels } = getSeverityLevels();
+// severityLevels[0] → { id: "Critical", label: "Critical", order: 0, description: "..." }
+```
 
 ---
 

@@ -1,5 +1,7 @@
 # @diegovelasquezweb/a11y-engine
 
+[![npm](https://img.shields.io/npm/v/@diegovelasquezweb/a11y-engine)](https://www.npmjs.com/package/@diegovelasquezweb/a11y-engine)
+
 Accessibility automation engine for web applications. It orchestrates multi engine scanning, stack aware enrichment, and report generation for apps and services through a stable API.
 
 ## What it does
@@ -135,25 +137,7 @@ See [API Reference](docs/api-reference.md) for exact options and return types.
 
 ## CLI
 
-The package exposes an `a11y-audit` binary for terminal execution.
-
-```bash
-# Basic scan
-pnpm exec a11y-audit --base-url https://example.com
-
-# With source code pattern scanning via GitHub API (no clone)
-pnpm exec a11y-audit --base-url https://example.com \
-  --repo-url https://github.com/owner/repo \
-  --github-token ghp_...
-
-# With AI enrichment (set ANTHROPIC_API_KEY env var)
-ANTHROPIC_API_KEY=sk-ant-... pnpm exec a11y-audit --base-url https://example.com
-
-# With custom AI system prompt
-AI_SYSTEM_PROMPT="You are..." ANTHROPIC_API_KEY=sk-ant-... pnpm exec a11y-audit --base-url https://example.com
-```
-
-See the [CLI Handbook](docs/cli-handbook.md) for all flags and examples.
+The package exposes an `a11y-audit` binary for terminal execution. See the [CLI Handbook](docs/cli-handbook.md) for all flags, env vars, and examples.
 
 ## AI enrichment
 
