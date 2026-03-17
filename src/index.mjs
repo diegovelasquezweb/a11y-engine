@@ -694,6 +694,7 @@ export async function runAudit(options) {
       projectDir: options.projectDir,
       remotePackageJson,
       engines,
+      includeWarnings: options.includeWarnings ?? options.includeIncomplete ?? false,
       clearCache: options.clearCache ?? false,
       serverMode: options.serverMode ?? false,
     },
