@@ -961,7 +961,7 @@ async function runCdpChecks(page) {
  *   The browser is NOT closed by this function — the caller is responsible for lifecycle.
  * @returns {Promise<Object[]>} Array of pa11y-sourced violations in axe-compatible format.
  */
-async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null) {
+async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null, includeWarnings = false) {
   const violations = [];
   const equivalenceMap = PA11Y_CONFIG.equivalenceMap || {};
   const impactMap = {};
@@ -985,6 +985,8 @@ async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null) {
       timeout: 30000,
       wait: 2000,
       ignore: ignoreList,
+      includeWarnings: Boolean(includeWarnings),
+      includeNotices: false,
     };
 
     if (sharedBrowser) {
@@ -1126,6 +1128,8 @@ function mergeViolations(axeViolations, cdpViolations, pa11yViolations) {
 /**
  * Runs the DOM scanner programmatically.
  * @param {Object} options - Scanner configuration (same shape as CLI args object).
+ * @param {boolean} [options.includeWarnings] - Include pa11y WARNING-level issues (default: false). Automatically enabled when includeIncomplete is true.
+ * @param {boolean} [options.includeIncomplete] - Include axe incomplete findings and activates includeWarnings (default: false).
  * @param {{ onProgress?: (step: string, status: string, extra?: object) => void }} [callbacks={}]
  * @returns {Promise<Object>} The scan payload { generated_at, base_url, onlyRule, projectContext, routes }.
  */
@@ -1153,6 +1157,7 @@ export async function runDomScanner(options = {}, callbacks = {}) {
       cdp: options.engines?.cdp !== false,
       pa11y: options.engines?.pa11y !== false,
     },
+    includeWarnings: options.includeWarnings ?? options.includeIncomplete ?? false,
     clearCache: options.clearCache ?? false,
     serverMode: options.serverMode ?? false,
   };
@@ -1409,7 +1414,7 @@ async function _runDomScannerInternal(args) {
             let pa11yPromise = Promise.resolve([]);
             if (args.engines.pa11y) {
               if (!emittedDone.has("pa11y")) writeProgress("pa11y", "running");
-              pa11yPromise = runPa11yChecks(targetUrl, args.axeTags, pa11yBrowser)
+              pa11yPromise = runPa11yChecks(targetUrl, args.axeTags, pa11yBrowser, args.includeWarnings)
                 .then((violations) => {
                   if (!emittedDone.has("pa11y")) {
                     writeProgress("pa11y", "done", { found: violations.length });
