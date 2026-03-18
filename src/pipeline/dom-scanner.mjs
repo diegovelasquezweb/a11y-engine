@@ -1060,22 +1060,18 @@ async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null, includeWa
         failureSummary: cleanMessage,
       };
 
-      if (groupedByRule.has(ruleId)) {
-        // Add node to existing violation
-        const existing = groupedByRule.get(ruleId);
-        existing.nodes.push(node);
-        // A confirmed error overrides warning-level needs_verification
-        if (!isWarning) {
-          existing.needs_verification = false;
-        }
+      // Group errors and warnings separately — mixing them loses confirmed findings
+      const groupKey = `${ruleId}::${isWarning ? "warning" : "error"}`;
+
+      if (groupedByRule.has(groupKey)) {
+        groupedByRule.get(groupKey).nodes.push(node);
       } else {
-        // Create new violation for this rule
-        groupedByRule.set(ruleId, {
+        groupedByRule.set(groupKey, {
           id: ruleId,
           impact,
           tags: ["pa11y-check", ...(wcagCriterion ? [`wcag${wcagCriterion.replace(/\./g, "")}`] : [])],
           description: cleanMessage,
-          help: cleanMessage.split(".")[0] || "Accessibility issue detected by HTML CodeSniffer",
+          help: cleanMessage,
           helpUrl: wcagCriterion
             ? `https://www.w3.org/WAI/WCAG21/Understanding/${wcagCriterion.replace(/\./g, "")}`
             : "https://squizlabs.github.io/HTML_CodeSniffer/",
