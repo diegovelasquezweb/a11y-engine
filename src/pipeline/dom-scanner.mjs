@@ -1003,6 +1003,9 @@ async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null, includeWa
 
     const results = await pa11y(routeUrl, pa11yOptions);
 
+    // Group issues by ruleId so each rule produces one violation (axe-style)
+    const groupedByRule = new Map();
+
     for (const issue of results.issues || []) {
       if (issue.type === "notice") continue;
 
@@ -1027,34 +1030,44 @@ async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null, includeWa
       const ruleId = axeEquivId || `pa11y-${((issue.code || "unknown").split(".").pop() || "unknown").toLowerCase()}`;
       const originalCode = issue.code || "unknown";
 
-      violations.push({
-        id: ruleId,
-        impact,
-        tags: ["pa11y-check", ...(wcagCriterion ? [`wcag${wcagCriterion.replace(/\./g, "")}`] : [])],
-        description: issue.message || "pa11y detected an accessibility issue",
-        help: issue.message?.split(".")[0] || "Accessibility issue detected by HTML CodeSniffer",
-        helpUrl: wcagCriterion
-          ? `https://www.w3.org/WAI/WCAG21/Understanding/${wcagCriterion.replace(/\./g, "")}`
-          : "https://squizlabs.github.io/HTML_CodeSniffer/",
-        source: "pa11y",
-        source_rule_id: originalCode,
-        nodes: [{
-          any: [],
-          all: [{
-            id: "pa11y-check",
-            data: { code: originalCode, context: issue.context?.slice(0, 200) },
-            relatedNodes: [],
-            impact,
-            message: issue.message || "",
-          }],
-          none: [],
+      const node = {
+        any: [],
+        all: [{
+          id: "pa11y-check",
+          data: { code: originalCode, context: issue.context?.slice(0, 200) },
+          relatedNodes: [],
           impact,
-          html: issue.context || "",
-          target: issue.selector ? [issue.selector] : [],
-          failureSummary: `Fix all of the following:\n  ${issue.message || "Accessibility issue"}`,
+          message: issue.message || "",
         }],
-      });
+        none: [],
+        impact,
+        html: issue.context || "",
+        target: issue.selector ? [issue.selector] : [],
+        failureSummary: `Fix all of the following:\n  ${issue.message || "Accessibility issue"}`,
+      };
+
+      if (groupedByRule.has(ruleId)) {
+        // Add node to existing violation
+        groupedByRule.get(ruleId).nodes.push(node);
+      } else {
+        // Create new violation for this rule
+        groupedByRule.set(ruleId, {
+          id: ruleId,
+          impact,
+          tags: ["pa11y-check", ...(wcagCriterion ? [`wcag${wcagCriterion.replace(/\./g, "")}`] : [])],
+          description: issue.message || "pa11y detected an accessibility issue",
+          help: issue.message?.split(".")[0] || "Accessibility issue detected by HTML CodeSniffer",
+          helpUrl: wcagCriterion
+            ? `https://www.w3.org/WAI/WCAG21/Understanding/${wcagCriterion.replace(/\./g, "")}`
+            : "https://squizlabs.github.io/HTML_CodeSniffer/",
+          source: "pa11y",
+          source_rule_id: originalCode,
+          nodes: [node],
+        });
+      }
     }
+
+    violations.push(...groupedByRule.values());
   } catch (err) {
     log.warn(`pa11y checks failed (non-fatal): ${err.message}`);
   }
