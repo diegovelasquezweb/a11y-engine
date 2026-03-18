@@ -608,13 +608,18 @@ function deduplicateFindings(findings) {
     if (group.length === 1) {
       result.push(group[0]);
     } else {
-      const representative = group.reduce((best, f) =>
+      // Confirmed findings (needs_verification=false) always take priority over incomplete ones.
+      // Among confirmed, pick the one with most instances; same for incomplete-only groups.
+      const confirmed = group.filter((f) => !f.needs_verification);
+      const pool = confirmed.length > 0 ? confirmed : group;
+      const representative = pool.reduce((best, f) =>
         (f.total_instances || 1) >= (best.total_instances || 1) ? f : best,
       );
       const affectedUrls = [...new Set(group.map((f) => f.url))];
       const totalInstances = group.reduce((sum, f) => sum + (f.total_instances || 1), 0);
       result.push({
         ...representative,
+        needs_verification: confirmed.length === 0,
         total_instances: totalInstances,
         pages_affected: affectedUrls.length,
         affected_urls: affectedUrls,
