@@ -1062,7 +1062,12 @@ async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null, includeWa
 
       if (groupedByRule.has(ruleId)) {
         // Add node to existing violation
-        groupedByRule.get(ruleId).nodes.push(node);
+        const existing = groupedByRule.get(ruleId);
+        existing.nodes.push(node);
+        // A confirmed error overrides warning-level needs_verification
+        if (!isWarning) {
+          existing.needs_verification = false;
+        }
       } else {
         // Create new violation for this rule
         groupedByRule.set(ruleId, {
