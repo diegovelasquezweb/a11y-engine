@@ -1006,10 +1006,23 @@ async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null, includeWa
     // Group issues by ruleId so each rule produces one violation (axe-style)
     const groupedByRule = new Map();
 
+    /**
+     * Cleans raw pa11y messages — strips URL references, "Fix all/any of the following:" prefixes,
+     * and other boilerplate that produces ugly titles in reports.
+     */
+    function cleanPa11yMessage(msg) {
+      if (!msg) return "Accessibility issue";
+      return msg
+        .replace(/^(See|Reference):\s*https?:\/\/\S+\s*/i, "")
+        .replace(/^Fix (all|any) of the following:\s*/i, "")
+        .trim();
+    }
+
     for (const issue of results.issues || []) {
       if (issue.type === "notice") continue;
 
       const impact = impactMap[issue.typeCode] || "moderate";
+      const isWarning = issue.type === "warning";
 
       let wcagCriterion = "";
       const wcagMatch = issue.code?.match(/Guideline(\d+)_(\d+)\.(\d+)_(\d+)_(\d+)/);
@@ -1029,6 +1042,7 @@ async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null, includeWa
 
       const ruleId = axeEquivId || `pa11y-${((issue.code || "unknown").split(".").pop() || "unknown").toLowerCase()}`;
       const originalCode = issue.code || "unknown";
+      const cleanMessage = cleanPa11yMessage(issue.message);
 
       const node = {
         any: [],
@@ -1037,13 +1051,13 @@ async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null, includeWa
           data: { code: originalCode, context: issue.context?.slice(0, 200) },
           relatedNodes: [],
           impact,
-          message: issue.message || "",
+          message: cleanMessage,
         }],
         none: [],
         impact,
         html: issue.context || "",
         target: issue.selector ? [issue.selector] : [],
-        failureSummary: `Fix all of the following:\n  ${issue.message || "Accessibility issue"}`,
+        failureSummary: cleanMessage,
       };
 
       if (groupedByRule.has(ruleId)) {
@@ -1055,13 +1069,14 @@ async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null, includeWa
           id: ruleId,
           impact,
           tags: ["pa11y-check", ...(wcagCriterion ? [`wcag${wcagCriterion.replace(/\./g, "")}`] : [])],
-          description: issue.message || "pa11y detected an accessibility issue",
-          help: issue.message?.split(".")[0] || "Accessibility issue detected by HTML CodeSniffer",
+          description: cleanMessage,
+          help: cleanMessage.split(".")[0] || "Accessibility issue detected by HTML CodeSniffer",
           helpUrl: wcagCriterion
             ? `https://www.w3.org/WAI/WCAG21/Understanding/${wcagCriterion.replace(/\./g, "")}`
             : "https://squizlabs.github.io/HTML_CodeSniffer/",
           source: "pa11y",
           source_rule_id: originalCode,
+          needs_verification: isWarning,
           nodes: [node],
         });
       }

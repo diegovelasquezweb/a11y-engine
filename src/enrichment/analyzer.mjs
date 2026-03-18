@@ -888,7 +888,10 @@ function buildFindings(inputPayload, cliArgs) {
           primary_selector: bestSelector,
           actual: (() => {
             const raw = firstNode?.failureSummary || `Found ${nodes.length} instance(s).`;
-            return raw.replace(/^Fix any of the following:\s*/i, "").trim();
+            return raw
+              .replace(/^Fix (any|all) of the following:\s*/i, "")
+              .replace(/^(See|Reference):\s*https?:\/\/\S+\s*/i, "")
+              .trim();
           })(),
           primary_failure_mode: failureInsights.primaryFailureMode,
           relationship_hint: failureInsights.relationshipHint,
