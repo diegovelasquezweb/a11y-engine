@@ -853,11 +853,13 @@ function buildFindings(inputPayload, cliArgs) {
         const fixInfo = ruleInfo.fix || {};
         const resolvedGuardrails = resolveGuardrails(ruleInfo, null);
 
-        let recFix = apgUrl
-          ? `Reference: ${apgUrl}`
-          : v.helpUrl
-            ? `See ${v.helpUrl}`
-            : "Fix the violation.";
+        let recFix = fixInfo.description
+          ? fixInfo.description
+          : apgUrl
+            ? apgUrl
+            : v.helpUrl
+              ? v.helpUrl
+              : null;
 
         const codeLang = detectCodeLang(fixInfo.code);
         const fileSearchPattern = getFileSearchPattern(ctx.framework, codeLang);
@@ -930,7 +932,7 @@ function buildFindings(inputPayload, cliArgs) {
           primary_source_scope: ownership.primarySourceScope,
           search_strategy: ownership.searchStrategy,
           component_hint: extractComponentHint(bestSelector) ?? derivePageHint(route.path),
-          needs_verification: !!v._fromIncomplete,
+          needs_verification: !!v._fromIncomplete || !!v.needs_verification,
           verification_command: `pnpm a11y --base-url ${route.url} --routes ${route.path} --only-rule ${v.id} --max-routes 1`,
           verification_command_fallback: `node scripts/audit.mjs --base-url ${route.url} --routes ${route.path} --only-rule ${v.id} --max-routes 1`,
           pm_summary: ruleInfo.pm?.summary ?? null,
