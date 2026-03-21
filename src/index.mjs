@@ -943,7 +943,6 @@ export async function getChecklist(options = {}) {
     <nav aria-label="Checklist header">
     <div class="max-w-4xl mx-auto px-4 h-16 flex justify-between items-center">
       <div class="flex items-center gap-3">
-        <div class="px-3 h-10 rounded-lg bg-slate-900 text-white font-bold text-base font-mono flex items-center justify-center shadow-md">a11y</div>
         <h1 class="text-xl font-bold">Manual <span class="text-slate-500">Checklist</span></h1>
       </div>
       <span class="text-sm text-slate-500 font-medium">${escapeHtml(siteLabel)}</span>
@@ -957,9 +956,6 @@ export async function getChecklist(options = {}) {
     </div>
     <div class="flex flex-wrap items-center gap-3 mb-8">
       <div class="flex items-center gap-1.5 text-sm font-semibold"><span class="inline-block w-3 h-3 rounded-full bg-slate-300"></span><span id="count-total">${TOTAL}</span> Total</div>
-      <div class="flex items-center gap-1.5 text-sm font-semibold text-emerald-600"><span class="inline-block w-3 h-3 rounded-full bg-emerald-400"></span><span id="count-pass">0</span> Pass</div>
-      <div class="flex items-center gap-1.5 text-sm font-semibold text-rose-600"><span class="inline-block w-3 h-3 rounded-full bg-rose-400"></span><span id="count-fail">0</span> Fail</div>
-      <div class="flex items-center gap-1.5 text-sm font-semibold text-amber-600"><span class="inline-block w-3 h-3 rounded-full bg-amber-400"></span><span id="count-na">0</span> N/A</div>
       <div class="ml-auto flex items-center gap-2">
         <select id="level-filter" class="${selectClasses}">
           <option value="all">All levels</option>
@@ -972,28 +968,41 @@ export async function getChecklist(options = {}) {
     <div id="checklist-items" class="space-y-4">${cards}</div>
   </main>
   <script>
-    const items = document.querySelectorAll('[data-check]');
-    function updateProgress() {
-      let pass=0,fail=0,na=0;
-      items.forEach(el => { const s=el.dataset.status; if(s==='pass')pass++; else if(s==='fail')fail++; else if(s==='na')na++; });
-      document.getElementById('count-pass').textContent=pass;
-      document.getElementById('count-fail').textContent=fail;
-      document.getElementById('count-na').textContent=na;
+    const items = [...document.querySelectorAll('.manual-card')];
+
+    function toggleCard(button) {
+      const card = button.closest('.manual-card');
+      if (!card) return;
+      const body = card.querySelector('.card-body');
+      const chevron = card.querySelector('.card-chevron');
+      const expanded = card.dataset.collapsed === 'false';
+      const nextExpanded = !expanded;
+      card.dataset.collapsed = nextExpanded ? 'false' : 'true';
+      button.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+      if (body) body.style.gridTemplateRows = nextExpanded ? '1fr' : '0fr';
+      if (chevron) chevron.style.transform = nextExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
     }
-    document.getElementById('level-filter').addEventListener('change',e=>{
-      const v=e.target.value;
-      items.forEach(el=>{el.style.display=(v==='all'||el.dataset.level===v)?'':'none';});
-    });
-    items.forEach(el=>{
-      el.querySelectorAll('[data-action]').forEach(btn=>{
-        btn.addEventListener('click',()=>{
-          const action=btn.dataset.action;
-          el.dataset.status=el.dataset.status===action?'none':action;
-          updateProgress();
-        });
+
+    function setManualState(criterion, newState) {
+      const card = document.getElementById('manual-' + criterion.replace(/\./g, '-'));
+      if (!card) return;
+      const current = card.dataset.state || '';
+      card.dataset.state = current === newState ? '' : newState;
+    }
+
+    function applyFilter() {
+      const select = document.getElementById('level-filter');
+      const value = select ? select.value : 'all';
+      items.forEach((card) => {
+        card.style.display = value === 'all' || card.dataset.level === value ? '' : 'none';
       });
-    });
-    updateProgress();
+    }
+
+    window.toggleCard = toggleCard;
+    window.setManualState = setManualState;
+    const levelFilter = document.getElementById('level-filter');
+    if (levelFilter) levelFilter.addEventListener('change', applyFilter);
+    applyFilter();
   <\/script>
 </body>
 </html>`;
