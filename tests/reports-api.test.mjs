@@ -26,6 +26,16 @@ describe("report APIs", () => {
     expect(result.contentType).toBe("text/html");
     expect(result.html).toContain("Manual Testing Checklist");
     expect(result.html).toContain("example.com");
+    expect(result.html).not.toContain(">a11y</div>");
+    expect(result.html).toContain("id=\"count-total\"");
+    expect(result.html).not.toContain("id=\"count-pass\"");
+    expect(result.html).not.toContain("id=\"count-fail\"");
+    expect(result.html).not.toContain("id=\"count-na\"");
+    expect(result.html).toContain("onclick=\"toggleCard(this)\"");
+    expect(result.html).toContain("onclick=\"setManualState('");
+    expect(result.html).toContain("window.toggleCard = toggleCard");
+    expect(result.html).toContain("window.setManualState = setManualState");
+    expect(result.html).toContain("document.querySelectorAll('.manual-card')");
   });
 
   it("returns html dashboard output", async () => {
