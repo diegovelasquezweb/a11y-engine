@@ -852,10 +852,33 @@ export async function getPDFReport(payload, options = {}) {
     buildPdfAuditLimitations,
   } = await import("./reports/renderers/pdf.mjs");
 
-  const args = { baseUrl: options.baseUrl || "", target: options.target || "WCAG 2.2 AA" };
-  const findings = normalizeForReports(payload).filter(
-    (f) => f.wcagClassification !== "AAA" && f.wcagClassification !== "Best Practice",
-  );
+  const deriveConformanceLevel = () => {
+    const tags = payload?.metadata?.testingMethodology?.axe_tags || payload?.axeTags || [];
+    if (Array.isArray(tags)) {
+      if (tags.includes("wcag2aaa")) return "AAA";
+      if (tags.includes("wcag2aa") || tags.includes("wcag21aa") || tags.includes("wcag22aa")) return "AA";
+      if (tags.includes("wcag2a") || tags.includes("wcag21a") || tags.includes("wcag22a")) return "A";
+    }
+
+    const level = payload?.metadata?.testingMethodology?.conformance_level;
+    if (level === "A" || level === "AA" || level === "AAA") return level;
+    return "AA";
+  };
+
+  const filterByConformance = (finding, conformanceLevel) => {
+    const wcag = finding.wcagClassification;
+    if (wcag === "Best Practice") return false;
+    if (conformanceLevel === "A") return wcag !== "AA" && wcag !== "AAA";
+    if (conformanceLevel === "AA") return wcag !== "AAA";
+    return true;
+  };
+
+  const conformanceLevel = deriveConformanceLevel();
+  const args = {
+    baseUrl: options.baseUrl || "",
+    target: options.target || `WCAG 2.2 ${conformanceLevel}`,
+  };
+  const findings = normalizeForReports(payload).filter((f) => filterByConformance(f, conformanceLevel));
 
   const totals = buildSummary(findings);
   const score = computeComplianceScore(totals);

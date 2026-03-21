@@ -76,6 +76,29 @@ function parseArgs(argv) {
   return args;
 }
 
+function deriveConformanceLevelFromPayload(payload) {
+  const tags = payload?.metadata?.testingMethodology?.axe_tags || payload?.axeTags || [];
+  if (Array.isArray(tags)) {
+    if (tags.includes("wcag2aaa")) return "AAA";
+    if (tags.includes("wcag2aa") || tags.includes("wcag21aa") || tags.includes("wcag22aa")) return "AA";
+    if (tags.includes("wcag2a") || tags.includes("wcag21a") || tags.includes("wcag22a")) return "A";
+  }
+
+  const level = payload?.metadata?.testingMethodology?.conformance_level;
+  if (level === "A" || level === "AA" || level === "AAA") return level;
+  return "AA";
+}
+
+function filterByConformance(findings, conformanceLevel) {
+  return findings.filter((finding) => {
+    const wcag = finding.wcagClassification;
+    if (wcag === "Best Practice") return false;
+    if (conformanceLevel === "A") return wcag !== "AA" && wcag !== "AAA";
+    if (conformanceLevel === "AA") return wcag !== "AAA";
+    return true;
+  });
+}
+
 /**
  * Constructs the HTML structure specifically tailored for PDF rendering.
  * @param {Object} args - The parsed CLI arguments.
@@ -215,9 +238,11 @@ async function main() {
     process.exit(1);
   }
 
-  const findings = normalizeFindings(inputPayload).filter(
-    (f) => f.wcagClassification !== "AAA" && f.wcagClassification !== "Best Practice",
-  );
+  const conformanceLevel = deriveConformanceLevelFromPayload(inputPayload);
+  if (!args.target || args.target === DEFAULTS.complianceTarget) {
+    args.target = `WCAG 2.2 ${conformanceLevel}`;
+  }
+  const findings = filterByConformance(normalizeFindings(inputPayload), conformanceLevel);
   const html = buildPdfHtml(args, findings);
 
   log.info("Generating professional PDF report...");
