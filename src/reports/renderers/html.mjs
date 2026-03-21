@@ -313,10 +313,6 @@ export function buildManualCheckCard(check) {
     .map((s, i) => `<li class="text-[13px] text-slate-600 leading-relaxed"><span class="font-bold text-slate-400 mr-1.5">${i + 1}.</span>${escapeHtml(s)}</li>`)
     .join("");
 
-  const criterionPill = check.level !== "AT"
-    ? `<span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200">${escapeHtml(check.criterion)}</span>`
-    : "";
-
   const levelPill = check.level === "AT"
     ? `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-violet-50 text-violet-700 border border-violet-200">Assistive Technology</span>`
     : `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">WCAG ${escapeHtml(check.level)}</span>`;
@@ -356,8 +352,6 @@ export function buildManualCheckCard(check) {
       <div class="flex items-center gap-4">
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-2 mb-2.5">
-            <span class="manual-badge px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">Manual</span>
-            ${criterionPill}
             ${levelPill}
           </div>
           <h3 class="text-base font-extrabold text-slate-900 group-hover:text-amber-900 transition-colors">${escapeHtml(check.title)}</h3>

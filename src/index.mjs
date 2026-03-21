@@ -1006,11 +1006,36 @@ export async function getChecklist(options = {}) {
       if (chevron) chevron.style.transform = nextExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
     }
 
+    function updateCardStateUI(card) {
+      const state = card.dataset.state || '';
+      const verifiedBtn = card.querySelector('.manual-verified-btn');
+      const naBtn = card.querySelector('.manual-na-btn');
+      if (verifiedBtn) {
+        verifiedBtn.setAttribute('aria-pressed', state === 'verified' ? 'true' : 'false');
+        verifiedBtn.classList.toggle('border-emerald-500', state === 'verified');
+        verifiedBtn.classList.toggle('bg-emerald-100', state === 'verified');
+        verifiedBtn.classList.toggle('text-emerald-800', state === 'verified');
+        verifiedBtn.classList.toggle('border-slate-200', state !== 'verified');
+        verifiedBtn.classList.toggle('bg-white', state !== 'verified');
+        verifiedBtn.classList.toggle('text-slate-500', state !== 'verified');
+      }
+      if (naBtn) {
+        naBtn.setAttribute('aria-pressed', state === 'na' ? 'true' : 'false');
+        naBtn.classList.toggle('border-slate-500', state === 'na');
+        naBtn.classList.toggle('bg-slate-200', state === 'na');
+        naBtn.classList.toggle('text-slate-800', state === 'na');
+        naBtn.classList.toggle('border-slate-200', state !== 'na');
+        naBtn.classList.toggle('bg-white', state !== 'na');
+        naBtn.classList.toggle('text-slate-500', state !== 'na');
+      }
+    }
+
     function setManualState(criterion, newState) {
-      const card = document.getElementById('manual-' + criterion.replace(/\./g, '-'));
+      const card = document.getElementById('manual-' + criterion.replace(/\\./g, '-'));
       if (!card) return;
       const current = card.dataset.state || '';
       card.dataset.state = current === newState ? '' : newState;
+      updateCardStateUI(card);
     }
 
     function applyFilter() {
@@ -1023,6 +1048,7 @@ export async function getChecklist(options = {}) {
 
     window.toggleCard = toggleCard;
     window.setManualState = setManualState;
+    items.forEach(updateCardStateUI);
     const levelFilter = document.getElementById('level-filter');
     if (levelFilter) levelFilter.addEventListener('change', applyFilter);
     applyFilter();
