@@ -37,9 +37,7 @@ function parseArgs(argv) {
  */
 function checkNodeModules() {
   const nodeModulesPath = path.join(SKILL_ROOT, "node_modules");
-  if (fs.existsSync(nodeModulesPath)) return true;
-  // When installed as an npm package, deps are hoisted — check passes.
-  return SKILL_ROOT.includes(`${path.sep}node_modules${path.sep}`);
+  return fs.existsSync(nodeModulesPath);
 }
 
 /**

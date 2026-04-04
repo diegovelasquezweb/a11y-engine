@@ -221,20 +221,19 @@ async function main() {
   try {
     log.info("Starting accessibility audit pipeline...");
 
-    const nodeModulesPath = path.join(SKILL_ROOT, "node_modules");
-    if (!fs.existsSync(nodeModulesPath)) {
-      log.info(
-        "First run detected — installing skill dependencies (one-time setup)...",
-      );
-      try {
-        execSync("pnpm install", { cwd: SKILL_ROOT, stdio: "ignore" });
-      } catch {
-        execSync("npm install", { cwd: SKILL_ROOT, stdio: "ignore" });
+    if (!SKILL_ROOT.includes(`${path.sep}node_modules${path.sep}`)) {
+      const nodeModulesPath = path.join(SKILL_ROOT, "node_modules");
+      if (!fs.existsSync(nodeModulesPath)) {
+        log.info("First run detected — installing skill dependencies (one-time setup)...");
+        try {
+          execSync("pnpm install", { cwd: SKILL_ROOT, stdio: "ignore" });
+        } catch {
+          execSync("npm install", { cwd: SKILL_ROOT, stdio: "ignore" });
+        }
+        log.success("Dependencies ready.");
       }
-      log.success("Dependencies ready.");
+      await runScript("../core/toolchain.mjs");
     }
-
-    await runScript("../core/toolchain.mjs");
 
     const screenshotsDir = getInternalPath("screenshots");
     fs.rmSync(screenshotsDir, { recursive: true, force: true });
