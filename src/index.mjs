@@ -6,6 +6,7 @@
 
 import { ASSET_PATHS, loadAssetJson } from "./core/asset-loader.mjs";
 export { DEFAULT_AI_SYSTEM_PROMPT, PM_AI_SYSTEM_PROMPT } from "./ai/claude.mjs";
+export { applyFindingFix, FIX_ERROR_CODES } from "./fixes/apply-finding-fix.mjs";
 
 // Lazy-loaded asset cache
 

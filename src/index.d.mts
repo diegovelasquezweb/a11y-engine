@@ -528,3 +528,45 @@ export interface AiOptions {
   systemPrompt?: string;
   audience?: "pm" | "dev";
 }
+
+export interface FixDomInput {
+  findingId: string;
+  payload?: {
+    findings: Array<Record<string, unknown>>;
+    metadata?: Record<string, unknown>;
+  };
+  findingsPayload?: {
+    findings: Array<Record<string, unknown>>;
+    metadata?: Record<string, unknown>;
+  };
+  projectDir: string;
+  ai?: {
+    apiKey?: string;
+    model?: string;
+  };
+}
+
+export interface FixDomResult {
+  applied: boolean;
+  reason: string;
+  message: string;
+  changedFiles: string[];
+  patch: string;
+  verifyRule: string;
+  verifyRoute: string;
+  findingTitle?: string;
+  branchSlug?: string;
+  status?: "patched" | "not_applied" | "error";
+  patchedFile?: string;
+}
+
+export const FIX_ERROR_CODES: {
+  INVALID_INPUT: "invalid-input";
+  FINDING_NOT_FOUND: "finding-not-found";
+  RULE_MISSING: "rule-missing";
+  FILE_NOT_RESOLVED: "file-not-resolved";
+  PATCH_GENERATION_FAILED: "patch-generation-failed";
+  PATCH_APPLY_FAILED: "patch-apply-failed";
+};
+
+export function applyFindingFix(input: FixDomInput): Promise<FixDomResult>;
