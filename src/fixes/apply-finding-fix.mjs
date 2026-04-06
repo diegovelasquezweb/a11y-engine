@@ -249,10 +249,10 @@ async function callClaudeForPatch({ apiKey, model, aiInput }) {
   const system = [
     "You are an accessibility fix engine.",
     "Return JSON only.",
-    "Generate text replacements that fix the accessibility issue described in the finding.",
+    "Apply the fix described in finding.fixDescription and finding.fixCode.",
+    "Follow all instructions in execution.constraints.must. Avoid all in execution.constraints.must_not.",
+    "Use search/replace pairs on the provided files. For insertions (no existing element to replace), use the nearest parent element as the search anchor and prepend the new content in replace.",
     "Do not create files. Do not modify paths outside provided filePath values.",
-    "CRITICAL: The 'replace' value MUST differ from the 'search' value — never return a no-op change.",
-    "CRITICAL: For missing attributes (e.g. alt, aria-label), you MUST add them with a descriptive value derived from context (filename, surrounding text, or role). Use empty string alt=\"\" only for purely decorative images.",
     "Schema:",
     "{\"changes\":[{\"filePath\":\"...\",\"search\":\"...\",\"replace\":\"...\"}],\"verifyRule\":\"...\",\"verifyRoute\":\"...\",\"notes\":\"...\"}",
   ].join("\n");

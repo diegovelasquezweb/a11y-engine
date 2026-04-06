@@ -1,6 +1,6 @@
 {
   "name": "@diegovelasquezweb/a11y-engine",
-  "version": "0.11.22",
+  "version": "0.11.24",
   "description": "WCAG 2.2 accessibility audit engine — scanner, analyzer, and report builders",
   "type": "module",
   "license": "MIT",
