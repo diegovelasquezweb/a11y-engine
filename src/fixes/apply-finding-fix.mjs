@@ -201,7 +201,7 @@ function buildExecution(ruleId, intelligenceRule, finding) {
   };
 }
 
-function buildAiFixInput({ finding, intelligenceRule, execution, candidates }) {
+function buildAiFixInput({ finding, intelligenceRule, execution, candidates, projectHints }) {
   return {
     finding: {
       id: finding.id,
@@ -223,6 +223,7 @@ function buildAiFixInput({ finding, intelligenceRule, execution, candidates }) {
       fixDifficultyNotes: intelligenceRule.fix_difficulty_notes || "",
     },
     execution,
+    projectContext: projectHints || "",
     files: candidates.map((c) => ({ filePath: c.rel, content: c.content.slice(0, 12000) })),
   };
 }
@@ -362,6 +363,7 @@ export async function applyFindingFix(input) {
 
   const findingId = typeof input.findingId === "string" ? input.findingId.trim() : "";
   const projectDir = typeof input.projectDir === "string" ? input.projectDir.trim() : "";
+  const projectHints = typeof input.projectHints === "string" ? input.projectHints.trim() : "";
 
   if (!findingId || !projectDir) {
     return buildResult({
@@ -528,7 +530,7 @@ export async function applyFindingFix(input) {
     });
   }
 
-  const aiInput = buildAiFixInput({ finding, intelligenceRule, execution, candidates });
+  const aiInput = buildAiFixInput({ finding, intelligenceRule, execution, candidates, projectHints });
   const candidateSet = new Set(candidates.map((c) => c.rel));
 
   let patchOutput = null;
