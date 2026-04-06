@@ -53,6 +53,10 @@ function buildResult(data = {}) {
   const verifyRoute = data.verifyRoute || "/";
   const findingTitle = data.findingTitle || "";
   const branchSlug = data.branchSlug || "a11y-fix";
+  const usage = {
+    input_tokens: data.usage?.input_tokens ?? 0,
+    output_tokens: data.usage?.output_tokens ?? 0,
+  };
 
   return {
     applied,
@@ -64,6 +68,7 @@ function buildResult(data = {}) {
     verifyRoute,
     findingTitle,
     branchSlug,
+    usage,
 
     status: mapStatus(applied, reason),
     patchedFile: changedFiles[0] || "",
@@ -243,7 +248,11 @@ async function callClaudeForPatch({ apiKey, model, aiInput }) {
   const content = data.content?.[0]?.text || "";
   const parsed = parseJsonBlock(content);
   if (!isObject(parsed)) throw new Error("AI patch output is not valid JSON object");
-  return parsed;
+  const usage = {
+    input_tokens: data.usage?.input_tokens ?? 0,
+    output_tokens: data.usage?.output_tokens ?? 0,
+  };
+  return { patch: parsed, usage };
 }
 
 function validateAiPatchOutput(output, projectDir, fileSet) {
@@ -376,9 +385,12 @@ export async function applyFindingFix(input) {
   const model = input.ai?.model || DEFAULT_MODEL;
 
   let patchOutput = null;
+  let claudeUsage = { input_tokens: 0, output_tokens: 0 };
   if (apiKey) {
     try {
-      patchOutput = await callClaudeForPatch({ apiKey, model, aiInput });
+      const { patch, usage } = await callClaudeForPatch({ apiKey, model, aiInput });
+      patchOutput = patch;
+      claudeUsage = usage;
     } catch {
       patchOutput = null;
     }
@@ -393,6 +405,7 @@ export async function applyFindingFix(input) {
       verifyRoute: execution.verify.route,
       findingTitle: finding.title || "",
       branchSlug: slugify(`${findingId}-${ruleId}`),
+      usage: claudeUsage,
     });
   }
 
@@ -406,6 +419,7 @@ export async function applyFindingFix(input) {
       verifyRoute: execution.verify.route,
       findingTitle: finding.title || "",
       branchSlug: slugify(`${findingId}-${ruleId}`),
+      usage: claudeUsage,
     });
   }
 
@@ -419,6 +433,7 @@ export async function applyFindingFix(input) {
       verifyRoute: execution.verify.route,
       findingTitle: finding.title || "",
       branchSlug: slugify(`${findingId}-${ruleId}`),
+      usage: claudeUsage,
     });
   }
 
@@ -432,5 +447,6 @@ export async function applyFindingFix(input) {
     verifyRoute: patchOutput.verifyRoute || execution.verify.route,
     findingTitle: finding.title || "",
     branchSlug: slugify(`${findingId}-${ruleId}`),
+    usage: claudeUsage,
   });
 }
