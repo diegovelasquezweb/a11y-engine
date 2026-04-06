@@ -249,9 +249,9 @@ async function callClaudeForPatch({ apiKey, model, aiInput }) {
   const system = [
     "You are an accessibility fix engine.",
     "Return JSON only.",
-    "Apply the fix described in finding.fixDescription and finding.fixCode.",
-    "Follow all instructions in execution.constraints.must. Avoid all in execution.constraints.must_not.",
-    "Use search/replace pairs on the provided files. For insertions (no existing element to replace), use the nearest parent element as the search anchor and prepend the new content in replace.",
+    "Generate deterministic text replacements for provided files.",
+    "Use finding.fixDescription and execution.constraints.must as guidance for what to fix and how.",
+    "For insertions (new element that does not yet exist in the file), use the nearest existing parent element as the search anchor. The replace value must include that anchor plus the new content.",
     "Do not create files. Do not modify paths outside provided filePath values.",
     "Schema:",
     "{\"changes\":[{\"filePath\":\"...\",\"search\":\"...\",\"replace\":\"...\"}],\"verifyRule\":\"...\",\"verifyRoute\":\"...\",\"notes\":\"...\"}",
