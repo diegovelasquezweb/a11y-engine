@@ -134,6 +134,39 @@ function scoreFile(filePath, content, tokens) {
   return score;
 }
 
+function getPatternFindings(input) {
+  if (!isObject(input)) return null;
+  const payload = input.patternPayload ?? input.patternFindingsPayload ?? null;
+  if (!isObject(payload) || !Array.isArray(payload.findings)) return null;
+  return payload.findings;
+}
+
+function getPatternCandidateFile(projectDir, finding) {
+  if (!finding.file || typeof finding.file !== "string") return null;
+  const abs = path.resolve(projectDir, finding.file);
+  if (!isWithin(projectDir, abs)) return null;
+  if (!fs.existsSync(abs)) return null;
+  const content = fs.readFileSync(abs, "utf8");
+  return { abs, rel: finding.file, content };
+}
+
+function buildPatternAiInput({ finding, candidate }) {
+  return {
+    finding: {
+      id: finding.id,
+      title: finding.title,
+      severity: finding.severity,
+      patternId: finding.pattern_id || finding.patternId || "",
+      file: finding.file,
+      line: finding.line ?? null,
+      match: finding.match || "",
+      context: finding.context || "",
+      fixDescription: finding.fix_description || "",
+    },
+    files: [{ filePath: candidate.rel, content: candidate.content.slice(0, 12000) }],
+  };
+}
+
 function getCandidateFiles(projectDir, finding) {
   const files = listFilesRecursive(projectDir);
   const tokens = selectorTokens(finding.selector);
@@ -326,9 +359,8 @@ export async function applyFindingFix(input) {
 
   const findingId = typeof input.findingId === "string" ? input.findingId.trim() : "";
   const projectDir = typeof input.projectDir === "string" ? input.projectDir.trim() : "";
-  const findings = getFindings(input);
 
-  if (!findingId || !projectDir || !findings) {
+  if (!findingId || !projectDir) {
     return buildResult({
       applied: false,
       reason: FIX_ERROR_CODES.INVALID_INPUT,
@@ -341,6 +373,120 @@ export async function applyFindingFix(input) {
       applied: false,
       reason: FIX_ERROR_CODES.FILE_NOT_RESOLVED,
       message: `Project directory does not exist: ${projectDir}`,
+    });
+  }
+
+  const isPattern = findingId.startsWith("PAT-");
+  const apiKey = input.ai?.apiKey || process.env.ANTHROPIC_API_KEY || "";
+  const model = input.ai?.model || DEFAULT_MODEL;
+
+  if (isPattern) {
+    const patternFindings = getPatternFindings(input);
+    if (!patternFindings) {
+      return buildResult({
+        applied: false,
+        reason: FIX_ERROR_CODES.INVALID_INPUT,
+        message: "Required input is missing: patternPayload.findings is absent or invalid.",
+      });
+    }
+
+    const finding = patternFindings.find((entry) => isObject(entry) && entry.id === findingId);
+    if (!finding) {
+      return buildResult({
+        applied: false,
+        reason: FIX_ERROR_CODES.FINDING_NOT_FOUND,
+        message: `Finding ${findingId} was not found in patternPayload.findings.`,
+        findingTitle: "",
+      });
+    }
+
+    const candidate = getPatternCandidateFile(projectDir, finding);
+    if (!candidate) {
+      return buildResult({
+        applied: false,
+        reason: FIX_ERROR_CODES.FILE_NOT_RESOLVED,
+        message: `Could not resolve file for finding ${findingId}: ${finding.file || "(no file)"}`,
+        findingTitle: finding.title || "",
+        branchSlug: slugify(`${findingId}-${finding.pattern_id || finding.patternId || ""}`),
+      });
+    }
+
+    const aiInput = buildPatternAiInput({ finding, candidate });
+    const candidateSet = new Set([candidate.rel]);
+
+    let patchOutput = null;
+    let claudeUsage = { input_tokens: 0, output_tokens: 0 };
+    if (apiKey) {
+      try {
+        const { patch, usage } = await callClaudeForPatch({ apiKey, model, aiInput });
+        patchOutput = patch;
+        claudeUsage = usage;
+      } catch {
+        patchOutput = null;
+      }
+    }
+
+    if (!patchOutput) {
+      return buildResult({
+        applied: false,
+        reason: FIX_ERROR_CODES.PATCH_GENERATION_FAILED,
+        message: `Could not generate patch output for finding ${findingId}.`,
+        verifyRule: "",
+        verifyRoute: "/",
+        findingTitle: finding.title || "",
+        branchSlug: slugify(`${findingId}-${finding.pattern_id || finding.patternId || ""}`),
+        usage: claudeUsage,
+      });
+    }
+
+    const validation = validateAiPatchOutput(patchOutput, projectDir, candidateSet);
+    if (!validation.ok) {
+      return buildResult({
+        applied: false,
+        reason: FIX_ERROR_CODES.PATCH_GENERATION_FAILED,
+        message: validation.reason,
+        verifyRule: "",
+        verifyRoute: "/",
+        findingTitle: finding.title || "",
+        branchSlug: slugify(`${findingId}-${finding.pattern_id || finding.patternId || ""}`),
+        usage: claudeUsage,
+      });
+    }
+
+    const applied = applyChanges(projectDir, patchOutput.changes);
+    if (!applied.ok) {
+      return buildResult({
+        applied: false,
+        reason: FIX_ERROR_CODES.PATCH_APPLY_FAILED,
+        message: applied.reason,
+        verifyRule: "",
+        verifyRoute: "/",
+        findingTitle: finding.title || "",
+        branchSlug: slugify(`${findingId}-${finding.pattern_id || finding.patternId || ""}`),
+        usage: claudeUsage,
+      });
+    }
+
+    return buildResult({
+      applied: true,
+      reason: "",
+      message: "Patch applied successfully.",
+      changedFiles: applied.changedFiles,
+      patch: applied.patch,
+      verifyRule: "",
+      verifyRoute: "/",
+      findingTitle: finding.title || "",
+      branchSlug: slugify(`${findingId}-${finding.pattern_id || finding.patternId || ""}`),
+      usage: claudeUsage,
+    });
+  }
+
+  const findings = getFindings(input);
+  if (!findings) {
+    return buildResult({
+      applied: false,
+      reason: FIX_ERROR_CODES.INVALID_INPUT,
+      message: "Required input is missing: findingId, findingsPayload.findings, or projectDir.",
     });
   }
 
@@ -381,8 +527,6 @@ export async function applyFindingFix(input) {
 
   const aiInput = buildAiFixInput({ finding, intelligenceRule, execution, candidates });
   const candidateSet = new Set(candidates.map((c) => c.rel));
-  const apiKey = input.ai?.apiKey || process.env.ANTHROPIC_API_KEY || "";
-  const model = input.ai?.model || DEFAULT_MODEL;
 
   let patchOutput = null;
   let claudeUsage = { input_tokens: 0, output_tokens: 0 };
