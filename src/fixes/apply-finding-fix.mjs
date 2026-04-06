@@ -301,6 +301,7 @@ function validateAiPatchOutput(output, projectDir, fileSet) {
     const replace = typeof change.replace === "string" ? change.replace : "";
     if (!filePath || !search) return { ok: false, reason: "Change is missing filePath/search" };
     if (!fileSet.has(filePath)) return { ok: false, reason: `Change file not in candidate set: ${filePath}` };
+    if (search === replace) return { ok: false, reason: `AI generated a no-op patch for ${filePath} — search and replace are identical` };
 
     const abs = path.resolve(projectDir, filePath);
     if (!isWithin(projectDir, abs) && abs !== path.resolve(projectDir, filePath)) {
