@@ -208,7 +208,7 @@ function groupFindingsByFile(domFindings, projectDir) {
     return { abs, rel, content };
   });
 
-  const groups = new Map();
+  const initialGroups = new Map();
 
   for (const finding of domFindings) {
     const tokens = selectorTokens(finding.selector);
@@ -219,13 +219,29 @@ function groupFindingsByFile(domFindings, projectDir) {
       .slice(0, MAX_CANDIDATE_FILES);
 
     const key = ranked.length > 0 ? ranked[0].rel : `__no_candidates_${finding.id}`;
-    if (!groups.has(key)) {
-      groups.set(key, { candidates: ranked, findings: [] });
+    if (!initialGroups.has(key)) {
+      initialGroups.set(key, { candidates: ranked, findings: [] });
     }
-    groups.get(key).findings.push(finding);
+    initialGroups.get(key).findings.push(finding);
   }
 
-  return groups;
+  const merged = [];
+  for (const group of initialGroups.values()) {
+    const fileSet = new Set(group.candidates.map((c) => c.rel));
+    const existing = merged.find((m) => m.candidates.some((c) => fileSet.has(c.rel)));
+    if (existing) {
+      existing.findings.push(...group.findings);
+      for (const candidate of group.candidates) {
+        if (!existing.candidates.some((c) => c.rel === candidate.rel)) {
+          existing.candidates.push(candidate);
+        }
+      }
+    } else {
+      merged.push({ candidates: [...group.candidates], findings: [...group.findings] });
+    }
+  }
+
+  return merged;
 }
 
 function buildAiFixInputMulti({ findings, intelligenceRules, candidates, projectHints }) {
@@ -378,7 +394,7 @@ function applyChanges(projectDir, changes) {
     const abs = path.resolve(projectDir, rel);
     const original = fs.readFileSync(abs, "utf8");
     if (!original.includes(change.search)) {
-      return { ok: false, reason: `Search block not found in ${rel}` };
+      continue;
     }
     const updated = original.replace(change.search, change.replace);
     if (updated === original) continue;
@@ -738,7 +754,7 @@ export async function applyFindingsFix(input) {
 
   const groups = groupFindingsByFile(domFindings, projectDir);
 
-  for (const [topFile, { candidates, findings: groupFindings }] of groups) {
+  for (const { candidates, findings: groupFindings } of groups) {
     if (candidates.length === 0) {
       for (const finding of groupFindings) {
         resultMap.set(
@@ -800,7 +816,7 @@ export async function applyFindingsFix(input) {
           makeResult(finding.id, {
             applied: false,
             reason: FIX_ERROR_CODES.PATCH_GENERATION_FAILED,
-            message: `Could not generate patch output for file group (top file: ${topFile}).`,
+            message: `Could not generate patch output for file group (top file: ${candidates[0]?.rel || "unknown"}).`,
             findingTitle: finding.title || "",
             branchSlug: slugify(`${finding.id}-${finding.rule_id || ""}`),
             usage: claudeUsage,
@@ -864,7 +880,7 @@ export async function applyFindingsFix(input) {
           changedFiles: applied.changedFiles,
           patch: applied.patch,
           verifyRule: patchOutput.verifyRule || execution.verify.ruleId,
-          verifyRoute: patchOutput.verifyRoute || execution.verify.route,
+          verifyRoute: execution.verify.route,
           findingTitle: finding.title || "",
           branchSlug: slugify(`${finding.id}-${ruleId}`),
           usage: { input_tokens: perInput, output_tokens: perOutput },
