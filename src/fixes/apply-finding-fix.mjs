@@ -201,6 +201,59 @@ function buildExecution(ruleId, intelligenceRule, finding) {
   };
 }
 
+function groupFindingsByFile(domFindings, projectDir) {
+  const allFiles = listFilesRecursive(projectDir).map((abs) => {
+    const rel = path.relative(projectDir, abs);
+    const content = fs.readFileSync(abs, "utf8");
+    return { abs, rel, content };
+  });
+
+  const groups = new Map();
+
+  for (const finding of domFindings) {
+    const tokens = selectorTokens(finding.selector);
+    const ranked = allFiles
+      .map((f) => ({ ...f, score: scoreFile(f.rel, f.content, tokens) }))
+      .filter((f) => f.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_CANDIDATE_FILES);
+
+    const key = ranked.length > 0 ? ranked[0].rel : `__no_candidates_${finding.id}`;
+    if (!groups.has(key)) {
+      groups.set(key, { candidates: ranked, findings: [] });
+    }
+    groups.get(key).findings.push(finding);
+  }
+
+  return groups;
+}
+
+function buildAiFixInputMulti({ findings, intelligenceRules, candidates, projectHints }) {
+  return {
+    findings: findings.map((finding) => {
+      const ruleId = typeof finding.rule_id === "string" ? finding.rule_id.trim() : "";
+      const rule = intelligenceRules[ruleId] || {};
+      const execution = buildExecution(ruleId, rule, finding);
+      return {
+        id: finding.id,
+        ruleId,
+        title: finding.title,
+        severity: finding.severity,
+        selector: finding.selector,
+        actual: finding.actual,
+        expected: finding.expected,
+        area: finding.area,
+        url: finding.url,
+        fixDescription: finding.fix_description || rule.fix?.description || "",
+        fixCode: finding.fix_code || rule.fix?.code || "",
+        constraints: execution.constraints,
+      };
+    }),
+    projectContext: projectHints || "",
+    files: candidates.map((c) => ({ filePath: c.rel, content: c.content.slice(0, 12000) })),
+  };
+}
+
 function buildAiFixInput({ finding, intelligenceRule, execution, candidates, projectHints }) {
   return {
     finding: {
@@ -598,4 +651,237 @@ export async function applyFindingFix(input) {
     branchSlug: slugify(`${findingId}-${ruleId}`),
     usage: claudeUsage,
   });
+}
+
+/**
+ * Apply fixes for multiple DOM finding IDs grouped by candidate file.
+ * PAT-* findings are not handled here — pass them to applyFindingFix individually.
+ *
+ * @param {{
+ *   findingIds: string[],
+ *   findingsPayload?: { findings: Array<Record<string, unknown>> },
+ *   payload?: { findings: Array<Record<string, unknown>> },
+ *   projectDir: string,
+ *   projectHints?: string,
+ *   ai?: { apiKey?: string, model?: string },
+ * }} input
+ * @returns {Promise<{ results: Array<{ id: string } & ReturnType<typeof buildResult>> }>}
+ */
+export async function applyFindingsFix(input) {
+  if (!isObject(input)) {
+    return { results: [] };
+  }
+
+  const findingIds = Array.isArray(input.findingIds)
+    ? input.findingIds.map((id) => String(id).trim()).filter(Boolean)
+    : [];
+  const projectDir = typeof input.projectDir === "string" ? input.projectDir.trim() : "";
+  const projectHints = typeof input.projectHints === "string" ? input.projectHints.trim() : "";
+  const apiKey = input.ai?.apiKey || process.env.ANTHROPIC_API_KEY || "";
+  const model = input.ai?.model || DEFAULT_MODEL;
+
+  function makeResult(id, data) {
+    return { id, ...buildResult(data) };
+  }
+
+  if (findingIds.length === 0 || !projectDir) {
+    return { results: [] };
+  }
+
+  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) {
+    return {
+      results: findingIds.map((id) =>
+        makeResult(id, {
+          applied: false,
+          reason: FIX_ERROR_CODES.FILE_NOT_RESOLVED,
+          message: `Project directory does not exist: ${projectDir}`,
+        }),
+      ),
+    };
+  }
+
+  const findings = getFindings(input);
+  if (!findings) {
+    return {
+      results: findingIds.map((id) =>
+        makeResult(id, {
+          applied: false,
+          reason: FIX_ERROR_CODES.INVALID_INPUT,
+          message: "Required input is missing: findingsPayload.findings.",
+        }),
+      ),
+    };
+  }
+
+  const resultMap = new Map();
+
+  // Resolve finding objects; mark missing ones immediately
+  const resolved = findingIds.map((id) => {
+    const finding = findings.find((f) => isObject(f) && f.id === id);
+    if (!finding) {
+      resultMap.set(
+        id,
+        makeResult(id, {
+          applied: false,
+          reason: FIX_ERROR_CODES.FINDING_NOT_FOUND,
+          message: `Finding ${id} was not found in findingsPayload.findings.`,
+        }),
+      );
+    }
+    return { id, finding: finding || null };
+  });
+
+  const domFindings = resolved.filter((r) => r.finding).map((r) => r.finding);
+  if (domFindings.length === 0) {
+    return { results: findingIds.map((id) => resultMap.get(id)) };
+  }
+
+  const groups = groupFindingsByFile(domFindings, projectDir);
+
+  for (const [topFile, { candidates, findings: groupFindings }] of groups) {
+    if (candidates.length === 0) {
+      for (const finding of groupFindings) {
+        resultMap.set(
+          finding.id,
+          makeResult(finding.id, {
+            applied: false,
+            reason: FIX_ERROR_CODES.FILE_NOT_RESOLVED,
+            message: "No candidate source files were found for this finding.",
+            findingTitle: finding.title || "",
+            branchSlug: slugify(`${finding.id}-${finding.rule_id || ""}`),
+          }),
+        );
+      }
+      continue;
+    }
+
+    // Collect intelligence rules and filter out findings missing rule_id
+    const intelligenceRules = {};
+    const withRules = [];
+    for (const finding of groupFindings) {
+      const ruleId = typeof finding.rule_id === "string" ? finding.rule_id.trim() : "";
+      if (!ruleId) {
+        resultMap.set(
+          finding.id,
+          makeResult(finding.id, {
+            applied: false,
+            reason: FIX_ERROR_CODES.RULE_MISSING,
+            message: `Finding ${finding.id} does not include a rule_id.`,
+            findingTitle: finding.title || "",
+          }),
+        );
+        continue;
+      }
+      intelligenceRules[ruleId] = getIntelligenceForRule(ruleId);
+      withRules.push(finding);
+    }
+
+    if (withRules.length === 0) continue;
+
+    const candidateSet = new Set(candidates.map((c) => c.rel));
+    const aiInput = buildAiFixInputMulti({ findings: withRules, intelligenceRules, candidates, projectHints });
+
+    let patchOutput = null;
+    let claudeUsage = { input_tokens: 0, output_tokens: 0 };
+    if (apiKey) {
+      try {
+        const { patch, usage } = await callClaudeForPatch({ apiKey, model, aiInput });
+        patchOutput = patch;
+        claudeUsage = usage;
+      } catch {
+        patchOutput = null;
+      }
+    }
+
+    if (!patchOutput) {
+      for (const finding of withRules) {
+        resultMap.set(
+          finding.id,
+          makeResult(finding.id, {
+            applied: false,
+            reason: FIX_ERROR_CODES.PATCH_GENERATION_FAILED,
+            message: `Could not generate patch output for file group (top file: ${topFile}).`,
+            findingTitle: finding.title || "",
+            branchSlug: slugify(`${finding.id}-${finding.rule_id || ""}`),
+            usage: claudeUsage,
+          }),
+        );
+      }
+      continue;
+    }
+
+    const validation = validateAiPatchOutput(patchOutput, projectDir, candidateSet);
+    if (!validation.ok) {
+      for (const finding of withRules) {
+        resultMap.set(
+          finding.id,
+          makeResult(finding.id, {
+            applied: false,
+            reason: FIX_ERROR_CODES.PATCH_GENERATION_FAILED,
+            message: validation.reason,
+            findingTitle: finding.title || "",
+            branchSlug: slugify(`${finding.id}-${finding.rule_id || ""}`),
+            usage: claudeUsage,
+          }),
+        );
+      }
+      continue;
+    }
+
+    const applied = applyChanges(projectDir, patchOutput.changes);
+    if (!applied.ok) {
+      for (const finding of withRules) {
+        resultMap.set(
+          finding.id,
+          makeResult(finding.id, {
+            applied: false,
+            reason: FIX_ERROR_CODES.PATCH_APPLY_FAILED,
+            message: applied.reason,
+            findingTitle: finding.title || "",
+            branchSlug: slugify(`${finding.id}-${finding.rule_id || ""}`),
+            usage: claudeUsage,
+          }),
+        );
+      }
+      continue;
+    }
+
+    // Split token usage evenly across findings in the group
+    const n = withRules.length;
+    const perInput = Math.round(claudeUsage.input_tokens / n);
+    const perOutput = Math.round(claudeUsage.output_tokens / n);
+
+    for (const finding of withRules) {
+      const ruleId = typeof finding.rule_id === "string" ? finding.rule_id.trim() : "";
+      const intelligenceRule = intelligenceRules[ruleId] || {};
+      const execution = buildExecution(ruleId, intelligenceRule, finding);
+      resultMap.set(
+        finding.id,
+        makeResult(finding.id, {
+          applied: true,
+          reason: "",
+          message: "Patch applied successfully.",
+          changedFiles: applied.changedFiles,
+          patch: applied.patch,
+          verifyRule: patchOutput.verifyRule || execution.verify.ruleId,
+          verifyRoute: patchOutput.verifyRoute || execution.verify.route,
+          findingTitle: finding.title || "",
+          branchSlug: slugify(`${finding.id}-${ruleId}`),
+          usage: { input_tokens: perInput, output_tokens: perOutput },
+        }),
+      );
+    }
+  }
+
+  return {
+    results: findingIds.map(
+      (id) =>
+        resultMap.get(id) ||
+        makeResult(id, {
+          applied: false,
+          reason: FIX_ERROR_CODES.FINDING_NOT_FOUND,
+          message: `Finding ${id} was not found.`,
+        }),
+    ),
+  };
 }
