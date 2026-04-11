@@ -605,8 +605,18 @@ async function analyzeRoute(
       const builder = new AxeBuilder({ page });
 
       if (onlyRule) {
-        log.info(`Targeted Audit: Only checking rule "${onlyRule}"`);
-        builder.withRules([onlyRule]);
+        const rules = onlyRule.includes(",")
+          ? onlyRule.split(",").map((r) => r.trim()).filter(Boolean)
+          : [onlyRule];
+        const axeRules = rules.filter(
+          (r) => !r.startsWith("pa11y-") && !r.startsWith("WCAG") && !r.includes(".") && r !== "missing-skip-link",
+        );
+        log.info(`Targeted Audit: Only checking rules "${rules.join(", ")}" (axe-valid: ${axeRules.join(", ") || "none"})`);
+        if (axeRules.length > 0) {
+          builder.withRules(axeRules);
+        } else {
+          builder.withTags(axeTags || AXE_TAGS);
+        }
       } else {
         const tagsToUse = axeTags || AXE_TAGS;
         builder.withTags(tagsToUse);

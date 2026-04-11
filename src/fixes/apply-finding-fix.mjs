@@ -90,7 +90,7 @@ function getFindings(input) {
 
 function getIntelligenceForRule(ruleId) {
   const rules = ASSETS.remediation.intelligence?.rules || {};
-  return isObject(rules[ruleId]) ? rules[ruleId] : {};
+  return isObject(rules[ruleId]) ? rules[ruleId] : isObject(rules[`cdp-${ruleId}`]) ? rules[`cdp-${ruleId}`] : {};
 }
 
 function listFilesRecursive(dir) {
@@ -183,7 +183,11 @@ function getCandidateFiles(projectDir, finding) {
 }
 
 function buildExecution(ruleId, intelligenceRule, finding) {
-  const ruleVerify = finding.rule_id || ruleId || "";
+  const raw = finding.rule_id || ruleId || "";
+  const axeEquivalent = intelligenceRule.related_rules?.find((r) =>
+    r.reason?.toLowerCase().includes("axe"),
+  )?.id;
+  const ruleVerify = axeEquivalent || raw;
   const route = normalizeRoute(finding.area);
   return {
     strategy: "ai-dom-patch",
@@ -388,6 +392,7 @@ function validateAiPatchOutput(output, projectDir, fileSet) {
 function applyChanges(projectDir, changes) {
   const changedFiles = [];
   const patchParts = [];
+  const succeededFindingIds = new Set();
 
   for (const change of changes) {
     const rel = change.filePath;
@@ -401,6 +406,9 @@ function applyChanges(projectDir, changes) {
     fs.writeFileSync(abs, updated, "utf8");
     changedFiles.push(rel);
     patchParts.push(`--- ${rel}\n+++ ${rel}\n@@\n-${change.search}\n+${change.replace}`);
+    if (typeof change.findingId === "string" && change.findingId.trim()) {
+      succeededFindingIds.add(change.findingId.trim());
+    }
   }
 
   if (changedFiles.length === 0) return { ok: false, reason: "No effective changes were applied" };
@@ -409,6 +417,7 @@ function applyChanges(projectDir, changes) {
     ok: true,
     changedFiles: [...new Set(changedFiles)],
     patch: patchParts.join("\n"),
+    succeededFindingIds,
   };
 }
 
@@ -661,8 +670,8 @@ export async function applyFindingFix(input) {
     message: "Patch applied successfully.",
     changedFiles: applied.changedFiles,
     patch: applied.patch,
-    verifyRule: patchOutput.verifyRule || execution.verify.ruleId,
-    verifyRoute: patchOutput.verifyRoute || execution.verify.route,
+    verifyRule: execution.verify.ruleId,
+    verifyRoute: execution.verify.route,
     findingTitle: finding.title || "",
     branchSlug: slugify(`${findingId}-${ruleId}`),
     usage: claudeUsage,
@@ -867,19 +876,30 @@ export async function applyFindingsFix(input) {
     const perInput = Math.round(claudeUsage.input_tokens / n);
     const perOutput = Math.round(claudeUsage.output_tokens / n);
 
+    // If Claude tagged changes with findingId, use those for per-finding success tracking.
+    // If no findingId tags were emitted, fall back to group-level success for all findings.
+    const hasFindingIdTracking = applied.succeededFindingIds.size > 0;
+
     for (const finding of withRules) {
       const ruleId = typeof finding.rule_id === "string" ? finding.rule_id.trim() : "";
       const intelligenceRule = intelligenceRules[ruleId] || {};
       const execution = buildExecution(ruleId, intelligenceRule, finding);
+
+      const findingApplied = hasFindingIdTracking
+        ? applied.succeededFindingIds.has(finding.id)
+        : true;
+
       resultMap.set(
         finding.id,
         makeResult(finding.id, {
-          applied: true,
-          reason: "",
-          message: "Patch applied successfully.",
+          applied: findingApplied,
+          reason: findingApplied ? "" : FIX_ERROR_CODES.PATCH_APPLY_FAILED,
+          message: findingApplied
+            ? "Patch applied successfully."
+            : "The change for this finding could not be applied (search block not found).",
           changedFiles: applied.changedFiles,
           patch: applied.patch,
-          verifyRule: patchOutput.verifyRule || execution.verify.ruleId,
+          verifyRule: execution.verify.ruleId,
           verifyRoute: execution.verify.route,
           findingTitle: finding.title || "",
           branchSlug: slugify(`${finding.id}-${ruleId}`),
