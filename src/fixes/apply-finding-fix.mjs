@@ -167,15 +167,56 @@ function buildPatternAiInput({ finding, candidate }) {
   };
 }
 
+// Layout file name patterns for page-level fixes (e.g. bypass/skip-link).
+// Ordered by priority: more specific names first.
+const LAYOUT_FILE_PATTERNS = [
+  /^app[\/\\]layout\.[jt]sx?$/i,
+  /^src[\/\\]app[\/\\]layout\.[jt]sx?$/i,
+  /^pages[\/\\]_app\.[jt]sx?$/i,
+  /^pages[\/\\]_document\.[jt]sx?$/i,
+  /^src[\/\\]pages[\/\\]_app\.[jt]sx?$/i,
+  /^src[\/\\]pages[\/\\]_document\.[jt]sx?$/i,
+  /layouts[\/\\]default\.vue$/i,
+  /layouts[\/\\][^\/\\]+\.vue$/i,
+  /\+layout\.svelte$/i,
+  /app\.component\.html$/i,
+  /layouts[\/\\][^\/\\]+\.astro$/i,
+  /layout[\/\\]theme\.liquid$/i,
+];
+
+function getLayoutCandidates(projectDir, files) {
+  const byPattern = [];
+  for (const { abs, rel, content } of files) {
+    const normalRel = rel.replace(/\\/g, "/");
+    for (let i = 0; i < LAYOUT_FILE_PATTERNS.length; i++) {
+      if (LAYOUT_FILE_PATTERNS[i].test(normalRel)) {
+        byPattern.push({ abs, rel, content, score: LAYOUT_FILE_PATTERNS.length - i });
+        break;
+      }
+    }
+  }
+  return byPattern.sort((a, b) => b.score - a.score).slice(0, MAX_CANDIDATE_FILES);
+}
+
 function getCandidateFiles(projectDir, finding) {
-  const files = listFilesRecursive(projectDir);
+  const allFiles = listFilesRecursive(projectDir).map((abs) => {
+    const content = fs.readFileSync(abs, "utf8");
+    const rel = path.relative(projectDir, abs);
+    return { abs, rel, content };
+  });
+
   const tokens = selectorTokens(finding.selector);
-  const ranked = files
-    .map((abs) => {
-      const content = fs.readFileSync(abs, "utf8");
-      const rel = path.relative(projectDir, abs);
-      return { abs, rel, content, score: scoreFile(rel, content, tokens) };
-    })
+
+  if (tokens.length === 0) {
+    // Selector has no useful tokens (e.g. "html", "body") — target layout files directly.
+    const layoutCandidates = getLayoutCandidates(projectDir, allFiles);
+    if (layoutCandidates.length > 0) return layoutCandidates;
+    // Fallback: return all files with equal weight so Claude gets the full picture.
+    return allFiles.slice(0, MAX_CANDIDATE_FILES).map((f) => ({ ...f, score: 1 }));
+  }
+
+  const ranked = allFiles
+    .map((f) => ({ ...f, score: scoreFile(f.rel, f.content, tokens) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_CANDIDATE_FILES);
@@ -216,11 +257,19 @@ function groupFindingsByFile(domFindings, projectDir) {
 
   for (const finding of domFindings) {
     const tokens = selectorTokens(finding.selector);
-    const ranked = allFiles
-      .map((f) => ({ ...f, score: scoreFile(f.rel, f.content, tokens) }))
-      .filter((f) => f.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, MAX_CANDIDATE_FILES);
+    let ranked;
+    if (tokens.length === 0) {
+      const layoutCandidates = getLayoutCandidates(projectDir, allFiles);
+      ranked = layoutCandidates.length > 0
+        ? layoutCandidates
+        : allFiles.slice(0, MAX_CANDIDATE_FILES).map((f) => ({ ...f, score: 1 }));
+    } else {
+      ranked = allFiles
+        .map((f) => ({ ...f, score: scoreFile(f.rel, f.content, tokens) }))
+        .filter((f) => f.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, MAX_CANDIDATE_FILES);
+    }
 
     const key = ranked.length > 0 ? ranked[0].rel : `__no_candidates_${finding.id}`;
     if (!initialGroups.has(key)) {
