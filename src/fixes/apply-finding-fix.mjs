@@ -165,11 +165,23 @@ function buildPatternAiInput({ finding, candidate, projectHints }) {
     ? finding.context.split("\n").map((l) => l.trim()).filter(Boolean)
     : [];
   const matchPrefix = rawMatch.slice(0, 30);
-  const contextAnchor = contextLines.reduce((best, line) => {
+  // The current content at the original line position — use this to pin the anchor
+  // to THIS specific element rather than a sibling with a similar match prefix.
+  const currentAtOriginal = effectiveLineIndex >= 0
+    ? (fileLines[effectiveLineIndex] || "").trim()
+    : "";
+  // Prefer a context line that exactly matches the current file content at originalLine.
+  // This disambiguates siblings (e.g. two inputs with placeholder=) when the file has
+  // not yet been modified. Falls back to the longest context line for post-shift cases
+  // where the original position now holds different content (lines were inserted before it).
+  const exactContextMatch = matchPrefix
+    ? contextLines.find((l) => l === currentAtOriginal && l.includes(matchPrefix)) || null
+    : null;
+  const longestContextMatch = contextLines.reduce((best, line) => {
     if (!matchPrefix || !line.includes(matchPrefix)) return best;
     return !best || line.length > best.length ? line : best;
   }, null);
-  const anchor = contextAnchor || matchPrefix;
+  const anchor = exactContextMatch || longestContextMatch || matchPrefix;
 
   // The file may have been modified by a previous sequential fix (lines shifted).
   // Search for the actual current line containing the anchor instead of
