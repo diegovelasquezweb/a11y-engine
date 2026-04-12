@@ -371,11 +371,14 @@ function parseJsonBlock(text) {
 async function callClaudeForPatch({ apiKey, model, aiInput }) {
   const system = [
     "You are an accessibility fix engine.",
-    "Return JSON only.",
-    "Generate deterministic text replacements for provided files.",
-    "Use finding.fixDescription and execution.constraints.must as guidance for what to fix and how.",
-    "For insertions (new element that does not yet exist in the file), use the nearest existing parent element as the search anchor. The replace value must include that anchor plus the new content.",
-    "Do not create files. Do not modify paths outside provided filePath values.",
+    "Return JSON only — no markdown fences, no extra text.",
+    "The input contains either a single 'finding' object or a 'findings' array. Fix EVERY finding present.",
+    "For each finding, read its fixDescription and constraints.must fields to understand the required fix.",
+    "Generate text-replacement changes in the provided source files.",
+    "CRITICAL — filePath rules: use the EXACT filePath string from the files array. Never derive filePath from area, url, selector, or any other field. Never add or remove leading slashes or file extensions.",
+    "CRITICAL — search accuracy: the 'search' value must be a verbatim copy of a substring from the file content. Do not paraphrase, reformat, or reconstruct it — copy it character-for-character.",
+    "For insertions (new element not yet in the file), anchor the search on the nearest existing surrounding element and include it in both search and replace.",
+    "Do not create new files. Only write changes for filePaths listed in the files array.",
     "Schema:",
     "{\"changes\":[{\"filePath\":\"...\",\"search\":\"...\",\"replace\":\"...\"}],\"verifyRule\":\"...\",\"verifyRoute\":\"...\",\"notes\":\"...\"}",
   ].join("\n");
@@ -413,6 +416,11 @@ async function callClaudeForPatch({ apiKey, model, aiInput }) {
   return { patch: parsed, usage };
 }
 
+function normalizeFilePath(filePath) {
+  // Strip leading slashes Claude may copy from finding.area (e.g. "/contact.html" → "contact.html")
+  return typeof filePath === "string" ? filePath.replace(/^\/+/, "") : filePath;
+}
+
 function validateAiPatchOutput(output, projectDir, fileSet) {
   if (!isObject(output)) return { ok: false, reason: "AI patch output is empty" };
   if (!Array.isArray(output.changes) || output.changes.length === 0) {
@@ -421,18 +429,22 @@ function validateAiPatchOutput(output, projectDir, fileSet) {
 
   for (const change of output.changes) {
     if (!isObject(change)) return { ok: false, reason: "Invalid change item" };
-    const filePath = typeof change.filePath === "string" ? change.filePath.trim() : "";
+    const rawPath = typeof change.filePath === "string" ? change.filePath.trim() : "";
+    const filePath = normalizeFilePath(rawPath);
     const search = typeof change.search === "string" ? change.search : "";
     const replace = typeof change.replace === "string" ? change.replace : "";
     if (!filePath || !search) return { ok: false, reason: "Change is missing filePath/search" };
-    if (!fileSet.has(filePath)) return { ok: false, reason: `Change file not in candidate set: ${filePath}` };
+    if (!fileSet.has(filePath)) return { ok: false, reason: `Change file not in candidate set: ${rawPath}` };
     if (search === replace) return { ok: false, reason: `AI generated a no-op patch for ${filePath} — search and replace are identical` };
 
     const abs = path.resolve(projectDir, filePath);
-    if (!isWithin(projectDir, abs) && abs !== path.resolve(projectDir, filePath)) {
+    if (!isWithin(projectDir, abs)) {
       return { ok: false, reason: `Change path escapes projectDir: ${filePath}` };
     }
     if (replace.length > 20000) return { ok: false, reason: `Replacement too large for ${filePath}` };
+
+    // Normalize in-place so downstream applyChanges uses the clean path
+    change.filePath = filePath;
   }
 
   return { ok: true };
