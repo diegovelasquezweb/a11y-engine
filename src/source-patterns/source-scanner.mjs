@@ -201,6 +201,10 @@ export function scanPattern(pattern, scanDir, projectDir = scanDir) {
       regex.lastIndex = 0;
       if (!regex.test(lines[i])) continue;
 
+      // Skip matches inside comments — they are not real code issues
+      const trimmed = lines[i].trim();
+      if (trimmed.startsWith("<!--") || trimmed.startsWith("{/*") || trimmed.startsWith("//")) continue;
+
       const contextStart = Math.max(0, i - 3);
       const contextEnd = Math.min(lines.length - 1, i + 3);
       const context = lines
