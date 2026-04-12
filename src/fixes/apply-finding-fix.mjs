@@ -151,6 +151,21 @@ function getPatternCandidateFile(projectDir, finding) {
 }
 
 function buildPatternAiInput({ finding, candidate }) {
+  // Extract the exact line(s) containing the pattern match so Claude has an
+  // unambiguous search anchor instead of inferring it from the full file.
+  const fileLines = candidate.content.split("\n");
+  const lineNumber = typeof finding.line === "number" ? finding.line : null;
+  const matchLine = lineNumber !== null && lineNumber >= 1 && lineNumber <= fileLines.length
+    ? fileLines[lineNumber - 1]
+    : "";
+
+  // Widen context: include ±4 lines around the match line for multi-line elements.
+  const contextStart = lineNumber !== null ? Math.max(0, lineNumber - 5) : 0;
+  const contextEnd = lineNumber !== null ? Math.min(fileLines.length, lineNumber + 4) : 0;
+  const surroundingLines = contextStart < contextEnd
+    ? fileLines.slice(contextStart, contextEnd).join("\n")
+    : (finding.context || "");
+
   return {
     finding: {
       id: finding.id,
@@ -158,10 +173,12 @@ function buildPatternAiInput({ finding, candidate }) {
       severity: finding.severity,
       patternId: finding.pattern_id || finding.patternId || "",
       file: finding.file,
-      line: finding.line ?? null,
+      line: lineNumber,
       match: finding.match || "",
-      context: finding.context || "",
+      matchLine,
+      surroundingLines,
       fixDescription: finding.fix_description || "",
+      fixCode: finding.fix_code || "",
     },
     files: [{ filePath: candidate.rel, content: candidate.content.slice(0, 12000) }],
   };
@@ -377,6 +394,7 @@ async function callClaudeForPatch({ apiKey, model, aiInput }) {
     "Generate text-replacement changes in the provided source files.",
     "CRITICAL — filePath rules: use the EXACT filePath string from the files array. Never derive filePath from area, url, selector, or any other field. Never add or remove leading slashes or file extensions.",
     "CRITICAL — search accuracy: the 'search' value must be a verbatim copy of a substring from the file content. Do not paraphrase, reformat, or reconstruct it — copy it character-for-character.",
+    "For PAT findings: finding.matchLine contains the EXACT content of the line to fix — use it as your primary search anchor. finding.surroundingLines gives the wider context if you need a multi-line anchor.",
     "For insertions (new element not yet in the file), anchor the search on the nearest existing surrounding element and include it in both search and replace.",
     "Do not create new files. Only write changes for filePaths listed in the files array.",
     "Schema:",
