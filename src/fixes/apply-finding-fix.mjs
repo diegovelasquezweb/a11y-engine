@@ -394,9 +394,9 @@ async function callClaudeForPatch({ apiKey, model, aiInput }) {
     "Generate text-replacement changes in the provided source files.",
     "CRITICAL — filePath rules: use the EXACT filePath string from the files array. Never derive filePath from area, url, selector, or any other field. Never add or remove leading slashes or file extensions.",
     "CRITICAL — search accuracy: the 'search' value must be a verbatim copy of a substring from the file content. Do not paraphrase, reformat, or reconstruct it — copy it character-for-character.",
-    "For PAT findings: finding.matchLine contains the EXACT content of the line to fix — use it as your primary search anchor. finding.surroundingLines gives the wider context if you need a multi-line anchor.",
     "For insertions (new element not yet in the file), anchor the search on the nearest existing surrounding element and include it in both search and replace.",
     "Do not create new files. Only write changes for filePaths listed in the files array.",
+    "CSS files are never in the files array. Fix visual issues (touch targets, sizing) using inline style attributes or markup changes in the HTML file — never reference or create .css files.",
     "Schema:",
     "{\"changes\":[{\"filePath\":\"...\",\"search\":\"...\",\"replace\":\"...\"}],\"verifyRule\":\"...\",\"verifyRoute\":\"...\",\"notes\":\"...\"}",
   ].join("\n");
