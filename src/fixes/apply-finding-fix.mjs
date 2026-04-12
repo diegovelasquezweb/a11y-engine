@@ -150,7 +150,7 @@ function getPatternCandidateFile(projectDir, finding) {
   return { abs, rel: finding.file, content };
 }
 
-function buildPatternAiInput({ finding, candidate }) {
+function buildPatternAiInput({ finding, candidate, projectHints }) {
   // Extract the exact line(s) containing the pattern match so Claude has an
   // unambiguous search anchor instead of inferring it from the full file.
   const fileLines = candidate.content.split("\n");
@@ -181,6 +181,7 @@ function buildPatternAiInput({ finding, candidate }) {
       fixCode: finding.fix_code || "",
     },
     files: [{ filePath: candidate.rel, content: candidate.content.slice(0, 12000) }],
+    ...(projectHints ? { projectContext: projectHints } : {}),
   };
 }
 
@@ -596,7 +597,7 @@ export async function applyFindingFix(input) {
       });
     }
 
-    const aiInput = buildPatternAiInput({ finding, candidate });
+    const aiInput = buildPatternAiInput({ finding, candidate, projectHints });
     const candidateSet = new Set([candidate.rel]);
 
     let patchOutput = null;
