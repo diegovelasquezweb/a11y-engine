@@ -165,6 +165,10 @@ function buildPatternAiInput({ finding, candidate, projectHints }) {
     ? finding.context.split("\n").map((l) => l.trim()).filter(Boolean)
     : [];
   const matchPrefix = rawMatch.slice(0, 30);
+
+  // Declare effectiveLineIndex first so it can be used when computing currentAtOriginal.
+  let effectiveLineIndex = originalLine !== null ? originalLine - 1 : -1;
+
   // The current content at the original line position — use this to pin the anchor
   // to THIS specific element rather than a sibling with a similar match prefix.
   const currentAtOriginal = effectiveLineIndex >= 0
@@ -186,7 +190,6 @@ function buildPatternAiInput({ finding, candidate, projectHints }) {
   // The file may have been modified by a previous sequential fix (lines shifted).
   // Search for the actual current line containing the anchor instead of
   // relying solely on the original line number from the scan.
-  let effectiveLineIndex = originalLine !== null ? originalLine - 1 : -1;
   if (anchor && effectiveLineIndex >= 0) {
     const lineAtOriginal = (fileLines[effectiveLineIndex] || "").trim();
     if (!lineAtOriginal.includes(anchor)) {
