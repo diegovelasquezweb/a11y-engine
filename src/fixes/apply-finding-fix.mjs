@@ -154,14 +154,29 @@ function buildPatternAiInput({ finding, candidate, projectHints }) {
   // Extract the exact line(s) containing the pattern match so Claude has an
   // unambiguous search anchor instead of inferring it from the full file.
   const fileLines = candidate.content.split("\n");
-  const lineNumber = typeof finding.line === "number" ? finding.line : null;
-  const matchLine = lineNumber !== null && lineNumber >= 1 && lineNumber <= fileLines.length
-    ? fileLines[lineNumber - 1]
+  const originalLine = typeof finding.line === "number" ? finding.line : null;
+  const rawMatch = typeof finding.match === "string" ? finding.match.trim() : "";
+
+  // The file may have been modified by a previous sequential fix (lines shifted).
+  // Search for the actual current line containing the match string instead of
+  // relying solely on the original line number from the scan.
+  let effectiveLineIndex = originalLine !== null ? originalLine - 1 : -1;
+  if (rawMatch && effectiveLineIndex >= 0) {
+    const lineAtOriginal = (fileLines[effectiveLineIndex] || "").trim();
+    if (!lineAtOriginal.includes(rawMatch.slice(0, 30))) {
+      const found = fileLines.findIndex((l) => l.trim().includes(rawMatch.slice(0, 30)));
+      if (found !== -1) effectiveLineIndex = found;
+    }
+  }
+
+  const lineNumber = effectiveLineIndex >= 0 ? effectiveLineIndex + 1 : originalLine;
+  const matchLine = effectiveLineIndex >= 0 && effectiveLineIndex < fileLines.length
+    ? fileLines[effectiveLineIndex]
     : "";
 
   // Widen context: include ±4 lines around the match line for multi-line elements.
-  const contextStart = lineNumber !== null ? Math.max(0, lineNumber - 5) : 0;
-  const contextEnd = lineNumber !== null ? Math.min(fileLines.length, lineNumber + 4) : 0;
+  const contextStart = effectiveLineIndex >= 0 ? Math.max(0, effectiveLineIndex - 4) : 0;
+  const contextEnd = effectiveLineIndex >= 0 ? Math.min(fileLines.length, effectiveLineIndex + 5) : 0;
   const surroundingLines = contextStart < contextEnd
     ? fileLines.slice(contextStart, contextEnd).join("\n")
     : (finding.context || "");
