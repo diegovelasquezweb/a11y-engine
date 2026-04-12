@@ -671,6 +671,39 @@ export async function applyFindingFix(input) {
 
     const validation = validateAiPatchOutput(patchOutput, projectDir, candidateSet);
     if (!validation.ok) {
+      // When Claude returns no changes, it may be because a prior fix (e.g. the DOM
+      // batch) already resolved this issue. Verify by checking if the pattern's
+      // context_reject_regex now matches the surroundingLines of the target element.
+      // If it does, the element is already accessible — count as resolved.
+      if (validation.reason === "AI patch output has no changes") {
+        const patternId = finding.pattern_id || finding.patternId || "";
+        const patternDef = (ASSETS.remediation.codePatterns?.patterns || [])
+          .find((p) => p.id === patternId);
+        const rejectRegex = patternDef?.context_reject_regex;
+        if (rejectRegex) {
+          const context = [aiInput.finding.surroundingLines, aiInput.finding.matchLine]
+            .filter(Boolean)
+            .join("\n");
+          try {
+            if (new RegExp(rejectRegex, "i").test(context)) {
+              return buildResult({
+                applied: true,
+                reason: "",
+                message: "Already resolved by a prior fix.",
+                changedFiles: [],
+                patch: "",
+                verifyRule: "",
+                verifyRoute: "/",
+                findingTitle: finding.title || "",
+                branchSlug: slugify(`${findingId}-${patternId}`),
+                usage: claudeUsage,
+              });
+            }
+          } catch {
+            // Invalid regex in pattern definition — fall through to the error return
+          }
+        }
+      }
       return buildResult({
         applied: false,
         reason: FIX_ERROR_CODES.PATCH_GENERATION_FAILED,
