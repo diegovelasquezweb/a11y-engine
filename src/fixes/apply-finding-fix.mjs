@@ -157,14 +157,28 @@ function buildPatternAiInput({ finding, candidate, projectHints }) {
   const originalLine = typeof finding.line === "number" ? finding.line : null;
   const rawMatch = typeof finding.match === "string" ? finding.match.trim() : "";
 
+  // rawMatch is often just the regex prefix (e.g. 'placeholder="') and is not unique
+  // when multiple elements match the same pattern in the same file.
+  // Use finding.context to build a more specific anchor so sequential fixes on the
+  // same file don't end up targeting an already-patched sibling element.
+  const contextLines = typeof finding.context === "string"
+    ? finding.context.split("\n").map((l) => l.trim()).filter(Boolean)
+    : [];
+  const matchPrefix = rawMatch.slice(0, 30);
+  const contextAnchor = contextLines.reduce((best, line) => {
+    if (!matchPrefix || !line.includes(matchPrefix)) return best;
+    return !best || line.length > best.length ? line : best;
+  }, null);
+  const anchor = contextAnchor || matchPrefix;
+
   // The file may have been modified by a previous sequential fix (lines shifted).
-  // Search for the actual current line containing the match string instead of
+  // Search for the actual current line containing the anchor instead of
   // relying solely on the original line number from the scan.
   let effectiveLineIndex = originalLine !== null ? originalLine - 1 : -1;
-  if (rawMatch && effectiveLineIndex >= 0) {
+  if (anchor && effectiveLineIndex >= 0) {
     const lineAtOriginal = (fileLines[effectiveLineIndex] || "").trim();
-    if (!lineAtOriginal.includes(rawMatch.slice(0, 30))) {
-      const found = fileLines.findIndex((l) => l.trim().includes(rawMatch.slice(0, 30)));
+    if (!lineAtOriginal.includes(anchor)) {
+      const found = fileLines.findIndex((l) => l.trim().includes(anchor));
       if (found !== -1) effectiveLineIndex = found;
     }
   }
