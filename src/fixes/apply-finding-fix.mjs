@@ -385,7 +385,28 @@ function parseJsonBlock(text) {
   }
 }
 
-async function callClaudeForPatch({ apiKey, model, aiInput }) {
+function extractRemediationContext(remediationPath) {
+  if (!remediationPath || !fs.existsSync(remediationPath)) return null;
+  try {
+    const content = fs.readFileSync(remediationPath, "utf8");
+    const sections = [];
+    const guardrailsMatch = content.match(/## Agent Operating Procedures \(Guardrails\)([\s\S]*?)(?=\n---|\n##|$)/);
+    if (guardrailsMatch) {
+      sections.push("## Project Guardrails (from audit)\n" + guardrailsMatch[1].trim());
+    }
+    const sourceMatch = content.match(/## Source File Locations([\s\S]*?)(?=\n---|\n##|$)/);
+    if (sourceMatch) {
+      sections.push("## Source File Locations (from audit)\n" + sourceMatch[1].trim());
+    }
+    return sections.length > 0 ? sections.join("\n\n") : null;
+  } catch {
+    return null;
+  }
+}
+
+async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
+  const remediationContext = extractRemediationContext(remediationPath);
+
   const system = [
     "You are an accessibility fix engine.",
     "Return JSON only — no markdown fences, no extra text.",
@@ -397,6 +418,7 @@ async function callClaudeForPatch({ apiKey, model, aiInput }) {
     "For insertions (new element not yet in the file), anchor the search on the nearest existing surrounding element and include it in both search and replace.",
     "Do not create new files. Only write changes for filePaths listed in the files array.",
     "CSS files are never in the files array. Fix visual issues (touch targets, sizing) using inline style attributes or markup changes in the HTML file — never reference or create .css files.",
+    ...(remediationContext ? ["", "## Project Context (from audit report)", remediationContext] : []),
     "Schema:",
     "{\"changes\":[{\"filePath\":\"...\",\"search\":\"...\",\"replace\":\"...\"}],\"verifyRule\":\"...\",\"verifyRoute\":\"...\",\"notes\":\"...\"}",
   ].join("\n");
@@ -521,6 +543,7 @@ export async function applyFindingFix(input) {
   const findingId = typeof input.findingId === "string" ? input.findingId.trim() : "";
   const projectDir = typeof input.projectDir === "string" ? input.projectDir.trim() : "";
   const projectHints = typeof input.projectHints === "string" ? input.projectHints.trim() : "";
+  const remediationPath = typeof input.remediationPath === "string" ? input.remediationPath.trim() : (process.env.REMEDIATION_PATH || "");
 
   if (!findingId || !projectDir) {
     return buildResult({
@@ -580,7 +603,7 @@ export async function applyFindingFix(input) {
     let claudeUsage = { input_tokens: 0, output_tokens: 0 };
     if (apiKey) {
       try {
-        const { patch, usage } = await callClaudeForPatch({ apiKey, model, aiInput });
+        const { patch, usage } = await callClaudeForPatch({ apiKey, model, aiInput, remediationPath });
         patchOutput = patch;
         claudeUsage = usage;
       } catch {
@@ -781,6 +804,7 @@ export async function applyFindingsFix(input) {
     : [];
   const projectDir = typeof input.projectDir === "string" ? input.projectDir.trim() : "";
   const projectHints = typeof input.projectHints === "string" ? input.projectHints.trim() : "";
+  const remediationPath = typeof input.remediationPath === "string" ? input.remediationPath.trim() : (process.env.REMEDIATION_PATH || "");
   const apiKey = input.ai?.apiKey || process.env.ANTHROPIC_API_KEY || "";
   const model = input.ai?.model || DEFAULT_MODEL;
 
@@ -889,7 +913,7 @@ export async function applyFindingsFix(input) {
     let claudeUsage = { input_tokens: 0, output_tokens: 0 };
     if (apiKey) {
       try {
-        const { patch, usage } = await callClaudeForPatch({ apiKey, model, aiInput });
+        const { patch, usage } = await callClaudeForPatch({ apiKey, model, aiInput, remediationPath });
         patchOutput = patch;
         claudeUsage = usage;
       } catch {
