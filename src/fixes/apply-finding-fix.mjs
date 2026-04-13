@@ -696,19 +696,36 @@ export async function applyFindingFix(input) {
 
     const validation = validateAiPatchOutput(patchOutput, projectDir, candidateSet);
     if (!validation.ok) {
-      // When Claude returns no changes, it may be because a prior fix (e.g. the DOM
-      // batch) already resolved this issue. Verify by checking if the pattern's
-      // context_reject_regex now matches the surroundingLines of the target element.
+      // When Claude returns no changes OR a no-op patch (search===replace), it may be
+      // because a prior fix (e.g. the DOM batch) already resolved this issue.
+      // Verify by checking if the pattern's context_reject_regex now matches the
+      // current file content around the target element.
       // If it does, the element is already accessible — count as resolved.
-      if (validation.reason === "AI patch output has no changes") {
+      const isNoChanges = validation.reason === "AI patch output has no changes";
+      const isNoop = validation.reason.startsWith("AI generated a no-op patch for ");
+      if (isNoChanges || isNoop) {
         const patternId = finding.pattern_id || finding.patternId || "";
         const patternDef = (ASSETS.remediation.codePatterns?.patterns || [])
           .find((p) => p.id === patternId);
         const rejectRegex = patternDef?.context_reject_regex;
         if (rejectRegex) {
-          const context = [aiInput.finding.surroundingLines, aiInput.finding.matchLine]
-            .filter(Boolean)
-            .join("\n");
+          // For no-op patches, read the CURRENT file content — the DOM batch may have
+          // already resolved this finding by modifying the file after the scan.
+          let context;
+          if (isNoop) {
+            try {
+              const currentContent = fs.readFileSync(candidate.abs, "utf8");
+              const fileLines = currentContent.split("\n");
+              const lineIdx = Math.max(0, (aiInput.finding.line || 1) - 1);
+              const start = Math.max(0, lineIdx - 4);
+              const end = Math.min(fileLines.length, lineIdx + 5);
+              context = fileLines.slice(start, end).join("\n");
+            } catch {
+              context = [aiInput.finding.surroundingLines, aiInput.finding.matchLine].filter(Boolean).join("\n");
+            }
+          } else {
+            context = [aiInput.finding.surroundingLines, aiInput.finding.matchLine].filter(Boolean).join("\n");
+          }
           try {
             if (new RegExp(rejectRegex, "i").test(context)) {
               return buildResult({
