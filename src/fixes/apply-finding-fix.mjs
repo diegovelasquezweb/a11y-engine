@@ -480,6 +480,7 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
     body: JSON.stringify({
       model,
       max_tokens: 4096,
+      temperature: 0,
       system,
       messages: [{ role: "user", content: userMessage }],
     }),
