@@ -465,16 +465,32 @@ function detectStylingSystem(aiInput) {
   return "inline";
 }
 
+export function buildStyleInstruction(stylingSystem) {
+  if (stylingSystem === "tailwind") {
+    return (
+      "This project uses Tailwind CSS. Apply style fixes as Tailwind utility classes in the HTML/JSX file — do not write raw CSS. " +
+      "For inline style attributes that suppress focus (e.g. style=\"outline: none\"): remove outline: none from the style attribute and add focus-visible: Tailwind utility classes (e.g. focus-visible:outline-2 focus-visible:outline-offset-2) directly on the element instead."
+    );
+  }
+  if (stylingSystem === "css") {
+    return (
+      "CSS/SCSS files are available in the files array. Prefer fixing visual issues (touch targets, color contrast) in the CSS/SCSS file using proper selectors. " +
+      "For violations in a CSS/SCSS file: add or update the rule there directly. " +
+      "For violations in an inline HTML style attribute (e.g. style=\"outline: none\"): make TWO changes — " +
+      "(1) remove outline: none / outline: 0 from the HTML style attribute, " +
+      "(2) add a :focus-visible rule in the CSS/SCSS file targeting the element."
+    );
+  }
+  return (
+    "No CSS file was provided. Remove outline: none or outline: 0 from the style attribute entirely and rely on the browser default focus indicator. " +
+    "Do not add new CSS files."
+  );
+}
+
 async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
   const remediationContext = extractRemediationContext(remediationPath);
   const stylingSystem = detectStylingSystem(aiInput);
-
-  const styleInstruction =
-    stylingSystem === "tailwind"
-      ? "This project uses Tailwind CSS. Apply style fixes as Tailwind utility classes in the HTML/JSX file — do not write raw CSS."
-      : stylingSystem === "css"
-      ? "CSS/SCSS files are available in the files array. Prefer fixing visual issues (touch targets, color contrast, focus outlines) in the CSS/SCSS file using proper selectors rather than inline styles."
-      : "No CSS file was provided. Apply style fixes using inline style attributes in the HTML file.";
+  const styleInstruction = buildStyleInstruction(stylingSystem);
 
   const system = [
     "You are an accessibility fix engine.",
