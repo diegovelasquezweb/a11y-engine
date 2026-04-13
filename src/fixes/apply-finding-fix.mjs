@@ -5,7 +5,7 @@ import { ASSETS } from "../core/asset-loader.mjs";
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
 const MAX_CANDIDATE_FILES = 12;
-const SUPPORTED_EXTENSIONS = new Set([".html", ".htm", ".jsx", ".tsx", ".vue", ".astro", ".liquid"]);
+const SUPPORTED_EXTENSIONS = new Set([".html", ".htm", ".jsx", ".tsx", ".vue", ".astro", ".liquid", ".css", ".scss", ".sass"]);
 
 export const FIX_ERROR_CODES = {
   INVALID_INPUT: "invalid-input",
@@ -277,12 +277,16 @@ function getCandidateFiles(projectDir, finding) {
     return allFiles.slice(0, MAX_CANDIDATE_FILES).map((f) => ({ ...f, score: 1 }));
   }
 
+  const styleFiles = allFiles.filter((f) => /\.(css|scss|sass)$/.test(f.rel));
+
   const ranked = allFiles
+    .filter((f) => !/\.(css|scss|sass)$/.test(f.rel))
     .map((f) => ({ ...f, score: scoreFile(f.rel, f.content, tokens) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_CANDIDATE_FILES);
-  return ranked;
+    .slice(0, MAX_CANDIDATE_FILES - styleFiles.length);
+
+  return [...ranked, ...styleFiles.map((f) => ({ ...f, score: 1 }))];
 }
 
 function buildExecution(ruleId, intelligenceRule, finding) {
@@ -326,11 +330,14 @@ function groupFindingsByFile(domFindings, projectDir) {
         ? layoutCandidates
         : allFiles.slice(0, MAX_CANDIDATE_FILES).map((f) => ({ ...f, score: 1 }));
     } else {
-      ranked = allFiles
+      const styleFiles = allFiles.filter((f) => /\.(css|scss|sass)$/.test(f.rel));
+      const nonStyle = allFiles
+        .filter((f) => !/\.(css|scss|sass)$/.test(f.rel))
         .map((f) => ({ ...f, score: scoreFile(f.rel, f.content, tokens) }))
         .filter((f) => f.score > 0)
         .sort((a, b) => b.score - a.score)
-        .slice(0, MAX_CANDIDATE_FILES);
+        .slice(0, MAX_CANDIDATE_FILES - styleFiles.length);
+      ranked = [...nonStyle, ...styleFiles.map((f) => ({ ...f, score: 1 }))];
     }
 
     const key = ranked.length > 0 ? ranked[0].rel : `__no_candidates_${finding.id}`;
@@ -449,8 +456,25 @@ function extractRemediationContext(remediationPath) {
   }
 }
 
+function detectStylingSystem(aiInput) {
+  const files = Array.isArray(aiInput?.files) ? aiInput.files : [];
+  const hasTailwind = files.some((f) => /tailwind\.config\.(js|ts|mjs|cjs)$/.test(f.filePath));
+  const hasCss = files.some((f) => /\.(css|scss|sass)$/.test(f.filePath));
+  if (hasTailwind) return "tailwind";
+  if (hasCss) return "css";
+  return "inline";
+}
+
 async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
   const remediationContext = extractRemediationContext(remediationPath);
+  const stylingSystem = detectStylingSystem(aiInput);
+
+  const styleInstruction =
+    stylingSystem === "tailwind"
+      ? "This project uses Tailwind CSS. Apply style fixes as Tailwind utility classes in the HTML/JSX file — do not write raw CSS."
+      : stylingSystem === "css"
+      ? "CSS/SCSS files are available in the files array. Prefer fixing visual issues (touch targets, color contrast, focus outlines) in the CSS/SCSS file using proper selectors rather than inline styles."
+      : "No CSS file was provided. Apply style fixes using inline style attributes in the HTML file.";
 
   const system = [
     "You are an accessibility fix engine.",
@@ -462,7 +486,7 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
     "CRITICAL — search accuracy: the 'search' value must be a verbatim copy of a substring from the file content. Do not paraphrase, reformat, or reconstruct it — copy it character-for-character.",
     "For insertions (new element not yet in the file), anchor the search on the nearest existing surrounding element and include it in both search and replace.",
     "Do not create new files. Only write changes for filePaths listed in the files array.",
-    "CSS files are never in the files array. Fix visual issues (touch targets, sizing) using inline style attributes or markup changes in the HTML file — never reference or create .css files.",
+    styleInstruction,
     ...(remediationContext ? ["", "## Project Context (from audit report)", remediationContext] : []),
     "Schema:",
     "{\"changes\":[{\"filePath\":\"...\",\"search\":\"...\",\"replace\":\"...\"}],\"verifyRule\":\"...\",\"verifyRoute\":\"...\",\"notes\":\"...\"}",
