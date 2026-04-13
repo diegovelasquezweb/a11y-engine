@@ -321,10 +321,15 @@ export async function discoverRoutes(page, baseUrl, maxRoutes, crawlDepth = 2) {
       try {
         const targetUrl = new URL(routePath, origin).toString();
         if (page.url() !== targetUrl) {
-          await page.goto(targetUrl, {
+          const response = await page.goto(targetUrl, {
             waitUntil: "domcontentloaded",
             timeout: 10000,
           });
+          if (response && response.status() >= 400) {
+            routes.delete(routePath);
+            log.warn(`Discovery skip ${routePath}: HTTP ${response.status()}`);
+            continue;
+          }
         }
 
         const hrefs = await page.$$eval("a[href]", (elements) =>
