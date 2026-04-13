@@ -1059,7 +1059,9 @@ export async function applyFindingsFix(input) {
 
     // If Claude tagged changes with findingId, use those for per-finding success tracking.
     // If no findingId tags were emitted, fall back to group-level success for all findings.
+    // If no files were changed at all, the issue was already resolved — mark accordingly.
     const hasFindingIdTracking = applied.succeededFindingIds.size > 0;
+    const anyFileChanged = applied.changedFiles && applied.changedFiles.length > 0;
 
     for (const finding of withRules) {
       const ruleId = typeof finding.rule_id === "string" ? finding.rule_id.trim() : "";
@@ -1068,14 +1070,18 @@ export async function applyFindingsFix(input) {
 
       const findingApplied = hasFindingIdTracking
         ? applied.succeededFindingIds.has(finding.id)
-        : true;
+        : anyFileChanged;
+
+      const alreadyResolved = !hasFindingIdTracking && !anyFileChanged;
 
       resultMap.set(
         finding.id,
         makeResult(finding.id, {
-          applied: findingApplied,
-          reason: findingApplied ? "" : FIX_ERROR_CODES.PATCH_APPLY_FAILED,
-          message: findingApplied
+          applied: alreadyResolved ? true : findingApplied,
+          reason: findingApplied || alreadyResolved ? "" : FIX_ERROR_CODES.PATCH_APPLY_FAILED,
+          message: alreadyResolved
+            ? "Already resolved — no changes needed."
+            : findingApplied
             ? "Patch applied successfully."
             : "The change for this finding could not be applied (search block not found).",
           changedFiles: applied.changedFiles,
