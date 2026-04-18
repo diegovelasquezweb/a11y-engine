@@ -150,7 +150,7 @@ function getPatternCandidateFile(projectDir, finding) {
   return { abs, rel: finding.file, content };
 }
 
-function buildPatternAiInput({ finding, candidate, projectHints }) {
+function buildPatternAiInput({ finding, candidate, cssFiles = [], projectHints }) {
   // Extract the exact line(s) containing the pattern match so Claude has an
   // unambiguous search anchor instead of inferring it from the full file.
   const fileLines = candidate.content.split("\n");
@@ -224,7 +224,10 @@ function buildPatternAiInput({ finding, candidate, projectHints }) {
       fixDescription: finding.fix_description || "",
       fixCode: finding.fix_code || "",
     },
-    files: [{ filePath: candidate.rel, content: candidate.content.slice(0, 12000) }],
+    files: [
+      { filePath: candidate.rel, content: candidate.content.slice(0, 12000) },
+      ...cssFiles.map((f) => ({ filePath: f.rel, content: f.content.slice(0, 12000) })),
+    ],
     ...(projectHints ? { projectContext: projectHints } : {}),
   };
 }
@@ -682,8 +685,15 @@ export async function applyFindingFix(input) {
       });
     }
 
-    const aiInput = buildPatternAiInput({ finding, candidate, projectHints });
-    const candidateSet = new Set([candidate.rel]);
+    const allProjectFiles = listFilesRecursive(projectDir).map((abs) => ({
+      abs,
+      rel: path.relative(projectDir, abs),
+      content: fs.readFileSync(abs, "utf8"),
+    }));
+    const cssFiles = allProjectFiles.filter((f) => /\.(css|scss|sass)$/.test(f.rel));
+
+    const aiInput = buildPatternAiInput({ finding, candidate, cssFiles, projectHints });
+    const candidateSet = new Set([candidate.rel, ...cssFiles.map((f) => f.rel)]);
 
     let patchOutput = null;
     let claudeUsage = { input_tokens: 0, output_tokens: 0 };
