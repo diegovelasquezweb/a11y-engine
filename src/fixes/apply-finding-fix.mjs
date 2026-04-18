@@ -150,7 +150,7 @@ function getPatternCandidateFile(projectDir, finding) {
   return { abs, rel: finding.file, content };
 }
 
-function buildPatternAiInput({ finding, candidate, cssFiles = [], projectHints }) {
+export function buildPatternAiInput({ finding, candidate, cssFiles = [], projectHints }) {
   // Extract the exact line(s) containing the pattern match so Claude has an
   // unambiguous search anchor instead of inferring it from the full file.
   const fileLines = candidate.content.split("\n");
