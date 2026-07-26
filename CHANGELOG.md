@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] — 2026-07-26
+
+### Added
+
+- **11 new source-scan accessibility patterns (`PAT-*`)** derived from Vercel's Web Interface Guidelines: `div-onclick`, `icon-btn-no-label`, `img-no-alt`, `icon-no-aria-hidden`, `async-no-aria-live`, `input-no-autocomplete`, `focus-vs-focus-visible`, `transition-all`, `img-no-dimensions`, `no-prefers-reduced-motion`, `spellcheck-on-sensitive`. Pure data additions to `assets/remediation/code-patterns.mjs` — no scanner code changes. Each carries severity, WCAG mapping, and false-positive mitigation (same-line negative lookaheads / `context_reject_regex`).
+- **`tests/code-patterns.test.mjs`** — dedicated test suite covering positive/negative scenarios per pattern plus real-scanner (`scanPattern`) true-positive validation.
+
+### Notes
+
+- `img-no-alt` and `input-no-autocomplete` use same-line negative lookaheads so the resolving attribute (`alt=` / `autocomplete=`) is checked on the matched element only — avoiding cross-element false negatives and matching real React forms that key identity inputs off `type`/`id` rather than `name`.
+- `icon-btn-no-label` matches only when `<button>` and its icon are on the same source line; multi-line JSX is a known limitation of the line-based scanner (a whole-file/multiline scanner mode is a separate follow-up).
+- `div-onclick` and `async-no-aria-live` are validated via unit tests; demo-repo fixtures to exercise them end-to-end are a follow-up.
+
+---
+
 ## [0.10.3] — 2026-03-16
 
 ### Added
