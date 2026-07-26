@@ -108,9 +108,8 @@ describe("PAT-img-no-alt", () => {
     expect(matches(byId("img-no-alt"), '<img src="hero.jpg">')).toBe(true);
   });
 
-  it("downgrades when alt= appears within 2 lines", () => {
-    const lines = ['<img src="hero.jpg" alt="Hero banner">'];
-    expect(isConfirmedByContext(byId("img-no-alt"), lines, 0)).toBe(false);
+  it("does not match an img that has alt on the same tag", () => {
+    expect(matches(byId("img-no-alt"), '<img src="hero.jpg" alt="Hero banner">')).toBe(false);
   });
 
   it("confirms when no alt is present nearby", () => {
@@ -152,13 +151,18 @@ describe("PAT-async-no-aria-live", () => {
 });
 
 describe("PAT-input-no-autocomplete", () => {
-  it("flags an identity input with no autocomplete attribute", () => {
+  it("flags an identity input with no autocomplete attribute (legacy name= shape)", () => {
     expect(matches(byId("input-no-autocomplete"), '<input type="email" name="email">')).toBe(true);
   });
 
-  it("downgrades when autocomplete= appears on the adjacent line", () => {
-    const lines = ['<input type="email" name="email" autocomplete="email">'];
-    expect(isConfirmedByContext(byId("input-no-autocomplete"), lines, 0)).toBe(false);
+  it("flags an identity input by id/type with no name= attribute", () => {
+    expect(matches(byId("input-no-autocomplete"), '<input id="email" type="email">')).toBe(true);
+  });
+
+  it("does not match an input that has autocomplete on the same tag", () => {
+    expect(
+      matches(byId("input-no-autocomplete"), '<input id="email" type="email" autocomplete="email">')
+    ).toBe(false);
   });
 
   it("confirms when autocomplete is not present nearby", () => {
@@ -279,6 +283,62 @@ describe("code-patterns: co-fire scenarios (real scanPattern, real temp files)",
       expect(autocompleteFindings[0].line).toBe(spellcheckFindings[0].line);
       expect(autocompleteFindings[0].pattern_id).toBe("input-no-autocomplete");
       expect(spellcheckFindings[0].pattern_id).toBe("spellcheck-on-sensitive");
+    });
+  });
+
+  it("img-no-alt: adjacent sibling img with alt does not bleed into the broken img's match", () => {
+    withTempFile("Gallery.jsx", '<img src="a.jpg">\n<img src="b.jpg" alt="B">\n', (scanDir) => {
+      const findings = scanPattern(byId("img-no-alt"), scanDir);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].status).toBe("confirmed");
+      expect(findings[0].line).toBe(1);
+    });
+  });
+
+  it("input-no-autocomplete: identity input by id/type with no name= is confirmed", () => {
+    withTempFile("Signup.jsx", '<input id="email" type="email">\n', (scanDir) => {
+      const findings = scanPattern(byId("input-no-autocomplete"), scanDir);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].status).toBe("confirmed");
+    });
+  });
+
+  it("input-no-autocomplete: identity input by id/type with autocomplete= is compliant", () => {
+    withTempFile("Signup.jsx", '<input id="email" type="email" autocomplete="email">\n', (scanDir) => {
+      const findings = scanPattern(byId("input-no-autocomplete"), scanDir);
+      expect(findings).toHaveLength(0);
+    });
+  });
+
+  it("div-onclick: clickable div with no interactive role is confirmed via real scanner", () => {
+    withTempFile("Menu.jsx", '<div onclick="open()">Menu</div>\n', (scanDir) => {
+      const findings = scanPattern(byId("div-onclick"), scanDir);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].status).toBe("confirmed");
+    });
+  });
+
+  it("div-onclick: downgrades to potential when role=button appears within 2 lines", () => {
+    withTempFile("Menu.jsx", '<div onclick="open()">\n  role="button"\n  Menu\n</div>\n', (scanDir) => {
+      const findings = scanPattern(byId("div-onclick"), scanDir);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].status).toBe("potential");
+    });
+  });
+
+  it("async-no-aria-live: toast region with no live-region marker is confirmed via real scanner", () => {
+    withTempFile("Toast.jsx", '<div className="toast">Saved</div>\n', (scanDir) => {
+      const findings = scanPattern(byId("async-no-aria-live"), scanDir);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].status).toBe("confirmed");
+    });
+  });
+
+  it("async-no-aria-live: downgrades to potential when role=status appears within 4 lines", () => {
+    withTempFile("Toast.jsx", '<div className="toast">\n  Saved\n  role="status"\n</div>\n', (scanDir) => {
+      const findings = scanPattern(byId("async-no-aria-live"), scanDir);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].status).toBe("potential");
     });
   });
 });
