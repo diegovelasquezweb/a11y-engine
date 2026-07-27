@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — 2026-07-27
+
+### Changed
+
+- **Stable release.** The public API is now declared stable under Semantic Versioning. There are no functional changes from `0.12.0` — this release promotes the existing, battle-tested API to a `1.0.0` baseline so that consumers can safely use caret ranges (`^1.0.0`) and receive minor and patch updates automatically.
+
+### Notes
+
+- Versions `0.11.0` through the `0.11.x` series (between `0.10.3` and `0.12.0`) were published without changelog entries; refer to the git history for those changes. The `1.x` line resets changelog discipline — every future release is documented here.
+
+---
+
 ## [0.12.0] — 2026-07-26
 
 ### Added
