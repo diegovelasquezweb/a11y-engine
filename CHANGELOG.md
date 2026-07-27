@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-07-27
+
+### Added
+
+- **4 new source-scan accessibility patterns (`PAT-*`)** from a fresh comparison against Vercel's Web Interface Guidelines: `label-not-associated` (label present but not connected to its control), `paste-blocked` (`onPaste` + `preventDefault` blocking clipboard input), `animate-non-compositor-prop` (animating `width`/`height`/`top`/`left`/`margin`/`padding` instead of `transform`/`opacity`), `zoom-disabled` (viewport `user-scalable=no` / `maximum-scale=1` or Next.js `userScalable`/`maximumScale`).
+
+### Changed
+
+- **`div-onclick`** no longer fires when the element already has `onKeyDown`/`onKeyUp` — it was only checking for `role="button"`, missing elements that already have keyboard support without the ARIA role.
+
+### Notes
+
+- `input-no-inputmode` was implemented and removed before release — a prior gap analysis had already flagged it as too context-heavy for a naive regex without further false-positive testing.
+- Verified locally (via `source-scanner.mjs` run directly against `a11y-test-react`, no publish required) that all 22 patterns fire with `confirmed` status before this release.
+
 ## [1.0.0] — 2026-07-27
 
 ### Changed
