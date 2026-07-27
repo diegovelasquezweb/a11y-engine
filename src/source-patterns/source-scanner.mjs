@@ -5,7 +5,7 @@
  * and outputs structured findings compatible with the a11y pipeline.
  */
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, realpathSync } from "node:fs";
 import { join, relative, extname, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -406,7 +406,23 @@ async function main() {
   );
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+/**
+ * Detects whether this file was invoked directly as a CLI script (vs imported).
+ * Resolves both sides through realpath so this holds even when the invoking
+ * path goes through a symlink (e.g. pnpm's node_modules layout), where
+ * process.argv[1] and import.meta.url would otherwise disagree.
+ * @returns {boolean}
+ */
+export function isMainModule() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
   main().catch((error) => {
     log.error(error.message);
     process.exit(1);

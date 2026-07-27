@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] — 2026-07-27
+
+### Fixed
+
+- **`source-scanner.mjs` CLI entry point never ran under pnpm.** The `if (process.argv[1] === fileURLToPath(import.meta.url))` guard compared a raw invocation path against a symlink-resolved module URL. Under npm (real directories in `node_modules`) both happened to match; under pnpm (`node_modules/@scope/pkg` is a symlink into the content-addressable store) they never matched, so `main()` silently never ran — the script exited 0, printed nothing, and wrote no output file, with no error surfaced anywhere. Fixed by resolving both sides through `realpathSync` before comparing (`isMainModule()`, now exported for testing). Found via a real end-to-end `/a11y-audit source` run through `a11y-github-app` after that consumer's npm→pnpm migration — a plain `npm install` repro didn't reproduce it, only a `pnpm install` did.
+- Added a regression test that invokes the scanner through an actual symlink (mirroring pnpm's layout) and asserts the output file is produced; confirmed it fails without the fix.
+
 ## [1.1.0] — 2026-07-27
 
 ### Added
