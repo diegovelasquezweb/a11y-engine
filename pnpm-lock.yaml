@@ -20,6 +20,9 @@ importers:
       playwright:
         specifier: ^1.58.2
         version: 1.58.2
+      puppeteer:
+        specifier: ^24.37.5
+        version: 24.39.1
     devDependencies:
       vitest:
         specifier: ^4.0.18
@@ -292,6 +295,7 @@ packages:
   basic-ftp@5.2.0:
     resolution: {integrity: sha512-VoMINM2rqJwJgfdHq6RiUudKt2BV+FY5ZFezP/ypmwayk68+NzzAQy4XXLlqsGD4MCzq3DrmNFD/uUmBJuGoXw==}
     engines: {node: '>=10.0.0'}
+    deprecated: Security vulnerability fixed in 5.2.1, please upgrade
 
   bfj@9.1.3:
     resolution: {integrity: sha512-1ythbcNNAd2UjTYW6M+MAHd9KM/m3g4mQ+3a4Vom16WgmUa4GsisdmXAYfpAjkObY5zdpgzaBh1ctZOEcJipuQ==}

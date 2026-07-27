@@ -1106,57 +1106,113 @@ async function runPa11yChecks(routeUrl, axeTags, sharedBrowser = null, includeWa
 }
 
 /**
+ * Resolves CSS selectors to a DOM-structural identity for every element they match.
+ * The identity (tagName:childIndex chained from the element up to body) is independent
+ * of which engine generated the selector string, so it lets axe-core, CDP, and pa11y
+ * findings be compared by "same physical element" instead of by selector text — the three
+ * engines build selector strings with completely different algorithms and rarely match
+ * byte-for-byte even when they flag the exact same node.
+ * @param {import("playwright").Page} page
+ * @param {string[]} selectors - Selector strings to resolve (may be comma-separated lists).
+ * @returns {Promise<string[][]>} One array of identity strings per input selector (empty if unresolved).
+ */
+async function resolveElementIdentities(page, selectors) {
+  return page.evaluate((sels) => {
+    function identityOf(el) {
+      const path = [];
+      let node = el;
+      while (node && node.parentElement) {
+        const parent = node.parentElement;
+        const index = Array.prototype.indexOf.call(parent.children, node);
+        path.unshift(`${node.tagName}:${index}`);
+        node = parent;
+        if (node === document.body) break;
+      }
+      return path.join(">");
+    }
+    return sels.map((sel) => {
+      if (!sel) return [];
+      try {
+        return Array.from(document.querySelectorAll(sel)).map(identityOf);
+      } catch {
+        return [];
+      }
+    });
+  }, selectors);
+}
+
+/**
  * Merges violations from multiple sources (axe-core, CDP, pa11y) and deduplicates.
- * Deduplication is based on rule ID + first target selector combination.
+ * Cross-engine duplicates are detected by resolving each violation's target selector
+ * against the live DOM and comparing structural identity, not selector text — a violation
+ * is only dropped as a full duplicate when EVERY element it covers is already covered by
+ * an equivalent-rule violation seen earlier. Partial overlaps (e.g. a pa11y violation that
+ * bundles one already-seen element with genuinely new ones) are kept in full, so a
+ * conservative merge never silently hides a real, distinct finding.
  * @param {Object[]} axeViolations - Violations from axe-core.
  * @param {Object[]} cdpViolations - Violations from CDP checks.
  * @param {Object[]} pa11yViolations - Violations from pa11y.
- * @returns {Object[]} Merged and deduplicated violations array.
+ * @param {(selectors: string[]) => Promise<string[][]>} resolveIdentities - Resolves selectors to DOM identities; injectable for testing.
+ * @returns {Promise<Object[]>} Merged and deduplicated violations array.
  */
-function mergeViolations(axeViolations, cdpViolations, pa11yViolations) {
-  const seen = new Set();
-  const seenRuleTargets = new Map(); // rule -> Set<target> for cross-engine dedup
-  const merged = [];
+export async function mergeViolations(axeViolations, cdpViolations, pa11yViolations, resolveIdentities) {
+  const allViolations = [...axeViolations, ...cdpViolations, ...pa11yViolations];
+  const targets = allViolations.map((v) => v.nodes?.[0]?.target?.[0] || "");
+  const identitySets = (await resolveIdentities(targets)).map((ids) => new Set(ids));
 
   // Build CDP equivalence map from JSON config
   const cdpAxeEquiv = {};
   for (const rule of CDP_CHECKS.rules || []) {
     cdpAxeEquiv[rule.id] = rule.axeEquivalents || [];
   }
+  const pa11yAxeEquiv = PA11Y_CONFIG.equivalenceMap || {};
 
-  // Step 1: axe findings (baseline)
+  const seenByRule = new Map(); // axe rule id -> Set<identity> already covered
+  const merged = [];
+
+  function isFullDuplicate(identitySet, equivRuleIds) {
+    if (identitySet.size === 0) return false; // couldn't resolve — never drop blindly
+    for (const ruleId of equivRuleIds) {
+      const seenIdentities = seenByRule.get(ruleId);
+      if (!seenIdentities) continue;
+      const allCovered = [...identitySet].every((id) => seenIdentities.has(id));
+      if (allCovered) return true;
+    }
+    return false;
+  }
+
+  function recordSeen(ruleId, identitySet) {
+    if (!seenByRule.has(ruleId)) seenByRule.set(ruleId, new Set());
+    const bucket = seenByRule.get(ruleId);
+    for (const id of identitySet) bucket.add(id);
+  }
+
+  let cursor = 0;
+
+  // Step 1: axe findings (baseline) — always kept, always recorded.
   for (const v of axeViolations) {
-    const target = v.nodes?.[0]?.target?.[0] || "";
-    const key = `${v.id}::${target}`;
-    seen.add(key);
-    if (!seenRuleTargets.has(v.id)) seenRuleTargets.set(v.id, new Set());
-    seenRuleTargets.get(v.id).add(target);
+    const identitySet = identitySets[cursor++];
+    recordSeen(v.id, identitySet);
     merged.push(v);
   }
 
-  // Step 2: CDP findings — check against axe equivalents from JSON
+  // Step 2: CDP findings — dropped only if fully covered by an axe-equivalent rule.
   for (const v of cdpViolations) {
+    const identitySet = identitySets[cursor++];
     const equivRules = cdpAxeEquiv[v.id] || [];
-    const target = v.nodes?.[0]?.target?.[0] || "";
-    const isDuplicate = equivRules.some((r) => seen.has(`${r}::${target}`));
-    if (!isDuplicate) {
-      const key = `${v.id}::${target}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(v);
-      }
+    if (!isFullDuplicate(identitySet, equivRules)) {
+      recordSeen(v.id, identitySet);
+      merged.push(v);
     }
   }
 
-  // Step 3: pa11y findings — only skip if same rule + same target already exists
+  // Step 3: pa11y findings — dropped only if fully covered by an axe-equivalent rule.
   for (const v of pa11yViolations) {
-    const target = v.nodes?.[0]?.target?.[0] || "";
-    const key = `${v.id}::${target}`;
-
-    if (!seen.has(key)) {
-      seen.add(key);
-      if (!seenRuleTargets.has(v.id)) seenRuleTargets.set(v.id, new Set());
-      seenRuleTargets.get(v.id).add(target);
+    const identitySet = identitySets[cursor++];
+    const equivRule = pa11yAxeEquiv[v.id];
+    const equivRules = equivRule ? [equivRule] : [];
+    if (!isFullDuplicate(identitySet, equivRules)) {
+      recordSeen(v.id, identitySet);
       merged.push(v);
     }
   }
@@ -1525,10 +1581,11 @@ async function _runDomScannerInternal(args) {
             // Step 4: Merge results
             const axeViolationCount = result.violations?.length || 0;
             if (!emittedDone.has("merge")) writeProgress("merge", "running");
-            const mergedViolations = mergeViolations(
+            const mergedViolations = await mergeViolations(
               result.violations || [],
               cdpViolations,
               pa11yViolations,
+              (selectors) => resolveElementIdentities(tabPage, selectors),
             );
             if (!emittedDone.has("merge")) {
               writeProgress("merge", "done", {

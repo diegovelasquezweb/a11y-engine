@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-07-27
+
+### Fixed
+
+- **DOM findings inflated by cross-engine duplicates.** The scanner runs axe-core, CDP, and pa11y against the same rendered page, and when two engines flagged the same physical element with different rule wording (e.g. axe's `button-name` and pa11y's `H91.Button` on the same unlabeled button), each became a separate finding — inflating the reported total (a real audit showed "9 findings" for ~5 distinct broken elements). The existing `mergeViolations()` cross-engine dedup only compared raw selector *strings*, which rarely match across engines since axe, CDP, and pa11y each build selectors with a different algorithm; pa11y's own `equivalenceMap` (already present in `assets/scanning/pa11y-config.mjs`) was never wired in either, so pa11y-vs-axe dedup never fired at all.
+- **Fix:** `mergeViolations()` now resolves each violation's selector against the live DOM (`page.evaluate`) to a structural identity (tag + child index chained to `<body>`), independent of which engine generated the selector text. A violation is dropped as a full duplicate only when *every* element it covers is already covered by an equivalent-rule violation seen earlier; a violation that only *partially* overlaps (e.g. pa11y bundling one already-seen element together with genuinely new ones) is kept in full, and an unresolvable selector is never dropped — the merge is conservative by design, since a false merge would silently hide a real, distinct accessibility bug.
+- `mergeViolations()` is now `async` and exported, taking an injectable `resolveIdentities` resolver so its dedup logic is unit-testable without a real browser (`tests/dom-scanner-merge.test.mjs`, 7 tests).
+- Added `puppeteer` as a direct dependency — it was already imported directly by `dom-scanner.mjs` but only ever resolved as a transitive dependency of `pa11y`; under pnpm's strict `node_modules` layout it's a phantom dependency (same class of bug fixed in `a11y-github-app` for `playwright` this same day) and wasn't reliably resolvable.
+
 ## [1.1.1] — 2026-07-27
 
 ### Fixed
