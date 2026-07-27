@@ -19,6 +19,13 @@ const NEW_PATTERN_IDS = [
   "spellcheck-on-sensitive",
 ];
 
+const NEWER_PATTERN_IDS = [
+  "label-not-associated",
+  "zoom-disabled",
+  "paste-blocked",
+  "animate-non-compositor-prop",
+];
+
 const DROPPED_PATTERN_IDS = [
   "touch-action-missing",
   "scroll-margin-top-anchors",
@@ -38,8 +45,15 @@ function matches(pattern, sample) {
 describe("code-patterns: schema", () => {
   it("contains all 11 new PAT-* ids alongside the 7 existing ones", () => {
     const ids = codePatterns.patterns.map((p) => p.id);
-    expect(ids.length).toBe(18);
+    expect(ids.length).toBe(22);
     for (const id of NEW_PATTERN_IDS) {
+      expect(ids).toContain(id);
+    }
+  });
+
+  it("contains the 4 newer PAT-* ids added from the Vercel Web Interface Guidelines gap analysis", () => {
+    const ids = codePatterns.patterns.map((p) => p.id);
+    for (const id of NEWER_PATTERN_IDS) {
       expect(ids).toContain(id);
     }
   });
@@ -53,7 +67,7 @@ describe("code-patterns: schema", () => {
 
   it("each new entry matches the existing entries' key shape and a valid wcag_level", () => {
     const referenceKeys = Object.keys(byId("character-key-shortcut")).sort();
-    for (const id of NEW_PATTERN_IDS) {
+    for (const id of [...NEW_PATTERN_IDS, ...NEWER_PATTERN_IDS]) {
       const entry = byId(id);
       expect(Object.keys(entry).sort()).toEqual(referenceKeys);
       expect(["A", "AA", "AAA", ""]).toContain(entry.wcag_level);
@@ -78,6 +92,11 @@ describe("PAT-div-onclick", () => {
   it("confirms when no role is present nearby", () => {
     const lines = ['<div onclick="handleClick()">', '  Click me', '</div>'];
     expect(isConfirmedByContext(byId("div-onclick"), lines, 0)).toBe(true);
+  });
+
+  it("downgrades when onKeyDown appears within 2 lines", () => {
+    const lines = ['<div onClick={handleClick} onKeyDown={handleKey}>', '  Click me', '</div>'];
+    expect(isConfirmedByContext(byId("div-onclick"), lines, 0)).toBe(false);
   });
 });
 
@@ -243,6 +262,77 @@ describe("PAT-spellcheck-on-sensitive", () => {
   it("confirms when spellcheck is not present nearby", () => {
     const lines = ['<input type="password" name="password">'];
     expect(isConfirmedByContext(byId("spellcheck-on-sensitive"), lines, 0)).toBe(true);
+  });
+});
+
+describe("PAT-label-not-associated", () => {
+  it("flags a label with no htmlFor/for attribute", () => {
+    expect(matches(byId("label-not-associated"), '<label className="block">Email</label>')).toBe(true);
+  });
+
+  it("does not match a label that has htmlFor on the same tag", () => {
+    expect(matches(byId("label-not-associated"), '<label htmlFor="email">Email</label>')).toBe(false);
+  });
+
+  it("downgrades when the label wraps an input within 3 lines", () => {
+    const lines = ['<label>', '  Email', '  <input type="email" />', '</label>'];
+    expect(isConfirmedByContext(byId("label-not-associated"), lines, 0)).toBe(false);
+  });
+
+  it("confirms when no control is nearby", () => {
+    const lines = ['<label className="block">Email</label>'];
+    expect(isConfirmedByContext(byId("label-not-associated"), lines, 0)).toBe(true);
+  });
+});
+
+describe("PAT-zoom-disabled", () => {
+  it("flags a viewport meta tag with user-scalable=no", () => {
+    expect(
+      matches(byId("zoom-disabled"), '<meta name="viewport" content="width=device-width, user-scalable=no">')
+    ).toBe(true);
+  });
+
+  it("flags a viewport meta tag with maximum-scale=1", () => {
+    expect(
+      matches(byId("zoom-disabled"), '<meta name="viewport" content="width=device-width, maximum-scale=1">')
+    ).toBe(true);
+  });
+
+  it("flags a Next.js viewport export with userScalable: false", () => {
+    expect(matches(byId("zoom-disabled"), "export const viewport = { userScalable: false }")).toBe(true);
+  });
+
+  it("does not match a viewport with maximum-scale above 1", () => {
+    expect(
+      matches(byId("zoom-disabled"), '<meta name="viewport" content="width=device-width, maximum-scale=1.5">')
+    ).toBe(false);
+  });
+
+  it("does not match a normal viewport with no zoom restriction", () => {
+    expect(
+      matches(byId("zoom-disabled"), '<meta name="viewport" content="width=device-width, initial-scale=1">')
+    ).toBe(false);
+  });
+});
+
+describe("PAT-paste-blocked", () => {
+  it("flags an inline onPaste handler that calls preventDefault", () => {
+    expect(matches(byId("paste-blocked"), '<input onPaste={(e) => e.preventDefault()} />')).toBe(true);
+  });
+
+  it("does not match an onPaste handler that does not block the event", () => {
+    expect(matches(byId("paste-blocked"), '<input onPaste={handlePaste} />')).toBe(false);
+  });
+});
+
+describe("PAT-animate-non-compositor-prop", () => {
+  it("flags a transition targeting width", () => {
+    expect(matches(byId("animate-non-compositor-prop"), "transition: width 0.3s ease;")).toBe(true);
+  });
+
+  it("does not match a transition targeting transform or opacity", () => {
+    expect(matches(byId("animate-non-compositor-prop"), "transition: transform 0.3s ease;")).toBe(false);
+    expect(matches(byId("animate-non-compositor-prop"), "transition: opacity 0.3s ease;")).toBe(false);
   });
 });
 
