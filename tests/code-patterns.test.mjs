@@ -75,6 +75,24 @@ describe("code-patterns: schema", () => {
   });
 });
 
+describe("PAT-orientation-lock", () => {
+  it("flags a real screen.orientation.lock() call", () => {
+    expect(matches(byId("orientation-lock"), 'screen.orientation.lock("portrait").catch(() => {});')).toBe(true);
+  });
+
+  it("flags a standalone lockOrientation() call", () => {
+    expect(matches(byId("orientation-lock"), 'lockOrientation("landscape");')).toBe(true);
+  });
+
+  it("does not match a function name that merely contains lockOrientation(, like handleLockOrientation()", () => {
+    expect(matches(byId("orientation-lock"), "function handleLockOrientation() {")).toBe(false);
+  });
+
+  it("does not match unlockOrientation(), the opposite operation", () => {
+    expect(matches(byId("orientation-lock"), "unlockOrientation();")).toBe(false);
+  });
+});
+
 describe("PAT-div-onclick", () => {
   it("flags a clickable div with no interactive role", () => {
     expect(matches(byId("div-onclick"), '<div onclick="handleClick()">Click me</div>')).toBe(true);

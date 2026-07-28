@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] — 2026-07-28
+
+### Fixed
+
+- **`orientation-lock` false positive on function names.** The regex's `lockOrientation\(` alternative matched any identifier ending in those characters followed by `(` — including a function *declaration* like `handleLockOrientation()`, not just an actual call. Fixed with a negative lookbehind (`(?<![a-zA-Z])lockOrientation\(`) so it only matches when not preceded by a letter (rejects `handleLockOrientation(`/`unlockOrientation(`, still matches a real standalone `lockOrientation("landscape")` call). Added 4 regression tests.
+
 ## [1.2.0] — 2026-07-27
 
 ### Fixed
