@@ -64,9 +64,12 @@ describe("mergeViolations", () => {
     expect(merged).toHaveLength(2);
   });
 
-  it("drops a pa11y violation fully covered by an axe-equivalent rule (via pa11y-config equivalenceMap)", async () => {
+  it("drops a pa11y violation fully covered by the same rule id (runPa11yChecks already renamed it via pa11y-config's equivalenceMap)", async () => {
     const axe = [axeViolation("button-name", ".bg-gray-300:nth-child(11)")];
-    const pa11y = [pa11yViolation("Principle4.Guideline4_1.4_1_2.H91.Button", "#main > div > button:nth-child(11)")];
+    // runPa11yChecks() renames matched pa11y issues to their axe-equivalent id before
+    // this ever reaches mergeViolations — so v.id here is already "button-name", not
+    // the raw pa11y code (e.g. "Principle4.Guideline4_1.4_1_2.H91.Button").
+    const pa11y = [pa11yViolation("button-name", "#main > div > button:nth-child(11)")];
     const merged = await mergeViolations(
       axe,
       [],
@@ -85,7 +88,7 @@ describe("mergeViolations", () => {
     const axe = [axeViolation("button-name", ".bg-gray-300:nth-child(11)")];
     const pa11y = [
       pa11yViolation(
-        "Principle4.Guideline4_1.4_1_2.H91.Button",
+        "button-name",
         "#main input:nth-child(5), #main input:nth-child(6), #main button:nth-child(11)",
       ),
     ];
@@ -118,9 +121,11 @@ describe("mergeViolations", () => {
     expect(merged).toHaveLength(2);
   });
 
-  it("keeps a pa11y violation with no rule in the equivalence map", async () => {
+  it("keeps a pa11y violation whose rule id has no axe equivalent, even on the same element", async () => {
+    // runPa11yChecks() falls back to a "pa11y-*" id when equivalenceMap has no match for
+    // the issue's code — that id never equals an axe rule id, so it's never a duplicate.
     const axe = [axeViolation("button-name", ".btn")];
-    const pa11y = [pa11yViolation("Principle1.Guideline1_3.1_3_1.SomeUnmappedRule", ".btn")];
+    const pa11y = [pa11yViolation("pa11y-someunmappedrule", ".btn")];
     const merged = await mergeViolations(
       axe,
       [],

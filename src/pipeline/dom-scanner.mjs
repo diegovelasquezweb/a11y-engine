@@ -1165,7 +1165,6 @@ export async function mergeViolations(axeViolations, cdpViolations, pa11yViolati
   for (const rule of CDP_CHECKS.rules || []) {
     cdpAxeEquiv[rule.id] = rule.axeEquivalents || [];
   }
-  const pa11yAxeEquiv = PA11Y_CONFIG.equivalenceMap || {};
 
   const seenByRule = new Map(); // axe rule id -> Set<identity> already covered
   const merged = [];
@@ -1206,12 +1205,13 @@ export async function mergeViolations(axeViolations, cdpViolations, pa11yViolati
     }
   }
 
-  // Step 3: pa11y findings — dropped only if fully covered by an axe-equivalent rule.
+  // Step 3: pa11y findings — dropped only if fully covered by an equivalent rule.
+  // runPa11yChecks() already renames v.id to the matching axe rule id via
+  // PA11Y_CONFIG.equivalenceMap when one exists, so the equivalence check here
+  // is just against v.id itself (no separate map lookup needed).
   for (const v of pa11yViolations) {
     const identitySet = identitySets[cursor++];
-    const equivRule = pa11yAxeEquiv[v.id];
-    const equivRules = equivRule ? [equivRule] : [];
-    if (!isFullDuplicate(identitySet, equivRules)) {
+    if (!isFullDuplicate(identitySet, [v.id])) {
       recordSeen(v.id, identitySet);
       merged.push(v);
     }

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] — 2026-07-28
+
+### Fixed
+
+- **The 1.2.0 cross-engine DOM dedup never actually fired for pa11y.** `mergeViolations()` looked up a pa11y violation's axe-equivalent rule via `PA11Y_CONFIG.equivalenceMap[v.id]` — but `runPa11yChecks()` already resolves that mapping upstream and renames `v.id` to the axe rule id directly when a match exists, so `v.id` was never actually a raw pa11y code by the time it reached the merge step. The lookup always missed, so no pa11y-vs-axe duplicate was ever dropped. Fixed by treating `v.id` itself as the equivalence key (no map lookup needed) — verified live: pa11y and axe both flagging the same missing-`alt` image (rule `image-alt` after pa11y's own normalization) now correctly collapse into one finding.
+- Corrected the affected unit tests, which had encoded the same wrong assumption (constructing pa11y fixtures with a raw pa11y code instead of the already-normalized id `runPa11yChecks()` actually produces).
+
 ## [1.2.1] — 2026-07-28
 
 ### Fixed
