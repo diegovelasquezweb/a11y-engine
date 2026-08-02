@@ -523,15 +523,23 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
     body: JSON.stringify({
       model,
       max_tokens: 4096,
-      temperature: 0,
       system,
       messages: [{ role: "user", content: userMessage }],
     }),
   });
 
   if (!res.ok) {
-    const message = await res.text();
-    throw new Error(`Claude patch generation failed: ${res.status} ${message}`);
+    const bodyText = await res.text();
+    let detail = bodyText;
+    try {
+      const parsedError = JSON.parse(bodyText);
+      if (parsedError?.error?.message) {
+        detail = `${parsedError.error.type || "error"}: ${parsedError.error.message}`;
+      }
+    } catch {
+      // bodyText is not JSON — fall back to the raw text as-is.
+    }
+    throw new Error(`Claude API error ${res.status}: ${detail}`);
   }
 
   const data = await res.json();
@@ -697,13 +705,15 @@ export async function applyFindingFix(input) {
 
     let patchOutput = null;
     let claudeUsage = { input_tokens: 0, output_tokens: 0 };
+    let claudeError = apiKey ? null : "ANTHROPIC_API_KEY is not configured.";
     if (apiKey) {
       try {
         const { patch, usage } = await callClaudeForPatch({ apiKey, model, aiInput, remediationPath });
         patchOutput = patch;
         claudeUsage = usage;
-      } catch {
+      } catch (err) {
         patchOutput = null;
+        claudeError = err instanceof Error ? err.message : String(err);
       }
     }
 
@@ -711,7 +721,9 @@ export async function applyFindingFix(input) {
       return buildResult({
         applied: false,
         reason: FIX_ERROR_CODES.PATCH_GENERATION_FAILED,
-        message: `Could not generate patch output for finding ${findingId}.`,
+        message: claudeError
+          ? `Could not generate patch output for finding ${findingId}: ${claudeError}`
+          : `Could not generate patch output for finding ${findingId}.`,
         verifyRule: "",
         verifyRoute: "/",
         findingTitle: finding.title || "",
@@ -861,13 +873,15 @@ export async function applyFindingFix(input) {
 
   let patchOutput = null;
   let claudeUsage = { input_tokens: 0, output_tokens: 0 };
+  let claudeError = apiKey ? null : "ANTHROPIC_API_KEY is not configured.";
   if (apiKey) {
     try {
       const { patch, usage } = await callClaudeForPatch({ apiKey, model, aiInput });
       patchOutput = patch;
       claudeUsage = usage;
-    } catch {
+    } catch (err) {
       patchOutput = null;
+      claudeError = err instanceof Error ? err.message : String(err);
     }
   }
 
@@ -875,7 +889,9 @@ export async function applyFindingFix(input) {
     return buildResult({
       applied: false,
       reason: FIX_ERROR_CODES.PATCH_GENERATION_FAILED,
-      message: `Could not generate patch output for rule ${ruleId}.`,
+      message: claudeError
+        ? `Could not generate patch output for rule ${ruleId}: ${claudeError}`
+        : `Could not generate patch output for rule ${ruleId}.`,
       verifyRule: execution.verify.ruleId,
       verifyRoute: execution.verify.route,
       findingTitle: finding.title || "",
@@ -1057,24 +1073,29 @@ export async function applyFindingsFix(input) {
 
     let patchOutput = null;
     let claudeUsage = { input_tokens: 0, output_tokens: 0 };
+    let claudeError = apiKey ? null : "ANTHROPIC_API_KEY is not configured.";
     if (apiKey) {
       try {
         const { patch, usage } = await callClaudeForPatch({ apiKey, model, aiInput, remediationPath });
         patchOutput = patch;
         claudeUsage = usage;
-      } catch {
+      } catch (err) {
         patchOutput = null;
+        claudeError = err instanceof Error ? err.message : String(err);
       }
     }
 
     if (!patchOutput) {
+      const groupMessage = claudeError
+        ? `Could not generate patch output for file group (top file: ${candidates[0]?.rel || "unknown"}): ${claudeError}`
+        : `Could not generate patch output for file group (top file: ${candidates[0]?.rel || "unknown"}).`;
       for (const finding of withRules) {
         resultMap.set(
           finding.id,
           makeResult(finding.id, {
             applied: false,
             reason: FIX_ERROR_CODES.PATCH_GENERATION_FAILED,
-            message: `Could not generate patch output for file group (top file: ${candidates[0]?.rel || "unknown"}).`,
+            message: groupMessage,
             findingTitle: finding.title || "",
             branchSlug: slugify(`${finding.id}-${finding.rule_id || ""}`),
             usage: claudeUsage,
