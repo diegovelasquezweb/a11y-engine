@@ -549,9 +549,7 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
   }
 
   const data = await res.json();
-  // content[0] is not reliably the answer: models with thinking enabled (e.g. Sonnet 5's
-  // adaptive thinking, on by default when the thinking param is omitted) prepend one or
-  // more "thinking" blocks before the "text" block that carries the JSON.
+  // Sonnet 5's adaptive thinking can prepend a "thinking" block before the text block.
   const textBlock = Array.isArray(data.content) ? data.content.find((block) => block?.type === "text") : null;
   const content = textBlock?.text || "";
 
@@ -759,54 +757,55 @@ export async function applyFindingFix(input) {
 
     const validation = validateAiPatchOutput(patchOutput, projectDir, candidateSet);
     if (!validation.ok) {
-      // When Claude returns no changes OR a no-op patch (search===replace), it may be
-      // because a prior fix (e.g. the DOM batch) already resolved this issue.
-      // Verify by checking if the pattern's context_reject_regex now matches the
-      // current file content around the target element.
-      // If it does, the element is already accessible — count as resolved.
+      // No changes / no-op can mean a prior fix already resolved this — verify before failing.
       const isNoChanges = validation.reason === "AI patch output has no changes";
       const isNoop = validation.reason.startsWith("AI generated a no-op patch for ");
       if (isNoChanges || isNoop) {
         const patternId = finding.pattern_id || finding.patternId || "";
         const patternDef = (ASSETS.remediation.codePatterns?.patterns || [])
           .find((p) => p.id === patternId);
-        const rejectRegex = patternDef?.context_reject_regex;
-        if (rejectRegex) {
-          // For no-op patches, read the CURRENT file content — the DOM batch may have
-          // already resolved this finding by modifying the file after the scan.
-          let context;
-          if (isNoop) {
-            try {
-              const currentContent = fs.readFileSync(candidate.abs, "utf8");
-              const fileLines = currentContent.split("\n");
-              const lineIdx = Math.max(0, (aiInput.finding.line || 1) - 1);
-              const start = Math.max(0, lineIdx - 4);
-              const end = Math.min(fileLines.length, lineIdx + 5);
-              context = fileLines.slice(start, end).join("\n");
-            } catch {
-              context = [aiInput.finding.surroundingLines, aiInput.finding.matchLine].filter(Boolean).join("\n");
-            }
-          } else {
+
+        // No-op: re-read the file, since a prior fix may have changed it since the scan.
+        let context;
+        if (isNoop) {
+          try {
+            const currentContent = fs.readFileSync(candidate.abs, "utf8");
+            const fileLines = currentContent.split("\n");
+            const lineIdx = Math.max(0, (aiInput.finding.line || 1) - 1);
+            const start = Math.max(0, lineIdx - 4);
+            const end = Math.min(fileLines.length, lineIdx + 5);
+            context = fileLines.slice(start, end).join("\n");
+          } catch {
             context = [aiInput.finding.surroundingLines, aiInput.finding.matchLine].filter(Boolean).join("\n");
           }
-          try {
-            if (new RegExp(rejectRegex, "i").test(context)) {
-              return buildResult({
-                applied: true,
-                reason: "",
-                message: "Already resolved by a prior fix.",
-                changedFiles: [],
-                patch: "",
-                verifyRule: "",
-                verifyRoute: "/",
-                findingTitle: finding.title || "",
-                branchSlug: slugify(`${findingId}-${patternId}`),
-                usage: claudeUsage,
-              });
-            }
-          } catch {
-            // Invalid regex in pattern definition — fall through to the error return
+        } else {
+          context = [aiInput.finding.surroundingLines, aiInput.finding.matchLine].filter(Boolean).join("\n");
+        }
+
+        let alreadyResolved = false;
+        try {
+          if (patternDef?.context_reject_regex && new RegExp(patternDef.context_reject_regex, "i").test(context)) {
+            alreadyResolved = true;
           }
+          // Remove-only patterns have no fixed-state marker — proxy via the detection regex.
+          if (!alreadyResolved && patternDef?.regex && !new RegExp(patternDef.regex, "i").test(context)) {
+            alreadyResolved = true;
+          }
+        } catch {}
+
+        if (alreadyResolved) {
+          return buildResult({
+            applied: true,
+            reason: "",
+            message: "Already resolved by a prior fix.",
+            changedFiles: [],
+            patch: "",
+            verifyRule: "",
+            verifyRoute: "/",
+            findingTitle: finding.title || "",
+            branchSlug: slugify(`${findingId}-${patternId}`),
+            usage: claudeUsage,
+          });
         }
       }
       return buildResult({
@@ -1177,10 +1176,7 @@ export async function applyFindingsFix(input) {
     const hasFindingIdTracking = applied.succeededFindingIds.size > 0;
     const anyFileChanged = applied.changedFiles && applied.changedFiles.length > 0;
 
-    // Claude tagged some findings but silently omitted others from this batch response
-    // (not a search-text collision — it just never proposed a change for them). Retry
-    // those on their own: a lone finding isn't competing for room in the response, so
-    // it resolves reliably even when it got dropped from the larger batch.
+    // Findings Claude silently omitted from the batch get one solo retry.
     if (hasFindingIdTracking && apiKey) {
       const missingFindings = withRules.filter((f) => !applied.succeededFindingIds.has(f.id));
       if (missingFindings.length > 0) {

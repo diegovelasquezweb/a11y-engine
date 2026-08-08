@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyFindingsFix, FIX_ERROR_CODES } from "../src/index.mjs";
+import { applyFindingFix, applyFindingsFix, FIX_ERROR_CODES } from "../src/index.mjs";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -443,5 +443,109 @@ describe("applyFindingsFix — Claude patch-generation contract", () => {
     expect(results[0].reason).toBe(FIX_ERROR_CODES.PATCH_GENERATION_FAILED);
     expect(results[0].message).toContain("400");
     expect(results[0].message).toContain("invalid_request_error");
+  });
+});
+
+// ── PAT no-op recovery: absence-based "already resolved" detection ──────────
+
+describe("applyFindingFix — already-resolved detection for remove-only patterns", () => {
+  let dir;
+  beforeEach(() => {
+    dir = makeTmpDir();
+  });
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+    vi.unstubAllGlobals();
+  });
+
+  it("recognizes a no-op as already resolved when the pattern's own detection regex no longer matches (no context_reject_regex needed)", async () => {
+    // Simulates PAT-2a9053: a sibling finding already stripped this button's
+    // accesskey, so nothing is left to change — Claude echoes the same text
+    // back as both search and replace (a no-op). "character-key-shortcut" has
+    // context_reject_regex: null, so only the pattern's own regex (accesskey=)
+    // failing to match the current context can prove this is genuinely fixed.
+    writeFile(dir, "index.html", '<button>Submit form</button>\n');
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          stop_reason: "end_turn",
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              changes: [{ filePath: "index.html", search: "<button>Submit form</button>", replace: "<button>Submit form</button>" }],
+            }),
+          }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      }),
+    );
+
+    const finding = {
+      id: "PAT-2a9053",
+      pattern_id: "character-key-shortcut",
+      title: "Single-character accesskey shortcut with no override mechanism",
+      severity: "Moderate",
+      file: "index.html",
+      line: 1,
+      match: 'accesskey="s"',
+      context: '<button accesskey="s">Submit form</button>',
+      fix_description: "Remove the accesskey attribute.",
+    };
+
+    const result = await applyFindingFix({
+      findingId: "PAT-2a9053",
+      patternPayload: { findings: [finding] },
+      projectDir: dir,
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(result.applied).toBe(true);
+    expect(result.message).toBe("Already resolved by a prior fix.");
+  });
+
+  it("still reports failure for a genuine no-op when the anti-pattern is still present", async () => {
+    writeFile(dir, "index.html", '<button accesskey="s">Submit form</button>\n');
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          stop_reason: "end_turn",
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              changes: [{ filePath: "index.html", search: '<button accesskey="s">Submit form</button>', replace: '<button accesskey="s">Submit form</button>' }],
+            }),
+          }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      }),
+    );
+
+    const finding = {
+      id: "PAT-2a9053",
+      pattern_id: "character-key-shortcut",
+      title: "Single-character accesskey shortcut with no override mechanism",
+      severity: "Moderate",
+      file: "index.html",
+      line: 1,
+      match: 'accesskey="s"',
+      context: '<button accesskey="s">Submit form</button>',
+      fix_description: "Remove the accesskey attribute.",
+    };
+
+    const result = await applyFindingFix({
+      findingId: "PAT-2a9053",
+      patternPayload: { findings: [finding] },
+      projectDir: dir,
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(result.applied).toBe(false);
+    expect(result.message).not.toBe("Already resolved by a prior fix.");
   });
 });
