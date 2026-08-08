@@ -527,7 +527,7 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 4096,
+      max_tokens: 16000,
       system,
       messages: [{ role: "user", content: userMessage }],
       output_config: { format: { type: "json_schema", schema: PATCH_OUTPUT_SCHEMA } },
@@ -549,7 +549,11 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
   }
 
   const data = await res.json();
-  const content = data.content?.[0]?.text || "";
+  // content[0] is not reliably the answer: models with thinking enabled (e.g. Sonnet 5's
+  // adaptive thinking, on by default when the thinking param is omitted) prepend one or
+  // more "thinking" blocks before the "text" block that carries the JSON.
+  const textBlock = Array.isArray(data.content) ? data.content.find((block) => block?.type === "text") : null;
+  const content = textBlock?.text || "";
 
   if (data.stop_reason === "max_tokens") {
     throw new Error(`AI patch output was truncated at the token limit (model: ${model}, stop_reason: max_tokens)`);

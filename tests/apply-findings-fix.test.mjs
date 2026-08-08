@@ -288,7 +288,7 @@ describe("applyFindingsFix — Claude patch-generation contract", () => {
   it("sends a json_schema output_config so every model returns a validated shape", async () => {
     const fetchMock = stubFetch({
       stop_reason: "end_turn",
-      content: [{ text: JSON.stringify({ changes: [{ filePath: "index.html", search: "<img src='hero.png'/>", replace: "<img src='hero.png' alt=''/>" }] }) }],
+      content: [{ type: "text", text: JSON.stringify({ changes: [{ filePath: "index.html", search: "<img src='hero.png'/>", replace: "<img src='hero.png' alt=''/>" }] }) }],
       usage: { input_tokens: 10, output_tokens: 5 },
     });
 
@@ -306,10 +306,30 @@ describe("applyFindingsFix — Claude patch-generation contract", () => {
     expect(body.output_config.format.schema.required).toEqual(["changes"]);
   });
 
+  it("finds the JSON in the text block even when a thinking block is emitted first (Sonnet 5 adaptive thinking)", async () => {
+    stubFetch({
+      stop_reason: "end_turn",
+      content: [
+        { type: "thinking", thinking: "Let me consider the best fix for this finding..." },
+        { type: "text", text: JSON.stringify({ changes: [{ filePath: "index.html", search: "<img src='hero.png'/>", replace: "<img src='hero.png' alt=''/>" }] }) },
+      ],
+      usage: { input_tokens: 10, output_tokens: 5, output_tokens_details: { thinking_tokens: 4 } },
+    });
+
+    const { results } = await applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1" })]),
+      ai: { apiKey: "test-key", model: "claude-sonnet-5" },
+    });
+
+    expect(results[0].status).toBe("patched");
+  });
+
   it("applies the patch when the structured JSON response parses cleanly", async () => {
     stubFetch({
       stop_reason: "end_turn",
-      content: [{ text: JSON.stringify({ changes: [{ filePath: "index.html", search: "<img src='hero.png'/>", replace: "<img src='hero.png' alt=''/>" }] }) }],
+      content: [{ type: "text", text: JSON.stringify({ changes: [{ filePath: "index.html", search: "<img src='hero.png'/>", replace: "<img src='hero.png' alt=''/>" }] }) }],
       usage: { input_tokens: 10, output_tokens: 5 },
     });
 
@@ -327,7 +347,7 @@ describe("applyFindingsFix — Claude patch-generation contract", () => {
   it("classifies a truncated (max_tokens) response distinctly from a generic failure", async () => {
     stubFetch({
       stop_reason: "max_tokens",
-      content: [{ text: '{"changes":[{"filePath":"index.html","search":"<img' }],
+      content: [{ type: "text", text: '{"changes":[{"filePath":"index.html","search":"<img' }],
       usage: { input_tokens: 10, output_tokens: 4096 },
     });
 
@@ -346,7 +366,7 @@ describe("applyFindingsFix — Claude patch-generation contract", () => {
   it("classifies a non-JSON response body distinctly, including a safe truncated snippet", async () => {
     stubFetch({
       stop_reason: "end_turn",
-      content: [{ text: "I'm sorry, I cannot format this as JSON right now." }],
+      content: [{ type: "text", text: "I'm sorry, I cannot format this as JSON right now." }],
       usage: { input_tokens: 10, output_tokens: 5 },
     });
 
