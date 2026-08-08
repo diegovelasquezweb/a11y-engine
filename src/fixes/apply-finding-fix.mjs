@@ -1177,6 +1177,35 @@ export async function applyFindingsFix(input) {
     const hasFindingIdTracking = applied.succeededFindingIds.size > 0;
     const anyFileChanged = applied.changedFiles && applied.changedFiles.length > 0;
 
+    // Claude tagged some findings but silently omitted others from this batch response
+    // (not a search-text collision — it just never proposed a change for them). Retry
+    // those on their own: a lone finding isn't competing for room in the response, so
+    // it resolves reliably even when it got dropped from the larger batch.
+    if (hasFindingIdTracking && apiKey) {
+      const missingFindings = withRules.filter((f) => !applied.succeededFindingIds.has(f.id));
+      if (missingFindings.length > 0) {
+        const retryAiInput = buildAiFixInputMulti({ findings: missingFindings, intelligenceRules, candidates, projectHints });
+        try {
+          const { patch: retryPatch, usage: retryUsage } = await callClaudeForPatch({ apiKey, model, aiInput: retryAiInput, remediationPath });
+          claudeUsage.input_tokens += retryUsage.input_tokens;
+          claudeUsage.output_tokens += retryUsage.output_tokens;
+          const retryValidation = validateAiPatchOutput(retryPatch, projectDir, candidateSet);
+          if (retryValidation.ok) {
+            const retryApplied = applyChanges(projectDir, retryPatch.changes);
+            if (retryApplied.ok) {
+              for (const id of retryApplied.succeededFindingIds) applied.succeededFindingIds.add(id);
+              for (const rel of retryApplied.changedFiles) {
+                if (!applied.changedFiles.includes(rel)) applied.changedFiles.push(rel);
+              }
+              applied.patch = [applied.patch, retryApplied.patch].filter(Boolean).join("\n");
+            }
+          }
+        } catch {
+          // Retry failed — the missing findings stay unresolved and are reported as such below.
+        }
+      }
+    }
+
     for (const finding of withRules) {
       const ruleId = typeof finding.rule_id === "string" ? finding.rule_id.trim() : "";
       const intelligenceRule = intelligenceRules[ruleId] || {};

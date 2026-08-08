@@ -285,6 +285,47 @@ describe("applyFindingsFix — Claude patch-generation contract", () => {
     return fetchMock;
   }
 
+  it("retries findings Claude silently omitted from a batch response, resolving them individually", async () => {
+    writeFile(dir, "index.html", "<html><body><img src='hero.png'/><button></button></body></html>");
+
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        stop_reason: "end_turn",
+        // Only A11Y-1 tagged — A11Y-2 silently omitted from this batch response.
+        content: [{ type: "text", text: JSON.stringify({ changes: [{ filePath: "index.html", search: "<img src='hero.png'/>", replace: "<img src='hero.png' alt=''/>", findingId: "A11Y-1" }] }) }],
+        usage: { input_tokens: 20, output_tokens: 10 },
+      }),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: JSON.stringify({ changes: [{ filePath: "index.html", search: "<button></button>", replace: "<button aria-label='Menu'></button>", findingId: "A11Y-2" }] }) }],
+        usage: { input_tokens: 8, output_tokens: 4 },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { results } = await applyFindingsFix({
+      findingIds: ["A11Y-1", "A11Y-2"],
+      projectDir: dir,
+      findingsPayload: makePayload([
+        makeFinding({ id: "A11Y-1", selector: "img" }),
+        makeFinding({ id: "A11Y-2", selector: "button", rule_id: "button-name", title: "Button has no accessible name" }),
+      ]),
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(results.find((r) => r.id === "A11Y-1").status).toBe("patched");
+    expect(results.find((r) => r.id === "A11Y-2").status).toBe("patched");
+    const finalContent = fs.readFileSync(`${dir}/index.html`, "utf8");
+    expect(finalContent).toContain("alt=''");
+    expect(finalContent).toContain("aria-label='Menu'");
+  });
+
   it("sends a json_schema output_config so every model returns a validated shape", async () => {
     const fetchMock = stubFetch({
       stop_reason: "end_turn",
