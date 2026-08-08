@@ -422,23 +422,31 @@ function buildAiFixInput({ finding, intelligenceRule, execution, candidates, pro
   };
 }
 
-function parseJsonBlock(text) {
-  const raw = String(text || "").trim();
-  if (!raw) return null;
-  const codeFence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const source = codeFence ? codeFence[1] : raw;
-  try {
-    return JSON.parse(source);
-  } catch {
-    const objMatch = source.match(/\{[\s\S]*\}/);
-    if (!objMatch) return null;
-    try {
-      return JSON.parse(objMatch[0]);
-    } catch {
-      return null;
-    }
-  }
-}
+const PATCH_OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    changes: {
+      type: "array",
+      description: "One entry per exact text replacement to apply.",
+      items: {
+        type: "object",
+        properties: {
+          filePath: { type: "string", description: "Exact filePath string copied from the files array." },
+          search: { type: "string", description: "Verbatim substring to find in the file." },
+          replace: { type: "string", description: "Replacement text." },
+          findingId: { type: "string", description: "The id of the finding this change resolves, when known." },
+        },
+        required: ["filePath", "search", "replace"],
+        additionalProperties: false,
+      },
+    },
+    verifyRule: { type: "string", description: "The rule id to re-verify after applying, if applicable." },
+    verifyRoute: { type: "string", description: "The route/page to re-verify, if applicable." },
+    notes: { type: "string", description: "Optional free-text notes about the fix." },
+  },
+  required: ["changes"],
+  additionalProperties: false,
+};
 
 function extractRemediationContext(remediationPath) {
   if (!remediationPath || !fs.existsSync(remediationPath)) return null;
@@ -497,7 +505,6 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
 
   const system = [
     "You are an accessibility fix engine.",
-    "Return JSON only — no markdown fences, no extra text.",
     "The input contains either a single 'finding' object or a 'findings' array. Fix EVERY finding present.",
     "For each finding, read its fixDescription and constraints.must fields to understand the required fix.",
     "Generate text-replacement changes in the provided source files.",
@@ -507,8 +514,6 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
     "Do not create new files. Only write changes for filePaths listed in the files array.",
     styleInstruction,
     ...(remediationContext ? ["", "## Project Context (from audit report)", remediationContext] : []),
-    "Schema:",
-    "{\"changes\":[{\"filePath\":\"...\",\"search\":\"...\",\"replace\":\"...\"}],\"verifyRule\":\"...\",\"verifyRoute\":\"...\",\"notes\":\"...\"}",
   ].join("\n");
 
   const userMessage = JSON.stringify(aiInput, null, 2);
@@ -525,6 +530,7 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
       max_tokens: 4096,
       system,
       messages: [{ role: "user", content: userMessage }],
+      output_config: { format: { type: "json_schema", schema: PATCH_OUTPUT_SCHEMA } },
     }),
   });
 
@@ -544,8 +550,23 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
 
   const data = await res.json();
   const content = data.content?.[0]?.text || "";
-  const parsed = parseJsonBlock(content);
-  if (!isObject(parsed)) throw new Error("AI patch output is not valid JSON object");
+
+  if (data.stop_reason === "max_tokens") {
+    throw new Error(`AI patch output was truncated at the token limit (model: ${model}, stop_reason: max_tokens)`);
+  }
+  if (data.stop_reason === "refusal") {
+    throw new Error(`AI declined to generate a patch (model: ${model}, stop_reason: refusal)`);
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    const snippet = content.slice(0, 200).replace(/\s+/g, " ").trim();
+    throw new Error(`AI patch output was not valid JSON (model: ${model}): ${snippet || "(empty response)"}`);
+  }
+  if (!isObject(parsed)) throw new Error(`AI patch output is not a JSON object (model: ${model})`);
+
   const usage = {
     input_tokens: data.usage?.input_tokens ?? 0,
     output_tokens: data.usage?.output_tokens ?? 0,

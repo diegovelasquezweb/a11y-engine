@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyFindingsFix, FIX_ERROR_CODES } from "../src/index.mjs";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -259,5 +259,128 @@ describe("applyFindingsFix — result shape", () => {
     expect(r).toHaveProperty("usage");
     expect(r.usage).toHaveProperty("input_tokens");
     expect(r.usage).toHaveProperty("output_tokens");
+  });
+});
+
+// ── Claude patch-generation contract (structured output) ────────────────────
+
+describe("applyFindingsFix — Claude patch-generation contract", () => {
+  let dir;
+  beforeEach(() => {
+    dir = makeTmpDir();
+    writeFile(dir, "index.html", "<html><body><img src='hero.png'/></body></html>");
+  });
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+    vi.unstubAllGlobals();
+  });
+
+  function stubFetch(responseBody) {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => responseBody,
+      text: async () => JSON.stringify(responseBody),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("sends a json_schema output_config so every model returns a validated shape", async () => {
+    const fetchMock = stubFetch({
+      stop_reason: "end_turn",
+      content: [{ text: JSON.stringify({ changes: [{ filePath: "index.html", search: "<img src='hero.png'/>", replace: "<img src='hero.png' alt=''/>" }] }) }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    });
+
+    await applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1" })]),
+      ai: { apiKey: "test-key", model: "claude-sonnet-5" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.model).toBe("claude-sonnet-5");
+    expect(body.output_config.format.type).toBe("json_schema");
+    expect(body.output_config.format.schema.required).toEqual(["changes"]);
+  });
+
+  it("applies the patch when the structured JSON response parses cleanly", async () => {
+    stubFetch({
+      stop_reason: "end_turn",
+      content: [{ text: JSON.stringify({ changes: [{ filePath: "index.html", search: "<img src='hero.png'/>", replace: "<img src='hero.png' alt=''/>" }] }) }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    });
+
+    const { results } = await applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1" })]),
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(results[0].status).toBe("patched");
+    expect(fs.readFileSync(path.join(dir, "index.html"), "utf8")).toContain("alt=''");
+  });
+
+  it("classifies a truncated (max_tokens) response distinctly from a generic failure", async () => {
+    stubFetch({
+      stop_reason: "max_tokens",
+      content: [{ text: '{"changes":[{"filePath":"index.html","search":"<img' }],
+      usage: { input_tokens: 10, output_tokens: 4096 },
+    });
+
+    const { results } = await applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1" })]),
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(results[0].reason).toBe(FIX_ERROR_CODES.PATCH_GENERATION_FAILED);
+    expect(results[0].message).toContain("truncated");
+    expect(results[0].message).toContain("max_tokens");
+  });
+
+  it("classifies a non-JSON response body distinctly, including a safe truncated snippet", async () => {
+    stubFetch({
+      stop_reason: "end_turn",
+      content: [{ text: "I'm sorry, I cannot format this as JSON right now." }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    });
+
+    const { results } = await applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1" })]),
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(results[0].reason).toBe(FIX_ERROR_CODES.PATCH_GENERATION_FAILED);
+    expect(results[0].message).toContain("not valid JSON");
+    expect(results[0].message).toContain("cannot format this as JSON");
+  });
+
+  it("classifies an HTTP API error with status and error type, never a raw crash", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () => JSON.stringify({ error: { type: "invalid_request_error", message: "model does not support structured outputs" } }),
+      }),
+    );
+
+    const { results } = await applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1" })]),
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(results[0].reason).toBe(FIX_ERROR_CODES.PATCH_GENERATION_FAILED);
+    expect(results[0].message).toContain("400");
+    expect(results[0].message).toContain("invalid_request_error");
   });
 });
