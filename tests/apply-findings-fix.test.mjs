@@ -444,6 +444,80 @@ describe("applyFindingsFix — Claude patch-generation contract", () => {
     expect(results[0].message).toContain("400");
     expect(results[0].message).toContain("invalid_request_error");
   });
+
+  it("retries a transient 529 overload and succeeds once the API recovers", async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 529,
+      text: async () => JSON.stringify({ error: { type: "overloaded_error", message: "Overloaded" } }),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: JSON.stringify({ changes: [{ filePath: "index.html", search: "<img src='hero.png'/>", replace: "<img src='hero.png' alt=''/>" }] }) }],
+        usage: { input_tokens: 10, output_tokens: 5 },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.useFakeTimers();
+    const promise = applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1" })]),
+      ai: { apiKey: "test-key" },
+    });
+    await vi.runAllTimersAsync();
+    const { results } = await promise;
+    vi.useRealTimers();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(results[0].status).toBe("patched");
+  });
+
+  it("gives up after exhausting retries on a persistent 529 overload", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 529,
+      text: async () => JSON.stringify({ error: { type: "overloaded_error", message: "Overloaded" } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.useFakeTimers();
+    const promise = applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1" })]),
+      ai: { apiKey: "test-key" },
+    });
+    await vi.runAllTimersAsync();
+    const { results } = await promise;
+    vi.useRealTimers();
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(results[0].reason).toBe(FIX_ERROR_CODES.PATCH_GENERATION_FAILED);
+    expect(results[0].message).toContain("529");
+  });
+
+  it("does not retry a non-retryable 400 error", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({ error: { type: "invalid_request_error", message: "bad request" } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1" })]),
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ── PAT no-op recovery: absence-based "already resolved" detection ──────────

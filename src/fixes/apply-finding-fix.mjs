@@ -518,21 +518,29 @@ async function callClaudeForPatch({ apiKey, model, aiInput, remediationPath }) {
 
   const userMessage = JSON.stringify(aiInput, null, 2);
 
-  const res = await fetch(ANTHROPIC_API, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 16000,
-      system,
-      messages: [{ role: "user", content: userMessage }],
-      output_config: { format: { type: "json_schema", schema: PATCH_OUTPUT_SCHEMA } },
-    }),
-  });
+  const RETRYABLE_STATUS = new Set([429, 500, 503, 529]);
+  const MAX_ATTEMPTS = 3;
+  let res;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    res = await fetch(ANTHROPIC_API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 16000,
+        system,
+        messages: [{ role: "user", content: userMessage }],
+        output_config: { format: { type: "json_schema", schema: PATCH_OUTPUT_SCHEMA } },
+      }),
+    });
+
+    if (res.ok || !RETRYABLE_STATUS.has(res.status) || attempt === MAX_ATTEMPTS) break;
+    await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
+  }
 
   if (!res.ok) {
     const bodyText = await res.text();
