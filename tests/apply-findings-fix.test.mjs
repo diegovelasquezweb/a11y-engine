@@ -622,4 +622,55 @@ describe("applyFindingFix — already-resolved detection for remove-only pattern
     expect(result.applied).toBe(false);
     expect(result.message).not.toBe("Already resolved by a prior fix.");
   });
+
+  it("recognizes a no-op as already resolved even when a nearby comment mentions the pattern (PAT-7a09a5 regression)", async () => {
+    // Simulates PAT-7a09a5: a sibling DOM fix already added alt to this img,
+    // so Claude echoes a no-op. The line above is a descriptive comment that
+    // literally contains "<img>" — the img-no-alt regex must not false-match
+    // on that comment text when checking whether the real tag is still broken.
+    writeFile(
+      dir,
+      "index.html",
+      '<!-- image-alt: <img> with no alt attribute at all -->\n<img src="hero.png" className="block" alt="Placeholder image" />\n',
+    );
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          stop_reason: "end_turn",
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              changes: [{ filePath: "index.html", search: '<img src="hero.png" className="block" alt="Placeholder image" />', replace: '<img src="hero.png" className="block" alt="Placeholder image" />' }],
+            }),
+          }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      }),
+    );
+
+    const finding = {
+      id: "PAT-7a09a5",
+      pattern_id: "img-no-alt",
+      title: "Image is missing an alt attribute",
+      severity: "Critical",
+      file: "index.html",
+      line: 2,
+      match: "<img",
+      context: '<img src="hero.png" className="block" />',
+      fix_description: "Add an alt attribute.",
+    };
+
+    const result = await applyFindingFix({
+      findingId: "PAT-7a09a5",
+      patternPayload: { findings: [finding] },
+      projectDir: dir,
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(result.applied).toBe(true);
+    expect(result.message).toBe("Already resolved by a prior fix.");
+  });
 });

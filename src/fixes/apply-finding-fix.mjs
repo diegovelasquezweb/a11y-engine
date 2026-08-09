@@ -448,6 +448,12 @@ const PATCH_OUTPUT_SCHEMA = {
   additionalProperties: false,
 };
 
+// Strips block comments so "already resolved" regex checks don't false-match
+// on a comment that merely mentions the pattern (e.g. `{/* image-alt: <img>... */}`).
+function stripBlockComments(text) {
+  return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
+}
+
 function extractRemediationContext(remediationPath) {
   if (!remediationPath || !fs.existsSync(remediationPath)) return null;
   try {
@@ -789,6 +795,9 @@ export async function applyFindingFix(input) {
         } else {
           context = [aiInput.finding.surroundingLines, aiInput.finding.matchLine].filter(Boolean).join("\n");
         }
+        // Strip comments so a comment merely mentioning the pattern (e.g.
+        // `{/* image-alt: <img>... */}`) doesn't defeat the already-resolved check below.
+        context = stripBlockComments(context);
 
         let alreadyResolved = false;
         try {
