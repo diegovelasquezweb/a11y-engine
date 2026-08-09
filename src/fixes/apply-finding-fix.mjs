@@ -1,11 +1,39 @@
 import fs from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 import { ASSETS } from "../core/asset-loader.mjs";
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
 const MAX_CANDIDATE_FILES = 12;
 const SUPPORTED_EXTENSIONS = new Set([".html", ".htm", ".jsx", ".tsx", ".vue", ".astro", ".liquid", ".css", ".scss", ".sass"]);
+const SYNTAX_CHECK_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
+
+// Parses the patched file to catch malformed JS/TS/JSX before it lands on disk —
+// validateAiPatchOutput only checks text-level shape, never whether the result compiles.
+function checkSyntax(relPath, content) {
+  const ext = path.extname(relPath);
+  if (!SYNTAX_CHECK_EXTENSIONS.has(ext)) return { ok: true };
+  try {
+    const result = ts.transpileModule(content, {
+      compilerOptions: {
+        jsx: ts.JsxEmit.Preserve,
+        module: ts.ModuleKind.ESNext,
+        target: ts.ScriptTarget.Latest,
+        allowJs: true,
+      },
+      reportDiagnostics: true,
+      fileName: relPath,
+    });
+    if (result.diagnostics && result.diagnostics.length > 0) {
+      const message = ts.flattenDiagnosticMessageText(result.diagnostics[0].messageText, "\n");
+      return { ok: false, message };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : String(err) };
+  }
+}
 
 export const FIX_ERROR_CODES = {
   INVALID_INPUT: "invalid-input",
@@ -628,6 +656,7 @@ function applyChanges(projectDir, changes) {
   const changedFiles = [];
   const patchParts = [];
   const succeededFindingIds = new Set();
+  const syntaxErrors = new Map();
 
   for (const change of changes) {
     const rel = change.filePath;
@@ -638,6 +667,14 @@ function applyChanges(projectDir, changes) {
     }
     const updated = original.replace(change.search, change.replace);
     if (updated === original) continue;
+
+    const syntaxCheck = checkSyntax(rel, updated);
+    if (!syntaxCheck.ok) {
+      const findingId = typeof change.findingId === "string" && change.findingId.trim() ? change.findingId.trim() : rel;
+      syntaxErrors.set(findingId, `AI patch produced invalid syntax for ${rel} and was rolled back: ${syntaxCheck.message}`);
+      continue;
+    }
+
     fs.writeFileSync(abs, updated, "utf8");
     changedFiles.push(rel);
     patchParts.push(`--- ${rel}\n+++ ${rel}\n@@\n-${change.search}\n+${change.replace}`);
@@ -646,13 +683,17 @@ function applyChanges(projectDir, changes) {
     }
   }
 
-  if (changedFiles.length === 0) return { ok: false, reason: "No effective changes were applied" };
+  if (changedFiles.length === 0) {
+    const firstSyntaxError = syntaxErrors.values().next().value;
+    return { ok: false, reason: firstSyntaxError || "No effective changes were applied", syntaxErrors };
+  }
 
   return {
     ok: true,
     changedFiles: [...new Set(changedFiles)],
     patch: patchParts.join("\n"),
     succeededFindingIds,
+    syntaxErrors,
   };
 }
 
@@ -1212,6 +1253,9 @@ export async function applyFindingsFix(input) {
               }
               applied.patch = [applied.patch, retryApplied.patch].filter(Boolean).join("\n");
             }
+            if (retryApplied.syntaxErrors) {
+              for (const [id, msg] of retryApplied.syntaxErrors) applied.syntaxErrors.set(id, msg);
+            }
           }
         } catch {
           // Retry failed — the missing findings stay unresolved and are reported as such below.
@@ -1229,6 +1273,7 @@ export async function applyFindingsFix(input) {
         : anyFileChanged;
 
       const alreadyResolved = !hasFindingIdTracking && !anyFileChanged;
+      const syntaxError = applied.syntaxErrors?.get(finding.id);
 
       resultMap.set(
         finding.id,
@@ -1239,7 +1284,7 @@ export async function applyFindingsFix(input) {
             ? "Already resolved — no changes needed."
             : findingApplied
             ? "Patch applied successfully."
-            : "The change for this finding could not be applied (search block not found).",
+            : syntaxError || "The change for this finding could not be applied (search block not found).",
           changedFiles: applied.changedFiles,
           patch: applied.patch,
           verifyRule: execution.verify.ruleId,

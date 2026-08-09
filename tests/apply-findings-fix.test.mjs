@@ -674,3 +674,169 @@ describe("applyFindingFix — already-resolved detection for remove-only pattern
     expect(result.message).toBe("Already resolved by a prior fix.");
   });
 });
+
+// ── Post-patch syntax validation (build-breaking patch regression) ──────────
+
+describe("applyFindingsFix — post-patch syntax validation", () => {
+  let dir;
+  beforeEach(() => {
+    dir = makeTmpDir();
+  });
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+    vi.unstubAllGlobals();
+  });
+
+  it("rejects and rolls back a patch that leaves the file with invalid TSX syntax", async () => {
+    // Mirrors the real bug: a batch patch left a stray extra `}` after the
+    // component function, which only Turbopack's build caught previously.
+    const original = 'export default function Layout({ children }) {\n  return (\n    <div className="wrapper">\n      {children}\n    </div>\n  );\n}\n';
+    writeFile(dir, "layout.tsx", original);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          stop_reason: "end_turn",
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              changes: [{ filePath: "layout.tsx", search: "  );\n}", replace: "  );\n}\n}", findingId: "A11Y-1" }],
+            }),
+          }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      }),
+    );
+
+    const { results } = await applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1", selector: "div" })]),
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(results[0].status).toBe("not_applied");
+    expect(results[0].message).toContain("invalid syntax");
+    expect(fs.readFileSync(`${dir}/layout.tsx`, "utf8")).toBe(original);
+  });
+
+  it("in a mixed batch, rolls back only the finding whose patch breaks syntax and keeps the valid one applied", async () => {
+    const original = 'export default function Page() {\n  return (\n    <div>\n      <img src="hero.png" />\n      <img src="other.png" />\n    </div>\n  );\n}\n';
+    writeFile(dir, "page.tsx", original);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          stop_reason: "end_turn",
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              changes: [
+                { filePath: "page.tsx", search: '<img src="hero.png" />', replace: '<img src="hero.png" alt="Hero" />', findingId: "A11Y-1" },
+                { filePath: "page.tsx", search: '<img src="other.png" />', replace: '<img src="other.png" alt="Other"', findingId: "A11Y-2" },
+              ],
+            }),
+          }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      }),
+    );
+
+    const { results } = await applyFindingsFix({
+      findingIds: ["A11Y-1", "A11Y-2"],
+      projectDir: dir,
+      findingsPayload: makePayload([
+        makeFinding({ id: "A11Y-1", selector: "img" }),
+        makeFinding({ id: "A11Y-2", selector: "img" }),
+      ]),
+      ai: { apiKey: "test-key" },
+    });
+
+    const r1 = results.find((r) => r.id === "A11Y-1");
+    const r2 = results.find((r) => r.id === "A11Y-2");
+    expect(r1.status).toBe("patched");
+    expect(r2.status).toBe("not_applied");
+    expect(r2.message).toContain("invalid syntax");
+
+    const finalContent = fs.readFileSync(`${dir}/page.tsx`, "utf8");
+    expect(finalContent).toContain('alt="Hero"');
+    expect(finalContent).not.toContain('alt="Other"');
+  });
+
+  it("does not run the syntax check on non-JS/TS files", async () => {
+    writeFile(dir, "index.html", "<img src='hero.png'/>\n");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          stop_reason: "end_turn",
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              changes: [{ filePath: "index.html", search: "<img src='hero.png'/>", replace: "<img src='hero.png' alt=''/>" }],
+            }),
+          }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      }),
+    );
+
+    const { results } = await applyFindingsFix({
+      findingIds: ["A11Y-1"],
+      projectDir: dir,
+      findingsPayload: makePayload([makeFinding({ id: "A11Y-1" })]),
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(results[0].status).toBe("patched");
+  });
+
+  it("rejects and rolls back a single-finding (PAT) patch that leaves the file with invalid syntax", async () => {
+    const original = 'export default function Widget() {\n  return (\n    <button accesskey="s">Submit</button>\n  );\n}\n';
+    writeFile(dir, "widget.tsx", original);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          stop_reason: "end_turn",
+          content: [{
+            type: "text",
+            text: JSON.stringify({ changes: [{ filePath: "widget.tsx", search: "  );\n}", replace: "  );\n}\n}" }] }),
+          }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      }),
+    );
+
+    const finding = {
+      id: "PAT-x",
+      pattern_id: "character-key-shortcut",
+      title: "Single-character accesskey shortcut with no override mechanism",
+      severity: "Moderate",
+      file: "widget.tsx",
+      line: 3,
+      match: 'accesskey="s"',
+      context: '<button accesskey="s">Submit</button>',
+      fix_description: "Remove the accesskey attribute.",
+    };
+
+    const result = await applyFindingFix({
+      findingId: "PAT-x",
+      patternPayload: { findings: [finding] },
+      projectDir: dir,
+      ai: { apiKey: "test-key" },
+    });
+
+    expect(result.applied).toBe(false);
+    expect(result.message).toContain("invalid syntax");
+    expect(fs.readFileSync(`${dir}/widget.tsx`, "utf8")).toBe(original);
+  });
+});
